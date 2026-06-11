@@ -53,10 +53,11 @@ Die App dient als digitales Projektbuch für ca. 150 Aufträge pro Jahr. Sie erf
 
 ## Geplante Erweiterungen
 
-### Phase 1 (in Arbeit)
+### Phase 1 ✅ Abgeschlossen
 - [x] Bestellstatus pro EK-Position (Offen / Bestellt / Teilgeliefert / Geliefert / Abgerechnet)
 - [x] Zuständigkeitszuweisung pro EK-Position an Teammitglied
-- [ ] Projektübergreifende Aufgabenliste (analog Statistiken-View)
+- [x] "Projekt abschließen" Button — setzt alle EK-Positionen auf Abgerechnet / Nicht notwendig
+- [x] Projektübergreifende Aufgabenliste mit Filter nach Status, Zuständigkeit und Jahr
 
 ### Phase 2
 - SharePoint als zentrale Datenbasis (Mehrbenutzer-Betrieb für 4 Nutzer, M365)
