@@ -1220,6 +1220,7 @@
                 <div class="project-actions">
                     <button onclick="saveProject()">💾 Speichern</button>
                     <button onclick="showView('dashboard')" class="btn-secondary">⬅️ Zurück zur Übersicht</button>
+                    <button onclick="closeProject()" class="btn-secondary" title="Alle EK-Positionen auf Abgerechnet / Nicht notwendig setzen">✅ Projekt abschließen</button>
                     <button onclick="deleteCurrentProject()" class="btn-danger">🗑️ Projekt löschen</button>
                 </div>
             </div>
@@ -1396,6 +1397,8 @@
                                 <th>Beschreibung</th>
                                 <th>Gewerk</th>
                                 <th>Typ</th>
+                                <th>Status</th>
+                                <th>Zuständig</th>
                                 <th class="number-cell">Einzelpreis</th>
                                 <th class="number-cell">Gesamtpreis</th>
                                 <th class="action-cell">Aktion</th>
@@ -1529,6 +1532,25 @@
         // Konstanten
         const BACKUP_FILENAME = 'nachkalkulation_backup.json';
         const ARTICLE_BACKUP_FILENAME = 'artikel_backup.json';
+
+        // Team-Mitglieder (für Aufgabenzuweisung EK-Positionen)
+        const TEAM_MEMBERS = [
+            { id: 'unassigned',     name: '-- Nicht zugewiesen --' },
+            { id: 'not_required',   name: '-- Nicht notwendig --' },
+            { id: 'member1',        name: 'Mitarbeiter 1' },
+            { id: 'member2',        name: 'Mitarbeiter 2' },
+            { id: 'member3',        name: 'Mitarbeiter 3' },
+            { id: 'member4',        name: 'Mitarbeiter 4' }
+        ];
+
+        // Bestellstatus EK-Positionen
+        const PURCHASE_STATUS = [
+            { id: 'open',         label: 'Offen',         color: '#dc3545' },
+            { id: 'ordered',      label: 'Bestellt',      color: '#fd7e14' },
+            { id: 'partial',      label: 'Teilgeliefert', color: '#ffc107' },
+            { id: 'delivered',    label: 'Geliefert',     color: '#28a745' },
+            { id: 'invoiced',     label: 'Abgerechnet',   color: '#6c757d' }
+        ];
         
         // Globale Variablen
         let currentProject = null;
@@ -1941,7 +1963,9 @@
                             unitPrice: bomItem.price,
                             totalPrice: bomItem.quantity * bomItem.price,
                             type: article.type || 'material',
-                            trade: article.trade || ''
+                            trade: article.trade || '',
+                            status: 'open',
+                            assignedTo: 'unassigned'
                         };
                         
                         currentProject.purchasePositions.push(position);
@@ -2387,6 +2411,14 @@
             if (currentProject.hasDelivered === undefined) currentProject.hasDelivered = false;
             if (currentProject.hasPostCalc === undefined) currentProject.hasPostCalc = false;
             
+            // Migration: bestehende EK-Positionen ohne status/assignedTo absichern
+            if (currentProject.purchasePositions) {
+                currentProject.purchasePositions.forEach(pos => {
+                    if (!pos.status) pos.status = 'open';
+                    if (!pos.assignedTo) pos.assignedTo = 'unassigned';
+                });
+            }
+            
             document.getElementById('projectNumber').value = currentProject.projectNumber;
             document.getElementById('customer').value = currentProject.customer;
             document.getElementById('projectName').value = currentProject.projectName;
@@ -2433,6 +2465,33 @@
             showView('dashboard');
             updateYearFilter();
             showMessage('Projekt gelöscht', 'success');
+        }
+
+        function closeProject() {
+            if (!currentProject || !currentProject.projectNumber) {
+                showMessage('Kein Projekt geladen', 'error');
+                return;
+            }
+
+            const count = currentProject.purchasePositions.length;
+
+            if (count === 0) {
+                showMessage('Keine EK-Positionen vorhanden', 'warning');
+                return;
+            }
+
+            if (!confirm(`Alle ${count} EK-Position(en) auf "Abgerechnet" und Zuständigkeit auf "Nicht notwendig" setzen?\n\nDieser Schritt kann nicht rückgängig gemacht werden.`)) {
+                return;
+            }
+
+            currentProject.purchasePositions.forEach(pos => {
+                pos.status = 'invoiced';
+                pos.assignedTo = 'not_required';
+            });
+
+            saveToLocalStorage();
+            renderPurchasePositions();
+            showMessage(`Projekt abgeschlossen: ${count} EK-Position(en) aktualisiert`, 'success');
         }
         
         // ========== REST OF THE CODE CONTINUES WITH TRADES, POSITIONS, ETC. ==========
@@ -2681,7 +2740,9 @@
                 unitPrice: unitPrice,
                 totalPrice: quantity * unitPrice,
                 type: document.getElementById('newPurchaseType').value,
-                trade: document.getElementById('newPurchaseTrade').value || ''
+                trade: document.getElementById('newPurchaseTrade').value || '',
+                status: 'open',
+                assignedTo: 'unassigned'
             };
             
             currentProject.purchasePositions.push(position);
@@ -2705,7 +2766,7 @@
             if (currentProject.purchasePositions.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="8" style="text-align: center; padding: 40px; color: #999;">
+                        <td colspan="10" style="text-align: center; padding: 40px; color: #999;">
                             Keine Einkaufspositionen vorhanden. Fügen Sie oben eine Position hinzu.
                         </td>
                     </tr>
@@ -2715,10 +2776,17 @@
             
             tbody.innerHTML = currentProject.purchasePositions.map((pos, index) => {
                 const sortedTrades = [...currentProject.trades].sort();
+                const statusObj = PURCHASE_STATUS.find(s => s.id === (pos.status || 'open')) || PURCHASE_STATUS[0];
+                const statusOptions = PURCHASE_STATUS.map(s =>
+                    `<option value="${s.id}" ${(pos.status || 'open') === s.id ? 'selected' : ''}>${s.label}</option>`
+                ).join('');
+                const memberOptions = TEAM_MEMBERS.map(m =>
+                    `<option value="${m.id}" ${(pos.assignedTo || 'unassigned') === m.id ? 'selected' : ''}>${m.name}</option>`
+                ).join('');
                 return `
                 <tr>
                     <td class="editable-cell">
-                        <input type="text" value="${pos.supplier}" 
+                        <input type="text" value="${pos.supplier || ''}" 
                                onchange="updatePurchasePosition(${index}, 'supplier', this.value)">
                     </td>
                     <td class="editable-cell number-cell">
@@ -2742,6 +2810,17 @@
                             <option value="shipping" ${pos.type === 'shipping' ? 'selected' : ''}>Versand</option>
                             <option value="kilometer" ${pos.type === 'kilometer' ? 'selected' : ''}>Kilometer</option>
                             <option value="other" ${pos.type === 'other' ? 'selected' : ''}>Sonstiges</option>
+                        </select>
+                    </td>
+                    <td class="editable-cell">
+                        <select onchange="updatePurchasePosition(${index}, 'status', this.value)"
+                                style="font-weight: 600; color: ${statusObj.color}; border-color: ${statusObj.color};">
+                            ${statusOptions}
+                        </select>
+                    </td>
+                    <td class="editable-cell">
+                        <select onchange="updatePurchasePosition(${index}, 'assignedTo', this.value)">
+                            ${memberOptions}
                         </select>
                     </td>
                     <td class="number-cell">${formatCurrency(pos.unitPrice)}</td>
