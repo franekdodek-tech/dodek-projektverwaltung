@@ -1065,6 +1065,7 @@
         <div class="view-selector">
             <button onclick="showView('dashboard')">📊 Projektübersicht</button>
             <button onclick="showView('statistics')">📈 Statistiken</button>
+            <button onclick="showView('tasks')">📋 Aufgaben</button>
             <button onclick="showView('editor')" id="editorButton" style="display: none;">📝 Projekt bearbeiten</button>
             <button onclick="showView('articles')">📦 Artikelstamm</button>
         </div>
@@ -1161,6 +1162,64 @@
                         <h4>Auftragseingang pro Monat</h4>
                         <div id="monthlyOrders"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        </div>
+
+        <!-- TASKS VIEW -->
+        <div id="tasksView" class="view">
+            <h2 style="margin-bottom: 20px;">📋 Aufgabenliste</h2>
+
+            <!-- Filter-Leiste -->
+            <div style="background: white; padding: 15px 20px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+                <div class="year-filter">
+                    <label>Status:</label>
+                    <select id="tasksStatusFilter" onchange="renderTasks()">
+                        <option value="all">Alle</option>
+                        <option value="open">Offen</option>
+                        <option value="ordered">Bestellt</option>
+                        <option value="partial">Teilgeliefert</option>
+                        <option value="delivered">Geliefert</option>
+                        <option value="invoiced">Abgerechnet</option>
+                    </select>
+                </div>
+                <div class="year-filter">
+                    <label>Zuständig:</label>
+                    <select id="tasksMemberFilter" onchange="renderTasks()">
+                        <option value="all">Alle</option>
+                    </select>
+                </div>
+                <div class="year-filter">
+                    <label>Jahr:</label>
+                    <select id="tasksYearFilter" onchange="renderTasks()">
+                        <option value="all">Alle Jahre</option>
+                    </select>
+                </div>
+                <span id="tasksCount" style="margin-left: auto; font-size: 13px; color: #666;"></span>
+            </div>
+
+            <!-- Tabelle -->
+            <div class="positions-section">
+                <div class="positions-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Projekt</th>
+                                <th>Kunde</th>
+                                <th>Lieferant</th>
+                                <th>Beschreibung</th>
+                                <th>Gewerk</th>
+                                <th class="number-cell">Menge</th>
+                                <th class="number-cell">Gesamtpreis</th>
+                                <th>Status</th>
+                                <th>Zuständig</th>
+                                <th class="action-cell">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasksTable"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -2175,6 +2234,10 @@
                 document.getElementById('statisticsView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
                 renderStatistics();
+            } else if (viewName === 'tasks') {
+                document.getElementById('tasksView').classList.add('active');
+                document.getElementById('editorButton').style.display = 'none';
+                renderTasks();
             }
         }
         
@@ -3451,6 +3514,111 @@
                 list.style.display = (year === selectedYear) ? 'block' : 'none';
             });
         }
+    }
+
+    // ========== AUFGABENLISTE ==========
+
+    function renderTasks() {
+        // Filter-Dropdowns beim ersten Aufruf befüllen
+        const memberSelect = document.getElementById('tasksMemberFilter');
+        if (memberSelect.options.length <= 1) {
+            TEAM_MEMBERS.forEach(m => {
+                if (m.id === 'unassigned') return;
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = m.name;
+                memberSelect.appendChild(opt);
+            });
+        }
+
+        const yearSelect = document.getElementById('tasksYearFilter');
+        if (yearSelect.options.length <= 1) {
+            const years = new Set();
+            Object.keys(allProjects).forEach(pn => {
+                const y = getYearFromProjectNumber(pn);
+                if (y) years.add(y);
+            });
+            Array.from(years).sort().forEach(y => {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                yearSelect.appendChild(opt);
+            });
+        }
+
+        const statusFilter = document.getElementById('tasksStatusFilter').value;
+        const memberFilter = document.getElementById('tasksMemberFilter').value;
+        const yearFilter   = document.getElementById('tasksYearFilter').value;
+
+        // Alle EK-Positionen aller Projekte sammeln
+        const rows = [];
+        Object.values(allProjects).forEach(project => {
+            const year = getYearFromProjectNumber(project.projectNumber);
+            if (yearFilter !== 'all' && String(year) !== yearFilter) return;
+
+            (project.purchasePositions || []).forEach((pos, idx) => {
+                const posStatus     = pos.status     || 'open';
+                const posAssignedTo = pos.assignedTo || 'unassigned';
+
+                if (statusFilter !== 'all' && posStatus !== statusFilter) return;
+                if (memberFilter !== 'all' && posAssignedTo !== memberFilter) return;
+
+                rows.push({ project, pos, idx });
+            });
+        });
+
+        // Sortierung: Status-Priorität (offen zuerst), dann Projekt
+        const statusOrder = { open: 0, ordered: 1, partial: 2, delivered: 3, invoiced: 4 };
+        rows.sort((a, b) => {
+            const sa = statusOrder[a.pos.status || 'open'];
+            const sb = statusOrder[b.pos.status || 'open'];
+            if (sa !== sb) return sa - sb;
+            return a.project.projectNumber.localeCompare(b.project.projectNumber);
+        });
+
+        document.getElementById('tasksCount').textContent =
+            `${rows.length} Position(en) gefunden`;
+
+        const tbody = document.getElementById('tasksTable');
+
+        if (rows.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" style="text-align: center; padding: 40px; color: #999;">
+                        Keine Positionen gefunden. Filter anpassen.
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        tbody.innerHTML = rows.map(({ project, pos }) => {
+            const statusObj  = PURCHASE_STATUS.find(s => s.id === (pos.status || 'open')) || PURCHASE_STATUS[0];
+            const memberObj  = TEAM_MEMBERS.find(m => m.id === (pos.assignedTo || 'unassigned')) || TEAM_MEMBERS[0];
+            return `
+            <tr>
+                <td><span class="project-number">${project.projectNumber}</span></td>
+                <td>${project.customer}</td>
+                <td>${pos.supplier || '—'}</td>
+                <td>${pos.description}</td>
+                <td>${pos.trade || '—'}</td>
+                <td class="number-cell">${pos.quantity}</td>
+                <td class="number-cell">${formatCurrency(pos.totalPrice)}</td>
+                <td>
+                    <span style="font-weight: 600; color: ${statusObj.color};">
+                        ${statusObj.label}
+                    </span>
+                </td>
+                <td>${memberObj.name}</td>
+                <td class="action-cell">
+                    <button class="btn-small" onclick="openProjectFromTasks('${project.projectNumber}')"
+                            title="Zum Projekt springen">→ Projekt</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function openProjectFromTasks(projectNumber) {
+        openProject(projectNumber);
     }
 
     // ========== STATISTIKEN ==========
