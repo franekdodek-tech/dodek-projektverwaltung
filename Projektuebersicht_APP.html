@@ -1,0 +1,3672 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nachkalkulation - Projekt-Controlling</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: #366092;
+            color: white;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+        }
+        
+        header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .backup-info {
+            background: #e6f3ff;
+            border: 1px solid #366092;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .backup-info h3 {
+            color: #366092;
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .backup-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .btn-icon-only {
+            padding: 8px 12px;
+            font-size: 16px;
+            min-width: auto;
+        }
+
+        .backup-separator {
+            height: 20px;
+            width: 1px;
+            background: #366092;
+            margin: 0 5px;
+        }
+            
+        .view-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .view {
+            display: none;
+        }
+        
+        .view.active {
+            display: block;
+        }
+        
+        /* Dashboard */
+        .dashboard-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 300px;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 40px 10px 15px;
+            border: 2px solid #366092;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #2a4d73;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #366092;
+            font-size: 18px;
+        }
+
+        .search-results {
+            font-size: 13px;
+            color: #666;
+            padding: 5px 0;
+        }
+
+        .year-filter {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .year-filter label {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .year-filter select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .year-separator {
+            background: linear-gradient(135deg, #366092 0%, #2a4d73 100%);
+            color: white;
+            padding: 15px 20px;
+            font-weight: 700;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .year-separator:hover {
+            background: linear-gradient(135deg, #2a4d73 0%, #1e3a5a 100%);
+        }
+
+        .year-toggle {
+            font-size: 20px;
+            transition: transform 0.3s;
+        }
+
+        .year-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .year-stats {
+            font-size: 13px;
+            opacity: 0.95;
+        }
+
+        .year-content {
+            display: block;
+        }
+
+        .year-content.collapsed {
+            display: none;
+        }
+
+        .project-list tbody tr.search-hidden {
+            display: none;
+        }
+
+        .project-list {
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .project-list table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .project-list thead {
+            background: #366092;
+            color: white;
+        }
+        
+        .project-list th {
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .project-list tbody tr {
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .project-list tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .project-list tbody tr.status-none {
+            background: #ffe6e6;
+        }
+        
+        .project-list tbody tr.status-none:hover {
+            background: #ffd6d6;
+        }
+        
+        .project-list tbody tr.status-ab {
+            background: #e6ffe6;
+        }
+        
+        .project-list tbody tr.status-ab:hover {
+            background: #d6ffd6;
+        }
+        
+        .project-list tbody tr.status-invoice {
+            background: #fffacd;
+        }
+        
+        .project-list tbody tr.status-invoice:hover {
+            background: #fff9b3;
+        }
+        
+        .project-list tbody tr.status-postcalc {
+            background: white;
+        }
+        
+        .project-list tbody tr.status-postcalc:hover {
+            background: #f8f9fa;
+        }
+        
+        .project-list td {
+            padding: 12px;
+            font-size: 14px;
+        }
+        
+        .project-number {
+            font-weight: 700;
+            color: #366092;
+        }
+        
+        .project-designation {
+            color: #666;
+            font-size: 13px;
+            font-style: italic;
+        }
+        
+        .checkbox-cell {
+            text-align: center;
+            width: 80px;
+        }
+        
+        .checkbox-cell input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .actions-cell {
+            text-align: center;
+            width: 100px;
+        }
+        
+        .project-header {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group-inline {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .kw-display {
+            font-size: 14px;
+            color: #366092;
+            font-weight: 600;
+            padding: 5px 10px;
+            background: #e6f3ff;
+            border-radius: 4px;
+        }
+        
+        .price-calc {
+            font-size: 13px;
+            color: #666;
+            margin-top: 5px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .bom-info {
+            font-size: 12px;
+            color: #28a745;
+            margin-top: 5px;
+            padding: 8px;
+            background: #e6ffe6;
+            border-radius: 4px;
+        }
+        
+        label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        input, select, textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #366092;
+        }
+
+        input:disabled {
+            background: #f0f0f0;
+            cursor: not-allowed;
+        }
+        
+        button {
+            background: #366092;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #2a4d73;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+        
+        .btn-icon {
+            padding: 8px 12px;
+            font-size: 16px;
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .card h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .card .value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #366092;
+        }
+        
+        .card .subvalue {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .card.warning .value {
+            color: #dc3545;
+        }
+        
+        .card.success .value {
+            color: #28a745;
+        }
+        
+        .positions-section {
+            background: white;
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #366092;
+        }
+        
+        .section-header h3 {
+            color: #366092;
+            font-size: 18px;
+        }
+        
+        .add-position-form {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .positions-table-wrapper {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        thead {
+            background: #366092;
+            color: white;
+        }
+        
+        th {
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .editable-cell input,
+        .editable-cell select {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+        
+        .number-cell {
+            text-align: right;
+        }
+        
+        .action-cell {
+            text-align: center;
+        }
+        
+        .export-section {
+            background: white;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .message {
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .message.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .message.active {
+            display: block;
+        }
+        
+        .project-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        
+        .trade-summary {
+            background: white;
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .trade-table {
+            margin-top: 15px;
+        }
+        
+        .trade-breakdown {
+            margin-top: 10px;
+            padding-left: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .trade-management {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .trade-management h4 {
+            margin-bottom: 10px;
+            color: #366092;
+        }
+        
+        .trade-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .trade-tag {
+            background: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .trade-tag button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 2px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .trade-tag button:hover {
+            background: #c82333;
+        }
+        
+        .add-trade-form {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        
+        .add-trade-form input {
+            flex: 1;
+            max-width: 300px;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h3 {
+            color: #366092;
+            font-size: 20px;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #666;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-close:hover {
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .multi-position-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+        }
+        
+        .multi-position-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #666;
+        }
+        
+        .bom-list {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .bom-item {
+            display: grid;
+            grid-template-columns: 2fr 2fr 1fr 1fr auto;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            align-items: center;
+        }
+
+        .bom-total {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e6f3ff;
+            border-radius: 4px;
+            font-weight: 600;
+            color: #366092;
+            text-align: right;
+        }
+
+        .article-card-suppliers {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .bom-warning {
+            font-size: 13px;
+            color: #856404;
+            margin-top: 5px;
+            padding: 8px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+        }
+        
+        .article-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));  /* 320px statt 300px */
+            gap: 20px;
+        }
+        
+        .article-card {
+            background: white;
+            padding: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .article-card h4 {
+            color: #366092;
+            margin-bottom: 10px;
+        }
+        
+        .article-card-info {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .article-card-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        /* Statistiken */
+        .stats-section {
+            background: white;
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 4px;
+            border-left: 4px solid #366092;
+        }
+
+        .stat-card h4 {
+            color: #366092;
+            font-size: 14px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #366092;
+            font-size: 14px;
+        }
+
+        .top-list {
+            list-style: none;
+        }
+
+        .top-list-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: white;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            border-left: 3px solid #366092;
+        }
+
+        .top-list-item .rank {
+            font-weight: 700;
+            color: #366092;
+            margin-right: 10px;
+        }
+
+        .top-list-item .name {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .top-list-item .value {
+            font-weight: 600;
+            color: #28a745;
+        }
+
+        @media print {
+            @page {
+                margin: 15mm;
+            }
+            
+            body {
+                background: white;
+            }
+            
+            .container {
+                max-width: 100%;
+                padding: 0;
+            }
+            
+            header, 
+            .add-position-form, 
+            .export-section, 
+            .action-cell, 
+            button, 
+            .trade-management, 
+            .view-selector, 
+            .project-actions, 
+            .actions-cell, 
+            .checkbox-cell, 
+            .backup-info,
+            .section-header button {
+                display: none !important;
+            }
+            
+            .editable-cell input,
+            .editable-cell select {
+                border: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+            }
+            
+            .card, 
+            .positions-section, 
+            .project-header, 
+            .trade-summary,
+            .project-list {
+                box-shadow: none !important;
+                border: none !important;
+                page-break-inside: avoid;
+                margin-bottom: 10mm;
+            }
+            
+            .section-header {
+                border-bottom: 2pt solid #366092 !important;
+                padding-bottom: 5pt;
+            }
+            
+            table {
+                font-size: 9pt;
+                border: none !important;
+            }
+            
+            th {
+                background: #366092 !important;
+                color: white !important;
+                padding: 8pt 4pt;
+                border: none !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            td {
+                padding: 6pt 4pt;
+                border: none !important;
+                border-bottom: 0.5pt solid #eee !important;
+            }
+            
+            .number-cell {
+                text-align: right;
+            }
+            
+            .project-header h2,
+            .section-header h3 {
+                color: #366092;
+                font-size: 14pt;
+            }
+            
+            .card h3 {
+                font-size: 10pt;
+            }
+            
+            .card .value {
+                font-size: 18pt;
+            }
+            
+            .summary-cards {
+                margin-bottom: 8mm;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Nachkalkulation - Projekt-Controlling</h1>
+            <p>Professionelle Projektkostenauswertung mit Artikelstamm</p>
+        </header>
+        
+        <div id="message" class="message"></div>
+        
+        <div class="backup-info">
+            <h3>💾 Backup-Verwaltung</h3>
+            <div class="backup-actions">
+                <label class="btn-success btn-icon-only" style="cursor: pointer;" title="Projekt-Backup laden">
+                    📥
+                    <input type="file" id="loadBackup" accept=".json" style="display: none;" onchange="loadBackupFile(event)">
+                </label>
+                <button onclick="saveBackupManually()" class="btn-secondary btn-icon-only" title="Projekt-Backup speichern (Gesamt)">💾</button>
+                <select id="backupYearSelect" style="padding: 8px; border: 1px solid #366092; border-radius: 4px; font-size: 13px; height: 36px;">
+                    <option value="all">Alle Jahre</option>
+                </select>
+                <button onclick="clearAllProjects()" class="btn-danger btn-icon-only" title="Alle Projekte löschen">🗑️</button>
+                
+                <div class="backup-separator"></div>
+                
+                <label class="btn-success btn-icon-only" style="cursor: pointer;" title="Artikel-Backup laden">
+                    📦
+                    <input type="file" id="loadArticleBackup" accept=".json" style="display: none;" onchange="loadArticleBackup(event)">
+                </label>
+                <button onclick="saveArticleBackup()" class="btn-secondary btn-icon-only" title="Artikel-Backup speichern">📋</button>
+                <button onclick="clearAllArticles()" class="btn-danger btn-icon-only" title="Alle Artikel löschen">🗑️</button>
+            </div>
+        </div>
+        
+        <div class="view-selector">
+            <button onclick="showView('dashboard')">📊 Projektübersicht</button>
+            <button onclick="showView('statistics')">📈 Statistiken</button>
+            <button onclick="showView('editor')" id="editorButton" style="display: none;">📝 Projekt bearbeiten</button>
+            <button onclick="showView('articles')">📦 Artikelstamm</button>
+        </div>
+        
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboardView" class="view active">
+            <div class="dashboard-actions">
+                <button onclick="createNewProject()" class="btn-success">➕ Neues Projekt anlegen</button>
+                <label class="btn-secondary" style="cursor: pointer; display: inline-block;">
+                    📥 Einzelnes Projekt importieren
+                    <input type="file" id="importJSON" accept=".json" style="display: none;" onchange="importJSON(event)">
+                </label>
+                
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Suche nach Projektnummer, Kunde, Projektname oder Artikel..." oninput="performSearch()">
+                    <span class="search-icon">🔍</span>
+                </div>
+                
+                <div class="year-filter">
+                    <label>Jahr:</label>
+                    <select id="yearFilter" onchange="applyYearFilter()">
+                        <option value="all">Alle Jahre</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="search-results" id="searchResults"></div>
+            
+            <div id="projectListContainer"></div>
+        </div>
+       
+        <!-- STATISTICS VIEW -->
+        <div id="statisticsView" class="view">
+            <h2 style="margin-bottom: 20px;">📈 Statistiken und Auswertungen</h2>
+            
+            <div style="background: white; padding: 15px; margin-bottom: 20px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div class="year-filter">
+                    <label>Auswertung für Jahr:</label>
+                    <select id="statsYearFilter" onchange="renderStatistics()">
+                        <option value="all">Alle Jahre</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <h3 style="margin-bottom: 15px; color: #366092;">Projekt-Status Übersicht</h3>
+                <div class="stats-grid" id="projectStatsGrid"></div>
+            </div>
+            
+            <div class="stats-section">
+                <h3 style="margin-bottom: 15px; color: #366092;">Top 10 Kunden</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h4>Nach Umsatz (VK)</h4>
+                        <ul class="top-list" id="topCustomersSales"></ul>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Nach Projektanzahl</h4>
+                        <ul class="top-list" id="topCustomersCount"></ul>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Nach Deckungsbeitrag</h4>
+                        <ul class="top-list" id="topCustomersDB"></ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-section">
+                <h3 style="margin-bottom: 15px; color: #366092;">Gewerke-Analyse</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h4>Umsatz pro Gewerk</h4>
+                        <div id="gewerkeUmsatz"></div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Deckungsbeitrag pro Gewerk</h4>
+                        <div id="gewerkeDB"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-section">
+                <h3 style="margin-bottom: 15px; color: #366092;">Zeitliche Auswertung</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h4>Umsatz pro Monat (laufendes Jahr)</h4>
+                        <div id="monthlyRevenue"></div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Umsatz pro Quartal (laufendes Jahr)</h4>
+                        <div id="quarterlyRevenue"></div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Auftragseingang pro Monat</h4>
+                        <div id="monthlyOrders"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ARTICLES VIEW -->
+        <div id="articlesView" class="view">
+            <div style="background: white; padding: 20px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                <h2 style="margin-bottom: 15px;">Artikelstamm-Verwaltung</h2>
+                <button onclick="openArticleModal()" class="btn-success">➕ Neuer Artikel</button>
+            </div>
+            
+            <div id="articleGrid" class="article-grid"></div>
+        </div>
+        
+        <!-- EDITOR VIEW -->
+        <div id="editorView" class="view">
+            <div class="project-header">
+                <h2 style="margin-bottom: 15px;">Projektdaten</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="projectNumber">Projektnummer *</label>
+                        <input type="text" id="projectNumber" placeholder="z.B. 2025-001" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="customer">Kunde *</label>
+                        <input type="text" id="customer" placeholder="Kundenname" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="projectName">Projektbezeichnung</label>
+                        <input type="text" id="projectName" placeholder="z.B. Lüftungsanlage Halle 3">
+                    </div>
+                    <div class="form-group">
+                        <label for="orderNumber">Bestellnummer</label>
+                        <input type="text" id="orderNumber" placeholder="Bestellnummer">
+                    </div>
+                    <div class="form-group">
+                        <label for="deliveryDate">Lieferdatum</label>
+                        <div class="form-group-inline">
+                            <input type="date" id="deliveryDate" onchange="updateDeliveryWeek()" style="flex: 1;">
+                            <span id="deliveryWeek" class="kw-display"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="trade-management">
+                    <h4>Gewerke verwalten</h4>
+                    <div class="trade-list" id="tradeList"></div>
+                    <div class="add-trade-form">
+                        <div class="form-group" style="flex: 1; max-width: 300px;">
+                            <label for="newTradeName">Neues Gewerk hinzufügen</label>
+                            <input type="text" id="newTradeName" placeholder="z.B. Elektroinstallation">
+                        </div>
+                        <button onclick="addTrade()" class="btn-success">Gewerk hinzufügen</button>
+                    </div>
+                </div>
+                
+                <div class="project-actions">
+                    <button onclick="saveProject()">💾 Speichern</button>
+                    <button onclick="showView('dashboard')" class="btn-secondary">⬅️ Zurück zur Übersicht</button>
+                    <button onclick="deleteCurrentProject()" class="btn-danger">🗑️ Projekt löschen</button>
+                </div>
+            </div>
+            
+            <div class="summary-cards">
+                <div class="card">
+                    <h3>Verkaufssumme (Angebot/AB)</h3>
+                    <div class="value" id="totalSales">0,00 €</div>
+                    <div class="subvalue"><span id="salesCount">0</span> Positionen</div>
+                </div>
+                <div class="card">
+                    <h3>Einkaufssumme (Ist-Kosten)</h3>
+                    <div class="value" id="totalPurchase">0,00 €</div>
+                    <div class="subvalue"><span id="purchaseCount">0</span> Positionen</div>
+                </div>
+                <div class="card" id="marginCard">
+                    <h3>Deckungsbeitrag</h3>
+                    <div class="value" id="margin">0,00 €</div>
+                    <div class="subvalue" id="marginPercent">0,0%</div>
+                </div>
+            </div>
+            
+            <div class="trade-summary">
+                <h3>Gewerk-Übersicht (Verkauf / Einkauf)</h3>
+                <div class="trade-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Gewerk</th>
+                                <th class="number-cell">Verkauf</th>
+                                <th class="number-cell">Einkauf</th>
+                                <th class="number-cell">DB absolut</th>
+                                <th class="number-cell">DB %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tradeTable"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- VERKAUFSPOSITIONEN -->
+            <div class="positions-section">
+                <div class="section-header">
+                    <h3>Verkaufspositionen (Angebot / Auftragsbestätigung)</h3>
+                </div>
+                
+                <div class="add-position-form">
+                    <h4 style="margin-bottom: 15px; color: #366092;">Neue Verkaufsposition hinzufügen</h4>
+                    
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="salesArticleSelect">🔍 Aus Artikelstamm wählen (optional)</label>
+                        <select id="salesArticleSelect" onchange="fillSalesFromArticle()" style="width: 100%;">
+                            <option value="">-- Manuell eingeben oder Artikel wählen --</option>
+                        </select>
+                    </div>
+                    
+                    <div id="salesArticleInfo"></div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="newSalesDescription">Beschreibung *</label>
+                            <input type="text" id="newSalesDescription" placeholder="Positionsbeschreibung" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newSalesQuantity">Menge *</label>
+                            <input type="number" id="newSalesQuantity" step="0.01" value="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newSalesUnitPrice">Einzelpreis (€) *</label>
+                            <input type="number" id="newSalesUnitPrice" step="0.01" value="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newSalesTrade">Gewerk</label>
+                            <select id="newSalesTrade"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="newSalesType">Typ</label>
+                            <select id="newSalesType">
+                                <option value="material">Material</option>
+                                <option value="hour">Stunden</option>
+                                <option value="shipping">Versand</option>
+                                <option value="kilometer">Kilometer</option>
+                                <option value="other">Sonstiges</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="addSalesPosition()" class="btn-success">Verkaufsposition hinzufügen</button>
+                </div>
+                
+                <div class="positions-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Menge</th>
+                                <th>Beschreibung</th>
+                                <th>Gewerk</th>
+                                <th>Typ</th>
+                                <th class="number-cell">Einzelpreis</th>
+                                <th class="number-cell">Gesamtpreis</th>
+                                <th class="action-cell">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesTable">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 40px; color: #999;">
+                                    Keine Verkaufspositionen vorhanden. Fügen Sie oben eine Position hinzu.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- EINKAUFSPOSITIONEN -->
+            <div class="positions-section">
+                <div class="section-header">
+                    <h3>Einkaufspositionen (Ist-Kosten)</h3>
+                    <button onclick="openMultiPositionDialog()" class="btn-success">➕ Mehrere Positionen hinzufügen</button>
+                </div>
+                
+                <div class="add-position-form">
+                    <h4 style="margin-bottom: 15px; color: #366092;">Neue Einkaufsposition hinzufügen</h4>
+                    
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="purchaseArticleSelect">🔍 Aus Artikelstamm wählen (optional)</label>
+                        <select id="purchaseArticleSelect" onchange="fillPurchaseFromArticle()" style="width: 100%;">
+                            <option value="">-- Manuell eingeben oder Artikel wählen --</option>
+                        </select>
+                    </div>
+                    
+                    <div id="purchaseArticleInfo"></div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="newPurchaseSupplier">Lieferant</label>
+                            <input type="text" id="newPurchaseSupplier" placeholder="Lieferant">
+                        </div>
+                        <div class="form-group">
+                            <label for="newPurchaseDescription">Beschreibung *</label>
+                            <input type="text" id="newPurchaseDescription" placeholder="Positionsbeschreibung" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newPurchaseQuantity">Menge *</label>
+                            <input type="number" id="newPurchaseQuantity" step="0.01" value="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newPurchaseUnitPrice">Einzelpreis (€) *</label>
+                            <input type="number" id="newPurchaseUnitPrice" step="0.01" value="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newPurchaseTrade">Gewerk</label>
+                            <select id="newPurchaseTrade"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="newPurchaseType">Typ</label>
+                            <select id="newPurchaseType">
+                                <option value="material">Material</option>
+                                <option value="hour">Stunden</option>
+                                <option value="shipping">Versand</option>
+                                <option value="kilometer">Kilometer</option>
+                                <option value="other">Sonstiges</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="addPurchasePosition()" class="btn-success">Einkaufsposition hinzufügen</button>
+                </div>
+                
+                <div class="positions-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Lieferant</th>
+                                <th>Menge</th>
+                                <th>Beschreibung</th>
+                                <th>Gewerk</th>
+                                <th>Typ</th>
+                                <th class="number-cell">Einzelpreis</th>
+                                <th class="number-cell">Gesamtpreis</th>
+                                <th class="action-cell">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="purchaseTable">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 40px; color: #999;">
+                                    Keine Einkaufspositionen vorhanden. Fügen Sie oben eine Position hinzu.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="export-section">
+                <h3 style="margin-bottom: 15px;">Export & Berichte</h3>
+                <div class="export-buttons">
+                    <button onclick="printReport()">🖨️ PDF-Report drucken</button>
+                    <button onclick="exportExcel()" class="btn-success">📊 Excel-Export</button>
+                    <button onclick="exportJSON()" class="btn-secondary">💾 Projekt-Export (JSON)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ARTICLE MODAL -->
+    <div id="articleModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="articleModalTitle">Neuer Artikel</h3>
+                <button class="modal-close" onclick="closeArticleModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editArticleId">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="articleId">Artikel-ID *</label>
+                        <input type="text" id="articleId" placeholder="z.B. FA-2000" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="articleName">Bezeichnung *</label>
+                        <input type="text" id="articleName" placeholder="z.B. Filteranlage Typ 2000" required>
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 20px; margin-bottom: 10px; color: #366092;">Stückliste (Bill of Materials)</h4>
+                <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
+                    Definieren Sie die Komponenten und deren Lieferanten. Der Einkaufspreis wird automatisch aus der Stückliste berechnet.
+                </p>
+                
+                <div id="bomList" class="bom-list"></div>
+                <button onclick="addBOMItem()" class="btn-secondary btn-small" style="margin-bottom: 20px;">➕ Komponente hinzufügen</button>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="articlePurchasePrice">Einkaufspreis (€)</label>
+                        <input type="number" id="articlePurchasePrice" step="0.01" value="0" readonly disabled>
+                        <div id="bomCalcDisplay" class="price-calc"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="articleMargin">Aufschlag (%)</label>
+                        <input type="number" id="articleMargin" step="0.1" value="0" onchange="calculateMarginFromPrices()">
+                    </div>
+                    <div class="form-group">
+                        <label for="articleSalesPrice">Verkaufspreis (€) *</label>
+                        <input type="number" id="articleSalesPrice" step="0.01" value="0" required onchange="calculateMarginFromPrices()">
+                        <div id="priceCalcDisplay" class="price-calc"></div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="articleTrade">Gewerk</label>
+                        <input type="text" id="articleTrade" placeholder="z.B. Filteranlage">
+                    </div>
+                    <div class="form-group">
+                        <label for="articleType">Typ</label>
+                        <select id="articleType">
+                            <option value="material">Material</option>
+                            <option value="hour">Stunden</option>
+                            <option value="shipping">Versand</option>
+                            <option value="kilometer">Kilometer</option>
+                            <option value="other">Sonstiges</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="articleDescription">Beschreibung</label>
+                    <textarea id="articleDescription" rows="3" placeholder="Zusätzliche Informationen zum Artikel"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeArticleModal()" class="btn-secondary">Abbrechen</button>
+                <button onclick="saveArticle()" class="btn-success">Artikel speichern</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MULTI-POSITION MODAL -->
+    <div id="multiPositionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Mehrere Positionen für einen Lieferanten hinzufügen</h3>
+                <button class="modal-close" onclick="closeMultiPositionDialog()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label for="multiSupplier">Lieferant *</label>
+                    <input type="text" id="multiSupplier" placeholder="Lieferantenname" style="width: 100%;">
+                </div>
+                
+                <div id="multiPositionList"></div>
+                
+                <button onclick="addMultiPositionRow()" class="btn-secondary btn-small">➕ Weitere Position hinzufügen</button>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeMultiPositionDialog()" class="btn-secondary">Abbrechen</button>
+                <button onclick="saveMultiPositions()" class="btn-success">Alle Positionen übernehmen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SheetJS für Excel-Export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+    <script>
+        // Konstanten
+        const BACKUP_FILENAME = 'nachkalkulation_backup.json';
+        const ARTICLE_BACKUP_FILENAME = 'artikel_backup.json';
+        
+        // Globale Variablen
+        let currentProject = null;
+        let allProjects = {};
+        let articleDatabase = {};
+        let multiPositions = [];
+        let currentBOM = [];
+        let collapsedYears = new Set();
+        
+        // Initialisierung
+        //document.addEventListener('DOMContentLoaded', () => {
+        //    loadFromLocalStorage();
+        //    loadArticleDatabase();
+        //    renderDashboard();
+        //    renderArticles();
+        //});
+        
+        // ========== ARTIKEL-STAMM ==========
+        
+        function loadArticleDatabase() {
+            const stored = localStorage.getItem('articleDatabase');
+            if (stored) {
+                try {
+                    articleDatabase = JSON.parse(stored);
+                } catch (e) {
+                    console.error('Fehler beim Laden der Artikel', e);
+                    articleDatabase = {};
+                }
+            }
+        }
+        
+        function saveArticleDatabase() {
+            localStorage.setItem('articleDatabase', JSON.stringify(articleDatabase));
+        }
+        
+        function saveArticleBackup() {
+            const backupData = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                articles: articleDatabase
+            };
+            
+            const dataStr = JSON.stringify(backupData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = ARTICLE_BACKUP_FILENAME;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showMessage('Artikel-Backup erstellt', 'success');
+        }
+        
+        function loadArticleBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const backupData = JSON.parse(e.target.result);
+                    
+                    if (!backupData.articles) {
+                        throw new Error('Ungültiges Backup-Format');
+                    }
+                    
+                    articleDatabase = backupData.articles;
+                    saveArticleDatabase();
+                    renderArticles();
+                    updateArticleSelects();
+                    
+                    const articleCount = Object.keys(articleDatabase).length;
+                    showMessage(`Artikel-Backup geladen: ${articleCount} Artikel wiederhergestellt`, 'success');
+                } catch (error) {
+                    showMessage('Backup-Fehler: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+            
+            event.target.value = '';
+        }
+        
+        function renderArticles() {
+            const grid = document.getElementById('articleGrid');
+            const articleIds = Object.keys(articleDatabase).sort();
+            
+            if (articleIds.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <h3>Keine Artikel vorhanden</h3>
+                        <p>Legen Sie Artikel an, um sie in Projekten schnell auswählen zu können.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            grid.innerHTML = articleIds.map(articleId => {
+                const article = articleDatabase[articleId];
+                const bomCount = article.bom ? article.bom.length : 0;
+                
+                let suppliersHTML = '';
+                if (bomCount > 0) {
+                    const uniqueSuppliers = [...new Set(article.bom.map(item => item.supplier).filter(s => s))];
+                    if (uniqueSuppliers.length > 0) {
+                        suppliersHTML = `
+                            <div class="article-card-suppliers">
+                                <strong>Lieferanten:</strong> ${uniqueSuppliers.join(', ')}
+                            </div>
+                        `;
+                    }
+                }
+                
+                return `
+                    <div class="article-card">
+                        <h4>${article.name}</h4>
+                        <div class="article-card-info"><strong>ID:</strong> ${articleId}</div>
+                        <div class="article-card-info"><strong>Einkauf:</strong> ${formatCurrency(article.purchasePrice)}${bomCount > 0 ? ' <span style="color: #28a745;">(aus BOM)</span>' : ''}</div>
+                        <div class="article-card-info"><strong>Verkauf:</strong> ${formatCurrency(article.salesPrice)} <span style="color: #28a745;">(+${article.margin}%)</span></div>
+                        ${article.trade ? `<div class="article-card-info"><strong>Gewerk:</strong> ${article.trade}</div>` : ''}
+                        ${bomCount > 0 ? `<div class="article-card-info" style="color: #28a745;"><strong>Stückliste:</strong> ${bomCount} Komponenten</div>` : ''}
+                        ${suppliersHTML}
+                        <div class="article-card-actions">
+                            <button onclick="editArticle('${articleId}')" class="btn-secondary btn-small">✏️ Bearbeiten</button>
+                            <button onclick="deleteArticle('${articleId}')" class="btn-danger btn-small">🗑️ Löschen</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function openArticleModal(articleId = null) {
+            currentBOM = [];
+            
+            if (articleId) {
+                const article = articleDatabase[articleId];
+                document.getElementById('articleModalTitle').textContent = 'Artikel bearbeiten';
+                document.getElementById('editArticleId').value = articleId;
+                document.getElementById('articleId').value = articleId;
+                document.getElementById('articleId').disabled = true;
+                document.getElementById('articleName').value = article.name;
+                document.getElementById('articleMargin').value = article.margin;
+                document.getElementById('articleTrade').value = article.trade || '';
+                document.getElementById('articleType').value = article.type || 'material';
+                document.getElementById('articleDescription').value = article.description || '';
+                currentBOM = article.bom || [];
+            } else {
+                document.getElementById('articleModalTitle').textContent = 'Neuer Artikel';
+                document.getElementById('editArticleId').value = '';
+                document.getElementById('articleId').value = '';
+                document.getElementById('articleId').disabled = false;
+                document.getElementById('articleName').value = '';
+                document.getElementById('articleMargin').value = '50';
+                document.getElementById('articleTrade').value = '';
+                document.getElementById('articleType').value = 'material';
+                document.getElementById('articleDescription').value = '';
+            }
+            
+            renderBOM();
+            calculatePurchaseFromBOM();
+            calculateMarginFromPrices();
+            document.getElementById('articleModal').classList.add('active');
+        }
+        
+        function closeArticleModal() {
+            document.getElementById('articleModal').classList.remove('active');
+        }
+        
+        function calculatePurchaseFromBOM() {
+            const total = currentBOM.reduce((sum, item) => {
+                const quantity = parseFloat(item.quantity) || 0;
+                const price = parseFloat(item.price) || 0;
+                return sum + (quantity * price);
+            }, 0);
+            
+            document.getElementById('articlePurchasePrice').value = total.toFixed(2);
+            
+            const bomCalcDisplay = document.getElementById('bomCalcDisplay');
+            if (currentBOM.length > 0) {
+                bomCalcDisplay.textContent = `Berechnet aus ${currentBOM.length} Komponente(n)`;
+                bomCalcDisplay.style.color = '#28a745';
+            } else {
+                bomCalcDisplay.textContent = 'Keine Stückliste definiert';
+                bomCalcDisplay.style.color = '#856404';
+            }
+            
+            calculateMarginFromPrices();
+        }
+
+        function calculateMarginFromPrices() {
+            const purchase = parseFloat(document.getElementById('articlePurchasePrice').value) || 0;
+            const sales = parseFloat(document.getElementById('articleSalesPrice').value) || 0;
+            
+            if (purchase > 0 && sales > 0) {
+                const margin = ((sales - purchase) / purchase) * 100;
+                document.getElementById('articleMargin').value = margin.toFixed(1);
+            }
+            
+            updatePriceCalcDisplay();
+        }
+
+        function updatePriceCalcDisplay() {
+            const purchase = parseFloat(document.getElementById('articlePurchasePrice').value) || 0;
+            const sales = parseFloat(document.getElementById('articleSalesPrice').value) || 0;
+            const margin = parseFloat(document.getElementById('articleMargin').value) || 0;
+            
+            const calcDisplay = document.getElementById('priceCalcDisplay');
+            if (purchase > 0 && sales > 0) {
+                const diff = sales - purchase;
+                const color = diff >= 0 ? '#28a745' : '#dc3545';
+                calcDisplay.innerHTML = `DB: <span style="color: ${color}">${formatCurrency(diff)}</span> (${margin.toFixed(1)}%)`;
+            } else {
+                calcDisplay.textContent = '';
+            }
+        }
+        
+        function addBOMItem() {
+            currentBOM.push({
+                supplier: '',
+                name: '',
+                quantity: 1,
+                price: 0
+            });
+            renderBOM();
+        }
+        
+        function removeBOMItem(index) {
+            currentBOM.splice(index, 1);
+            renderBOM();
+            calculatePurchaseFromBOM();
+        }
+        
+        function renderBOM() {
+            const list = document.getElementById('bomList');
+            
+            if (currentBOM.length === 0) {
+                list.innerHTML = '<p style="color: #999; font-size: 13px;">Keine Komponenten. Fügen Sie Komponenten mit Lieferanten hinzu.</p>';
+                return;
+            }
+            
+            const total = currentBOM.reduce((sum, item) => {
+                return sum + ((parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0));
+            }, 0);
+            
+            list.innerHTML = currentBOM.map((item, index) => `
+                <div class="bom-item">
+                    <input type="text" placeholder="Lieferant" value="${item.supplier || ''}" 
+                        onchange="currentBOM[${index}].supplier = this.value; renderBOM();" style="width: 100%;">
+                    <input type="text" placeholder="Komponentenname" value="${item.name || ''}" 
+                        onchange="currentBOM[${index}].name = this.value; renderBOM();" style="width: 100%;">
+                    <input type="number" step="0.01" placeholder="Menge" value="${item.quantity}" 
+                        onchange="currentBOM[${index}].quantity = parseFloat(this.value); calculatePurchaseFromBOM();" style="width: 100%;">
+                    <input type="number" step="0.01" placeholder="Preis (€)" value="${item.price}" 
+                        onchange="currentBOM[${index}].price = parseFloat(this.value); calculatePurchaseFromBOM();" style="width: 100%;">
+                    <button onclick="removeBOMItem(${index})" class="btn-danger btn-small">×</button>
+                </div>
+            `).join('') + `
+                <div class="bom-total">Gesamt Einkaufspreis: ${formatCurrency(total)}</div>
+            `;
+        }
+        
+        function saveArticle() {
+            const articleId = document.getElementById('articleId').value.trim();
+            const editingId = document.getElementById('editArticleId').value;
+            
+            if (!articleId) {
+                showMessage('Artikel-ID erforderlich', 'error');
+                return;
+            }
+            
+            if (!editingId && articleDatabase[articleId]) {
+                showMessage('Artikel-ID existiert bereits', 'error');
+                return;
+            }
+            
+            const article = {
+                articleId: articleId,
+                name: document.getElementById('articleName').value.trim(),
+                purchasePrice: parseFloat(document.getElementById('articlePurchasePrice').value) || 0,
+                margin: parseFloat(document.getElementById('articleMargin').value) || 0,
+                salesPrice: parseFloat(document.getElementById('articleSalesPrice').value) || 0,
+                trade: document.getElementById('articleTrade').value.trim(),
+                type: document.getElementById('articleType').value,
+                description: document.getElementById('articleDescription').value.trim(),
+                bom: currentBOM.filter(item => item.name.trim() !== '')
+            };
+            
+            if (!article.name) {
+                showMessage('Artikelbezeichnung erforderlich', 'error');
+                return;
+            }
+            
+            if (editingId && editingId !== articleId) {
+                delete articleDatabase[editingId];
+            }
+            
+            articleDatabase[articleId] = article;
+            saveArticleDatabase();
+            renderArticles();
+            updateArticleSelects();
+            closeArticleModal();
+            
+            showMessage(editingId ? 'Artikel aktualisiert' : 'Artikel angelegt', 'success');
+        }
+        
+        function editArticle(articleId) {
+            openArticleModal(articleId);
+        }
+        
+        function deleteArticle(articleId) {
+            if (!confirm(`Artikel "${articleId}" wirklich löschen?`)) {
+                return;
+            }
+            
+            delete articleDatabase[articleId];
+            saveArticleDatabase();
+            renderArticles();
+            updateArticleSelects();
+            showMessage('Artikel gelöscht', 'success');
+        }
+        
+        function updateArticleSelects() {
+            const salesSelect = document.getElementById('salesArticleSelect');
+            const purchaseSelect = document.getElementById('purchaseArticleSelect');
+            
+            const articleIds = Object.keys(articleDatabase).sort();
+            
+            const optionsHTML = articleIds.map(id => {
+                const article = articleDatabase[id];
+                return `<option value="${id}">${id} - ${article.name} (${formatCurrency(article.salesPrice)})</option>`;
+            }).join('');
+            
+            if (salesSelect) {
+                salesSelect.innerHTML = '<option value="">-- Manuell eingeben oder Artikel wählen --</option>' + optionsHTML;
+            }
+            
+            if (purchaseSelect) {
+                purchaseSelect.innerHTML = '<option value="">-- Manuell eingeben oder Artikel wählen --</option>' + optionsHTML;
+            }
+        }
+        
+        function fillSalesFromArticle() {
+            const articleId = document.getElementById('salesArticleSelect').value;
+            if (!articleId) {
+                document.getElementById('salesArticleInfo').innerHTML = '';
+                return;
+            }
+            
+            const article = articleDatabase[articleId];
+            
+            document.getElementById('newSalesDescription').value = article.name;
+            document.getElementById('newSalesUnitPrice').value = article.salesPrice;
+            if (article.trade) {
+                document.getElementById('newSalesTrade').value = article.trade;
+            }
+            document.getElementById('newSalesType').value = article.type;
+            
+            let infoHTML = `<div class="price-calc">📦 Artikel: ${article.name} | EK: ${formatCurrency(article.purchasePrice)} | VK: ${formatCurrency(article.salesPrice)} (+${article.margin}%)</div>`;
+            
+            if (article.bom && article.bom.length > 0) {
+                const bomTotal = article.bom.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+                infoHTML += `<div class="bom-info">📋 Stückliste (${article.bom.length} Komponenten, Gesamt EK: ${formatCurrency(bomTotal)})<br>`;
+                article.bom.forEach(item => {
+                    infoHTML += `• ${item.supplier ? item.supplier + ': ' : ''}${item.name}: ${item.quantity}× ${formatCurrency(item.price)} = ${formatCurrency(item.quantity * item.price)}<br>`;
+                });
+                infoHTML += '</div>';
+            }
+            
+            document.getElementById('salesArticleInfo').innerHTML = infoHTML;
+        }
+        
+        function fillPurchaseFromArticle() {
+            const articleId = document.getElementById('purchaseArticleSelect').value;
+            if (!articleId) {
+                document.getElementById('purchaseArticleInfo').innerHTML = '';
+                return;
+            }
+            
+            const article = articleDatabase[articleId];
+            
+            // BOM-Positionen automatisch als Einkaufspositionen hinzufügen
+            if (article.bom && article.bom.length > 0) {
+                const projectNumber = document.getElementById('projectNumber').value.trim();
+                const customer = document.getElementById('customer').value.trim();
+                
+                if (!projectNumber || !customer) {
+                    showMessage('Bitte zuerst Projektnummer und Kunde eingeben', 'warning');
+                    document.getElementById('purchaseArticleSelect').value = '';
+                    return;
+                }
+                
+                // Projekt-Metadaten aktualisieren
+                currentProject.projectNumber = projectNumber;
+                currentProject.customer = customer;
+                currentProject.projectName = document.getElementById('projectName').value.trim();
+                currentProject.orderNumber = document.getElementById('orderNumber').value.trim();
+                currentProject.deliveryDate = document.getElementById('deliveryDate').value;
+                
+                let addedCount = 0;
+                
+                article.bom.forEach(bomItem => {
+                    if (bomItem.name && bomItem.name.trim() !== '') {
+                        const position = {
+                            id: `purchase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                            supplier: bomItem.supplier || '',
+                            description: bomItem.name,
+                            quantity: bomItem.quantity,
+                            unitPrice: bomItem.price,
+                            totalPrice: bomItem.quantity * bomItem.price,
+                            type: article.type || 'material',
+                            trade: article.trade || ''
+                        };
+                        
+                        currentProject.purchasePositions.push(position);
+                        addedCount++;
+                    }
+                });
+                
+                // Views aktualisieren
+                renderPurchasePositions();
+                updateSummary();
+                updateTradeTable();
+                
+                // Dropdown zurücksetzen und Info anzeigen
+                document.getElementById('purchaseArticleSelect').value = '';
+                
+                const bomTotal = article.bom.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+                let infoHTML = `<div class="bom-info">✅ ${addedCount} Einkaufsposition(en) aus Stückliste hinzugefügt (Gesamt: ${formatCurrency(bomTotal)})</div>`;
+                document.getElementById('purchaseArticleInfo').innerHTML = infoHTML;
+                
+                showMessage(`${addedCount} Position(en) aus Artikel "${article.name}" hinzugefügt`, 'success');
+                
+                // Info nach 5 Sekunden ausblenden
+                setTimeout(() => {
+                    document.getElementById('purchaseArticleInfo').innerHTML = '';
+                }, 5000);
+                
+            } else {
+                // Kein BOM vorhanden - alte Logik (manuelles Befüllen)
+                document.getElementById('newPurchaseDescription').value = article.name;
+                document.getElementById('newPurchaseUnitPrice').value = article.purchasePrice;
+                
+                if (article.trade) {
+                    document.getElementById('newPurchaseTrade').value = article.trade;
+                }
+                document.getElementById('newPurchaseType').value = article.type;
+                
+                let infoHTML = `<div class="price-calc">📦 Artikel: ${article.name} | EK: ${formatCurrency(article.purchasePrice)}</div>`;
+                infoHTML += `<div class="bom-warning">⚠️ Dieser Artikel hat keine Stückliste. Bitte manuell hinzufügen.</div>`;
+                
+                document.getElementById('purchaseArticleInfo').innerHTML = infoHTML;
+            }
+        }
+        
+        // ========== HILFSFUNKTIONEN ==========
+        
+        function getWeekNumber(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            return weekNo;
+        }
+        
+        function updateDeliveryWeek() {
+            const deliveryDate = document.getElementById('deliveryDate').value;
+            const weekDisplay = document.getElementById('deliveryWeek');
+            
+            if (deliveryDate) {
+                const date = new Date(deliveryDate);
+                const weekNum = getWeekNumber(date);
+                weekDisplay.textContent = `KW ${weekNum}`;
+            } else {
+                weekDisplay.textContent = '';
+            }
+        }
+        
+        function getTypeLabel(type) {
+            const labels = {
+                'material': 'Material',
+                'hour': 'Stunden',
+                'shipping': 'Versand',
+                'kilometer': 'Kilometer',
+                'other': 'Sonstiges'
+            };
+            return labels[type] || type;
+        }
+
+        function getYearFromProjectNumber(projectNumber) {
+            const numStr = String(projectNumber);
+            if (numStr.length < 2) return null;
+            const yearPrefix = numStr.substring(0, 2);
+            const year = parseInt(yearPrefix);
+            if (isNaN(year)) return null;
+            return 2000 + year;
+        }
+        
+        // ========== BACKUP SYSTEM ==========
+        
+        function loadFromLocalStorage() {
+            allProjects = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('project_')) {
+                    try {
+                        const data = JSON.parse(localStorage.getItem(key));
+                        allProjects[data.projectNumber] = data;
+                    } catch (e) {
+                        console.error('Fehler beim Laden von', key, e);
+                    }
+                }
+            }
+        }
+        
+        function saveToLocalStorage() {
+            Object.keys(allProjects).forEach(projectNumber => {
+                localStorage.setItem(`project_${projectNumber}`, JSON.stringify(allProjects[projectNumber]));
+            });
+        }
+        
+        function saveBackupManually() {
+            const selectedYear = document.getElementById('backupYearSelect').value;
+            
+            if (selectedYear === 'all') {
+                // Gesamt-Backup
+                createBackupDownload(allProjects, BACKUP_FILENAME);
+                showMessage('Gesamt-Backup erstellt', 'success');
+            } else {
+                // Jahres-Backup: nur Projekte des gewählten Jahres
+                const yearProjects = {};
+                Object.entries(allProjects).forEach(([key, project]) => {
+                    const year = getYearFromProjectNumber(project.projectNumber);
+                    if (year === parseInt(selectedYear)) {
+                        yearProjects[key] = project;
+                    }
+                });
+                
+                const count = Object.keys(yearProjects).length;
+                
+                if (count === 0) {
+                    showMessage(`Keine Projekte für ${selectedYear} gefunden`, 'error');
+                    return;
+                }
+                
+                const filename = `nachkalkulation_${selectedYear}.json`;
+                createBackupDownload(yearProjects, filename);
+                showMessage(`Backup ${selectedYear} erstellt (${count} Projekte)`, 'success');
+            }
+        }
+        
+        function createBackupDownload(projects, filename) {
+            const backupData = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                projects: projects
+            };
+            
+            const dataStr = JSON.stringify(backupData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function loadBackupFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const backupData = JSON.parse(e.target.result);
+                    
+                    if (!backupData.projects) {
+                        throw new Error('Ungültiges Backup-Format');
+                    }
+                    
+                    allProjects = backupData.projects;
+                    saveToLocalStorage();
+                    renderDashboard();
+                    updateYearFilter();
+                    
+                    const projectCount = Object.keys(allProjects).length;
+                    showMessage(`Backup geladen: ${projectCount} Projekt(e) wiederhergestellt`, 'success');
+                } catch (error) {
+                    showMessage('Backup-Fehler: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+            
+            event.target.value = '';
+        }
+        
+        // ========== VIEW MANAGEMENT ==========
+        
+        function showView(viewName) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            
+            if (viewName === 'dashboard') {
+                document.getElementById('dashboardView').classList.add('active');
+                document.getElementById('editorButton').style.display = 'none';
+                renderDashboard();
+            } else if (viewName === 'editor') {
+                document.getElementById('editorView').classList.add('active');
+                document.getElementById('editorButton').style.display = 'inline-block';
+                updateArticleSelects();
+            } else if (viewName === 'articles') {
+                document.getElementById('articlesView').classList.add('active');
+                document.getElementById('editorButton').style.display = 'none';
+                renderArticles();
+            } else if (viewName === 'statistics') {
+                document.getElementById('statisticsView').classList.add('active');
+                document.getElementById('editorButton').style.display = 'none';
+                renderStatistics();
+            }
+        }
+        
+        // ========== DASHBOARD ==========
+        
+        function renderDashboard() {
+            loadFromLocalStorage();
+            const container = document.getElementById('projectListContainer');
+            
+            const projectNumbers = Object.keys(allProjects).sort((a, b) => {
+                const yearA = getYearFromProjectNumber(a);
+                const yearB = getYearFromProjectNumber(b);
+                if (yearA !== yearB) return yearA - yearB;
+                return a.localeCompare(b);
+            });
+            
+            if (projectNumbers.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>Keine Projekte vorhanden</h3>
+                        <p>Legen Sie ein neues Projekt an oder laden Sie ein Backup.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Gruppiere nach Jahr
+            const projectsByYear = {};
+            projectNumbers.forEach(projectNumber => {
+                const year = getYearFromProjectNumber(projectNumber);
+                if (year) {
+                    if (!projectsByYear[year]) {
+                        projectsByYear[year] = [];
+                    }
+                    projectsByYear[year].push(projectNumber);
+                }
+            });
+            
+            const years = Object.keys(projectsByYear).sort((a, b) => a - b);
+            
+            container.innerHTML = years.map(year => {
+                const projects = projectsByYear[year];
+                
+                // Jahres-Statistiken berechnen
+                let yearTotalVK = 0;
+                let yearTotalEK = 0;
+                
+                projects.forEach(projectNumber => {
+                    const project = allProjects[projectNumber];
+                    yearTotalVK += project.salesPositions.reduce((s, p) => s + p.totalPrice, 0);
+                    yearTotalEK += project.purchasePositions.reduce((s, p) => s + p.totalPrice, 0);
+                });
+                
+                const yearDB = yearTotalVK - yearTotalEK;
+                const isCollapsed = collapsedYears.has(year);
+                
+                return `
+                    <div class="project-list" data-year="${year}">
+                        <div class="year-separator" onclick="toggleYear('${year}')">
+                            <div>
+                                <span class="year-toggle ${isCollapsed ? 'collapsed' : ''}">▼</span>
+                                📅 Jahr ${year} (${projects.length} Projekte)
+                            </div>
+                            <div class="year-stats">
+                                VK: ${formatCurrency(yearTotalVK)} | 
+                                EK: ${formatCurrency(yearTotalEK)} | 
+                                DB: ${formatCurrency(yearDB)}
+                            </div>
+                        </div>
+                        
+                        <div class="year-content ${isCollapsed ? 'collapsed' : ''}">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Projektnummer</th>
+                                        <th>Kunde</th>
+                                        <th>Projektbezeichnung</th>
+                                        <th>KW Lieferung</th>
+                                        <th class="number-cell">Verkauf</th>
+                                        <th class="number-cell">Einkauf</th>
+                                        <th class="number-cell">DB</th>
+                                        <th class="number-cell">DB %</th>
+                                        <th class="checkbox-cell">AB</th>
+                                        <th class="checkbox-cell">Rechnung</th>
+                                        <th class="checkbox-cell">Geliefert</th>
+                                        <th class="checkbox-cell">Nachkalk.</th>
+                                        <th class="actions-cell">Aktion</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${renderProjectRows(projects)}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderProjectRows(projectNumbers) {
+            return projectNumbers.map(projectNumber => {
+                const project = allProjects[projectNumber];
+                const totalSales = project.salesPositions.reduce((s, p) => s + p.totalPrice, 0);
+                const totalPurchase = project.purchasePositions.reduce((s, p) => s + p.totalPrice, 0);
+                const margin = totalSales - totalPurchase;
+                const marginPercent = totalSales > 0 ? (margin / totalSales * 100) : 0;
+                
+                let kwDisplay = '';
+                if (project.deliveryDate) {
+                    const date = new Date(project.deliveryDate);
+                    const weekNum = getWeekNumber(date);
+                    kwDisplay = `KW ${weekNum}`;
+                }
+                
+                const hasAB = project.hasAB || false;
+                const hasInvoice = project.hasInvoice || false;
+                const hasPostCalc = project.hasPostCalc || false;
+                
+                let statusClass = 'status-none';
+                if (hasPostCalc) {
+                    statusClass = 'status-postcalc';
+                } else if (hasInvoice) {
+                    statusClass = 'status-invoice';
+                } else if (hasAB) {
+                    statusClass = 'status-ab';
+                }
+                
+                return `
+                    <tr class="${statusClass}" onclick="openProject('${projectNumber}')">
+                        <td><span class="project-number">${project.projectNumber}</span></td>
+                        <td>${project.customer}</td>
+                        <td>${project.projectName ? `<span class="project-designation">${project.projectName}</span>` : ''}</td>
+                        <td>${kwDisplay}</td>
+                        <td class="number-cell">${formatCurrency(totalSales)}</td>
+                        <td class="number-cell">${formatCurrency(totalPurchase)}</td>
+                        <td class="number-cell" style="color: ${margin >= 0 ? '#28a745' : '#dc3545'}">${formatCurrency(margin)}</td>
+                        <td class="number-cell" style="color: ${margin >= 0 ? '#28a745' : '#dc3545'}">${marginPercent.toFixed(1)}%</td>
+                        <td class="checkbox-cell" onclick="event.stopPropagation()">
+                            <input type="checkbox" ${hasAB ? 'checked' : ''} onchange="toggleAB('${projectNumber}', this.checked)">
+                        </td>
+                        <td class="checkbox-cell" onclick="event.stopPropagation()">
+                            <input type="checkbox" ${hasInvoice ? 'checked' : ''} onchange="toggleInvoice('${projectNumber}', this.checked)">
+                        </td>
+                        <td class="checkbox-cell" onclick="event.stopPropagation()">
+                            <input type="checkbox" ${project.hasDelivered ? 'checked' : ''} onchange="toggleDelivered('${projectNumber}', this.checked)">
+                        </td>
+                        <td class="checkbox-cell" onclick="event.stopPropagation()">
+                            <input type="checkbox" ${hasPostCalc ? 'checked' : ''} onchange="togglePostCalc('${projectNumber}', this.checked)">
+                        </td>
+                        <td class="actions-cell" onclick="event.stopPropagation()">
+                            <button class="btn-danger btn-small" onclick="deleteProject('${projectNumber}')" title="Projekt löschen">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function toggleYear(year) {
+            if (collapsedYears.has(year)) {
+                collapsedYears.delete(year);
+            } else {
+                collapsedYears.add(year);
+            }
+            renderDashboard();
+        }
+        
+        function toggleAB(projectNumber, checked) {
+            allProjects[projectNumber].hasAB = checked;
+            saveToLocalStorage();
+            renderDashboard();
+        }
+        
+        function toggleInvoice(projectNumber, checked) {
+            allProjects[projectNumber].hasInvoice = checked;
+            saveToLocalStorage();
+            renderDashboard();
+        }
+        
+        function toggleDelivered(projectNumber, checked) {
+            allProjects[projectNumber].hasDelivered = checked;
+            saveToLocalStorage();
+            renderDashboard();
+        }
+        
+        function togglePostCalc(projectNumber, checked) {
+            allProjects[projectNumber].hasPostCalc = checked;
+            saveToLocalStorage();
+            renderDashboard();
+        }
+        
+        function createNewProject() {
+            currentProject = {
+                projectNumber: '',
+                customer: '',
+                projectName: '',
+                orderNumber: '',
+                deliveryDate: '',
+                trades: [],
+                salesPositions: [],
+                purchasePositions: [],
+                hasAB: false,
+                hasInvoice: false,
+                hasDelivered: false,
+                hasPostCalc: false
+            };
+            
+            document.getElementById('projectNumber').value = '';
+            document.getElementById('customer').value = '';
+            document.getElementById('projectName').value = '';
+            document.getElementById('orderNumber').value = '';
+            document.getElementById('deliveryDate').value = '';
+            document.getElementById('deliveryWeek').textContent = '';
+            
+            renderTradeList();
+            updateTradeSelects();
+            updateArticleSelects();
+            renderSalesPositions();
+            renderPurchasePositions();
+            updateSummary();
+            updateTradeTable();
+            
+            showView('editor');
+        }
+        
+        function openProject(projectNumber) {
+            currentProject = allProjects[projectNumber];
+            
+            if (!currentProject.projectName) currentProject.projectName = '';
+            if (!currentProject.orderNumber) currentProject.orderNumber = '';
+            if (!currentProject.deliveryDate) currentProject.deliveryDate = '';
+            if (!currentProject.trades) currentProject.trades = [];
+            if (currentProject.hasAB === undefined) currentProject.hasAB = false;
+            if (currentProject.hasInvoice === undefined) currentProject.hasInvoice = false;
+            if (currentProject.hasDelivered === undefined) currentProject.hasDelivered = false;
+            if (currentProject.hasPostCalc === undefined) currentProject.hasPostCalc = false;
+            
+            document.getElementById('projectNumber').value = currentProject.projectNumber;
+            document.getElementById('customer').value = currentProject.customer;
+            document.getElementById('projectName').value = currentProject.projectName;
+            document.getElementById('orderNumber').value = currentProject.orderNumber;
+            document.getElementById('deliveryDate').value = currentProject.deliveryDate;
+            
+            updateDeliveryWeek();
+            renderTradeList();
+            updateTradeSelects();
+            updateArticleSelects();
+            renderSalesPositions();
+            renderPurchasePositions();
+            updateSummary();
+            updateTradeTable();
+            
+            showView('editor');
+        }
+        
+        function deleteProject(projectNumber) {
+            if (!confirm(`Projekt "${projectNumber}" wirklich löschen?`)) {
+                return;
+            }
+            
+            delete allProjects[projectNumber];
+            localStorage.removeItem(`project_${projectNumber}`);
+            renderDashboard();
+            updateYearFilter();
+            showMessage('Projekt gelöscht', 'success');
+        }
+        
+        function deleteCurrentProject() {
+            if (!currentProject || !currentProject.projectNumber) {
+                showMessage('Kein Projekt geladen', 'error');
+                return;
+            }
+            
+            if (!confirm(`Projekt "${currentProject.projectNumber}" wirklich löschen?`)) {
+                return;
+            }
+            
+            delete allProjects[currentProject.projectNumber];
+            localStorage.removeItem(`project_${currentProject.projectNumber}`);
+            currentProject = null;
+            showView('dashboard');
+            updateYearFilter();
+            showMessage('Projekt gelöscht', 'success');
+        }
+        
+        // ========== REST OF THE CODE CONTINUES WITH TRADES, POSITIONS, ETC. ==========
+        // (Der Rest des Codes bleibt identisch zu vorher, ich spare mir die Wiederholung)
+        
+        function renderTradeList() {
+            const list = document.getElementById('tradeList');
+            
+            if (currentProject.trades.length === 0) {
+                list.innerHTML = '<p style="color: #999; font-size: 13px;">Keine Gewerke vorhanden. Fügen Sie unten ein Gewerk hinzu.</p>';
+                return;
+            }
+            
+            const sortedTrades = [...currentProject.trades].sort();
+            
+            list.innerHTML = sortedTrades.map((trade) => {
+                const index = currentProject.trades.indexOf(trade);
+                return `
+                    <div class="trade-tag">
+                        <span>${trade}</span>
+                        <button onclick="removeTrade(${index})" title="Gewerk entfernen">×</button>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function addTrade() {
+            const tradeName = document.getElementById('newTradeName').value.trim();
+            
+            if (!tradeName) {
+                showMessage('Gewerksbezeichnung erforderlich', 'error');
+                return;
+            }
+            
+            if (currentProject.trades.includes(tradeName)) {
+                showMessage('Gewerk existiert bereits', 'error');
+                return;
+            }
+            
+            currentProject.trades.push(tradeName);
+            document.getElementById('newTradeName').value = '';
+            
+            renderTradeList();
+            updateTradeSelects();
+            updateTradeTable();
+            showMessage('Gewerk hinzugefügt', 'success');
+        }
+        
+        function removeTrade(index) {
+            const trade = currentProject.trades[index];
+            
+            const usedInSales = currentProject.salesPositions.some(p => p.trade === trade);
+            const usedInPurchase = currentProject.purchasePositions.some(p => p.trade === trade);
+            
+            if (usedInSales || usedInPurchase) {
+                showMessage('Gewerk wird noch verwendet und kann nicht gelöscht werden', 'error');
+                return;
+            }
+            
+            if (!confirm(`Gewerk "${trade}" wirklich entfernen?`)) {
+                return;
+            }
+            
+            currentProject.trades.splice(index, 1);
+            
+            renderTradeList();
+            updateTradeSelects();
+            updateTradeTable();
+            showMessage('Gewerk entfernt', 'success');
+        }
+        
+        function updateTradeSelects() {
+            const selects = [
+                document.getElementById('newSalesTrade'),
+                document.getElementById('newPurchaseTrade')
+            ];
+            
+            selects.forEach(select => {
+                const currentValue = select.value;
+                
+                if (currentProject.trades.length === 0) {
+                    select.innerHTML = '<option value="">Kein Gewerk</option>';
+                } else {
+                    const sortedTrades = [...currentProject.trades].sort();
+                    select.innerHTML = sortedTrades.map(trade => 
+                        `<option value="${trade}">${trade}</option>`
+                    ).join('');
+                    
+                    if (currentValue && currentProject.trades.includes(currentValue)) {
+                        select.value = currentValue;
+                    }
+                }
+            });
+        }
+        
+        function addSalesPosition() {
+            const projectNumber = document.getElementById('projectNumber').value.trim();
+            const customer = document.getElementById('customer').value.trim();
+            
+            if (!projectNumber || !customer) {
+                showMessage('Projektnummer und Kunde erforderlich', 'error');
+                return;
+            }
+            
+            const description = document.getElementById('newSalesDescription').value.trim();
+            const quantity = parseFloat(document.getElementById('newSalesQuantity').value);
+            const unitPrice = parseFloat(document.getElementById('newSalesUnitPrice').value);
+            
+            if (!description || isNaN(quantity) || isNaN(unitPrice)) {
+                showMessage('Beschreibung, Menge und Einzelpreis erforderlich', 'error');
+                return;
+            }
+            
+            currentProject.projectNumber = projectNumber;
+            currentProject.customer = customer;
+            currentProject.projectName = document.getElementById('projectName').value.trim();
+            currentProject.orderNumber = document.getElementById('orderNumber').value.trim();
+            currentProject.deliveryDate = document.getElementById('deliveryDate').value;
+            
+            const position = {
+                id: `sales_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                description: description,
+                quantity: quantity,
+                unitPrice: unitPrice,
+                totalPrice: quantity * unitPrice,
+                type: document.getElementById('newSalesType').value,
+                trade: document.getElementById('newSalesTrade').value || ''
+            };
+            
+            currentProject.salesPositions.push(position);
+            
+            document.getElementById('newSalesDescription').value = '';
+            document.getElementById('newSalesQuantity').value = '1';
+            document.getElementById('newSalesUnitPrice').value = '0';
+            document.getElementById('salesArticleSelect').value = '';
+            document.getElementById('salesArticleInfo').innerHTML = '';
+            
+            renderSalesPositions();
+            updateSummary();
+            updateTradeTable();
+            showMessage('Verkaufsposition hinzugefügt', 'success');
+        }
+        
+        function renderSalesPositions() {
+            const tbody = document.getElementById('salesTable');
+            
+            if (currentProject.salesPositions.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #999;">
+                            Keine Verkaufspositionen vorhanden. Fügen Sie oben eine Position hinzu.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = currentProject.salesPositions.map((pos, index) => {
+                const sortedTrades = [...currentProject.trades].sort();
+                return `
+                <tr>
+                    <td class="editable-cell number-cell">
+                        <input type="number" step="0.01" value="${pos.quantity}" 
+                               onchange="updateSalesPosition(${index}, 'quantity', parseFloat(this.value))" style="width: 80px;">
+                    </td>
+                    <td class="editable-cell">
+                        <input type="text" value="${pos.description}" 
+                               onchange="updateSalesPosition(${index}, 'description', this.value)" style="min-width: 200px;">
+                    </td>
+                    <td class="editable-cell">
+                        <select onchange="updateSalesPosition(${index}, 'trade', this.value)">
+                            <option value="">Kein Gewerk</option>
+                            ${sortedTrades.map(t => `<option value="${t}" ${pos.trade === t ? 'selected' : ''}>${t}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td class="editable-cell">
+                        <select onchange="updateSalesPosition(${index}, 'type', this.value)">
+                            <option value="material" ${pos.type === 'material' ? 'selected' : ''}>Material</option>
+                            <option value="hour" ${pos.type === 'hour' ? 'selected' : ''}>Stunden</option>
+                            <option value="shipping" ${pos.type === 'shipping' ? 'selected' : ''}>Versand</option>
+                            <option value="kilometer" ${pos.type === 'kilometer' ? 'selected' : ''}>Kilometer</option>
+                            <option value="other" ${pos.type === 'other' ? 'selected' : ''}>Sonstiges</option>
+                        </select>
+                    </td>
+                    <td class="number-cell">${formatCurrency(pos.unitPrice)}</td>
+                    <td class="number-cell"><strong>${formatCurrency(pos.totalPrice)}</strong></td>
+                    <td class="action-cell">
+                        <button onclick="deleteSalesPosition(${index})" class="btn-danger btn-small">Löschen</button>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+        
+        function updateSalesPosition(index, field, value) {
+            currentProject.salesPositions[index][field] = value;
+            
+            if (field === 'quantity' || field === 'unitPrice') {
+                const pos = currentProject.salesPositions[index];
+                pos.totalPrice = pos.quantity * pos.unitPrice;
+            }
+            
+            renderSalesPositions();
+            updateSummary();
+            updateTradeTable();
+        }
+        
+        function deleteSalesPosition(index) {
+            if (confirm('Verkaufsposition wirklich löschen?')) {
+                currentProject.salesPositions.splice(index, 1);
+                renderSalesPositions();
+                updateSummary();
+                updateTradeTable();
+                showMessage('Verkaufsposition gelöscht', 'success');
+            }
+        }
+        
+        function addPurchasePosition() {
+            const projectNumber = document.getElementById('projectNumber').value.trim();
+            const customer = document.getElementById('customer').value.trim();
+            
+            if (!projectNumber || !customer) {
+                showMessage('Projektnummer und Kunde erforderlich', 'error');
+                return;
+            }
+            
+            const description = document.getElementById('newPurchaseDescription').value.trim();
+            const quantity = parseFloat(document.getElementById('newPurchaseQuantity').value);
+            const unitPrice = parseFloat(document.getElementById('newPurchaseUnitPrice').value);
+            
+            if (!description || isNaN(quantity) || isNaN(unitPrice)) {
+                showMessage('Beschreibung, Menge und Einzelpreis erforderlich', 'error');
+                return;
+            }
+            
+            currentProject.projectNumber = projectNumber;
+            currentProject.customer = customer;
+            currentProject.projectName = document.getElementById('projectName').value.trim();
+            currentProject.orderNumber = document.getElementById('orderNumber').value.trim();
+            currentProject.deliveryDate = document.getElementById('deliveryDate').value;
+            
+            const position = {
+                id: `purchase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                supplier: document.getElementById('newPurchaseSupplier').value.trim(),
+                description: description,
+                quantity: quantity,
+                unitPrice: unitPrice,
+                totalPrice: quantity * unitPrice,
+                type: document.getElementById('newPurchaseType').value,
+                trade: document.getElementById('newPurchaseTrade').value || ''
+            };
+            
+            currentProject.purchasePositions.push(position);
+            
+            document.getElementById('newPurchaseSupplier').value = '';
+            document.getElementById('newPurchaseDescription').value = '';
+            document.getElementById('newPurchaseQuantity').value = '1';
+            document.getElementById('newPurchaseUnitPrice').value = '0';
+            document.getElementById('purchaseArticleSelect').value = '';
+            document.getElementById('purchaseArticleInfo').innerHTML = '';
+            
+            renderPurchasePositions();
+            updateSummary();
+            updateTradeTable();
+            showMessage('Einkaufsposition hinzugefügt', 'success');
+        }
+        
+        function renderPurchasePositions() {
+            const tbody = document.getElementById('purchaseTable');
+            
+            if (currentProject.purchasePositions.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px; color: #999;">
+                            Keine Einkaufspositionen vorhanden. Fügen Sie oben eine Position hinzu.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = currentProject.purchasePositions.map((pos, index) => {
+                const sortedTrades = [...currentProject.trades].sort();
+                return `
+                <tr>
+                    <td class="editable-cell">
+                        <input type="text" value="${pos.supplier}" 
+                               onchange="updatePurchasePosition(${index}, 'supplier', this.value)">
+                    </td>
+                    <td class="editable-cell number-cell">
+                        <input type="number" step="0.01" value="${pos.quantity}" 
+                               onchange="updatePurchasePosition(${index}, 'quantity', parseFloat(this.value))" style="width: 80px;">
+                    </td>
+                    <td class="editable-cell">
+                        <input type="text" value="${pos.description}" 
+                               onchange="updatePurchasePosition(${index}, 'description', this.value)" style="min-width: 200px;">
+                    </td>
+                    <td class="editable-cell">
+                        <select onchange="updatePurchasePosition(${index}, 'trade', this.value)">
+                            <option value="">Kein Gewerk</option>
+                            ${sortedTrades.map(t => `<option value="${t}" ${pos.trade === t ? 'selected' : ''}>${t}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td class="editable-cell">
+                        <select onchange="updatePurchasePosition(${index}, 'type', this.value)">
+                            <option value="material" ${pos.type === 'material' ? 'selected' : ''}>Material</option>
+                            <option value="hour" ${pos.type === 'hour' ? 'selected' : ''}>Stunden</option>
+                            <option value="shipping" ${pos.type === 'shipping' ? 'selected' : ''}>Versand</option>
+                            <option value="kilometer" ${pos.type === 'kilometer' ? 'selected' : ''}>Kilometer</option>
+                            <option value="other" ${pos.type === 'other' ? 'selected' : ''}>Sonstiges</option>
+                        </select>
+                    </td>
+                    <td class="number-cell">${formatCurrency(pos.unitPrice)}</td>
+                    <td class="number-cell"><strong>${formatCurrency(pos.totalPrice)}</strong></td>
+                    <td class="action-cell">
+                        <button onclick="deletePurchasePosition(${index})" class="btn-danger btn-small">Löschen</button>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+        
+        function updatePurchasePosition(index, field, value) {
+            currentProject.purchasePositions[index][field] = value;
+            
+            if (field === 'quantity' || field === 'unitPrice') {
+                const pos = currentProject.purchasePositions[index];
+                pos.totalPrice = pos.quantity * pos.unitPrice;
+            }
+            
+            renderPurchasePositions();
+            updateSummary();
+            updateTradeTable();
+        }
+        
+        function deletePurchasePosition(index) {
+            if (confirm('Einkaufsposition wirklich löschen?')) {
+                currentProject.purchasePositions.splice(index, 1);
+                renderPurchasePositions();
+                updateSummary();
+                updateTradeTable();
+                showMessage('Einkaufsposition gelöscht', 'success');
+            }
+        }
+        
+        function openMultiPositionDialog() {
+            if (currentProject.trades.length === 0) {
+                showMessage('Bitte fügen Sie zuerst mindestens ein Gewerk hinzu', 'error');
+                return;
+            }
+            
+            multiPositions = [createEmptyMultiPosition()];
+            document.getElementById('multiSupplier').value = '';
+            renderMultiPositionList();
+            document.getElementById('multiPositionModal').classList.add('active');
+        }
+        
+        function closeMultiPositionDialog() {
+            document.getElementById('multiPositionModal').classList.remove('active');
+        }
+        
+        function createEmptyMultiPosition() {
+            return {
+                description: '',
+                quantity: 1,
+                unitPrice: 0,
+                trade: currentProject.trades.length > 0 ? currentProject.trades[0] : '',
+                type: 'material'
+            };
+        }
+        
+        function addMultiPositionRow() {
+            multiPositions.push(createEmptyMultiPosition());
+            renderMultiPositionList();
+        }
+        
+        function removeMultiPositionRow(index) {
+            if (multiPositions.length === 1) {
+                showMessage('Mindestens eine Position erforderlich', 'error');
+                return;
+            }
+            multiPositions.splice(index, 1);
+            renderMultiPositionList();
+        }
+        
+        function renderMultiPositionList() {
+            const list = document.getElementById('multiPositionList');
+            const sortedTrades = [...currentProject.trades].sort();
+            
+            list.innerHTML = multiPositions.map((pos, index) => `
+                <div class="multi-position-item">
+                    <div class="multi-position-item-header">
+                        <h4 style="color: #366092;">Position ${index + 1}</h4>
+                        <button onclick="removeMultiPositionRow(${index})" class="btn-danger btn-small">Entfernen</button>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Beschreibung *</label>
+                            <input type="text" value="${pos.description}" 
+                                   onchange="multiPositions[${index}].description = this.value" 
+                                   placeholder="Positionsbeschreibung">
+                        </div>
+                        <div class="form-group">
+                            <label>Menge *</label>
+                            <input type="number" step="0.01" value="${pos.quantity}" 
+                                   onchange="multiPositions[${index}].quantity = parseFloat(this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label>Einzelpreis (€) *</label>
+                            <input type="number" step="0.01" value="${pos.unitPrice}" 
+                                   onchange="multiPositions[${index}].unitPrice = parseFloat(this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label>Gewerk</label>
+                            <select onchange="multiPositions[${index}].trade = this.value">
+                            <option value="">Kein Gewerk</option>
+                            ${sortedTrades.map(t => `<option value="${t}" ${pos.trade === t ? 'selected' : ''}>${t}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Typ</label>
+                        <select onchange="multiPositions[${index}].type = this.value">
+                            <option value="material" ${pos.type === 'material' ? 'selected' : ''}>Material</option>
+                            <option value="hour" ${pos.type === 'hour' ? 'selected' : ''}>Stunden</option>
+                            <option value="shipping" ${pos.type === 'shipping' ? 'selected' : ''}>Versand</option>
+                            <option value="kilometer" ${pos.type === 'kilometer' ? 'selected' : ''}>Kilometer</option>
+                            <option value="other" ${pos.type === 'other' ? 'selected' : ''}>Sonstiges</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function saveMultiPositions() {
+        const supplier = document.getElementById('multiSupplier').value.trim();
+        
+        if (!supplier) {
+            showMessage('Lieferant erforderlich', 'error');
+            return;
+        }
+        
+        let validPositions = 0;
+        
+        multiPositions.forEach(pos => {
+            if (!pos.description || isNaN(pos.quantity) || isNaN(pos.unitPrice)) {
+                return;
+            }
+            
+            const position = {
+                id: `purchase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                supplier: supplier,
+                description: pos.description,
+                quantity: pos.quantity,
+                unitPrice: pos.unitPrice,
+                totalPrice: pos.quantity * pos.unitPrice,
+                type: pos.type,
+                trade: pos.trade
+            };
+            
+            currentProject.purchasePositions.push(position);
+            validPositions++;
+        });
+        
+        if (validPositions === 0) {
+            showMessage('Mindestens eine gültige Position erforderlich', 'error');
+            return;
+        }
+        
+        renderPurchasePositions();
+        updateSummary();
+        updateTradeTable();
+        closeMultiPositionDialog();
+        showMessage(`${validPositions} Position(en) hinzugefügt`, 'success');
+    }
+    
+    function updateSummary() {
+        const totalSales = currentProject.salesPositions.reduce((sum, pos) => sum + pos.totalPrice, 0);
+        const totalPurchase = currentProject.purchasePositions.reduce((sum, pos) => sum + pos.totalPrice, 0);
+        const margin = totalSales - totalPurchase;
+        const marginPercent = totalSales > 0 ? (margin / totalSales * 100) : 0;
+        
+        document.getElementById('totalSales').textContent = formatCurrency(totalSales);
+        document.getElementById('totalPurchase').textContent = formatCurrency(totalPurchase);
+        document.getElementById('margin').textContent = formatCurrency(margin);
+        document.getElementById('marginPercent').textContent = `${marginPercent.toFixed(1)}%`;
+        document.getElementById('salesCount').textContent = currentProject.salesPositions.length;
+        document.getElementById('purchaseCount').textContent = currentProject.purchasePositions.length;
+        
+        const card = document.getElementById('marginCard');
+        card.classList.remove('warning', 'success');
+        if (margin < 0) {
+            card.classList.add('warning');
+        } else if (margin > 0) {
+            card.classList.add('success');
+        }
+    }
+    
+    function updateTradeTable() {
+        const tbody = document.getElementById('tradeTable');
+        
+        if (currentProject.trades.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #999;">Keine Gewerke definiert</td></tr>';
+            return;
+        }
+        
+        const salesByTrade = {};
+        const purchaseByTrade = {};
+        const salesByType = {};
+        const purchaseByType = {};
+        
+        const sortedTrades = [...currentProject.trades].sort();
+        
+        sortedTrades.forEach(trade => {
+            salesByTrade[trade] = 0;
+            purchaseByTrade[trade] = 0;
+            salesByType[trade] = {};
+            purchaseByType[trade] = {};
+        });
+        
+        currentProject.salesPositions.forEach(pos => {
+            if (pos.trade) {
+                salesByTrade[pos.trade] = (salesByTrade[pos.trade] || 0) + pos.totalPrice;
+                salesByType[pos.trade][pos.type] = (salesByType[pos.trade][pos.type] || 0) + pos.totalPrice;
+            }
+        });
+        
+        currentProject.purchasePositions.forEach(pos => {
+            if (pos.trade) {
+                purchaseByTrade[pos.trade] = (purchaseByTrade[pos.trade] || 0) + pos.totalPrice;
+                purchaseByType[pos.trade][pos.type] = (purchaseByType[pos.trade][pos.type] || 0) + pos.totalPrice;
+            }
+        });
+        
+        tbody.innerHTML = sortedTrades.map(trade => {
+            const sales = salesByTrade[trade] || 0;
+            const purchase = purchaseByTrade[trade] || 0;
+            const db = sales - purchase;
+            const dbPercent = sales > 0 ? (db / sales * 100) : 0;
+            
+            const salesTypes = salesByType[trade] || {};
+            const purchaseTypes = purchaseByType[trade] || {};
+            const allTypes = new Set([...Object.keys(salesTypes), ...Object.keys(purchaseTypes)]);
+            
+            let typeBreakdown = '';
+            if (allTypes.size > 0) {
+                typeBreakdown = '<div class="trade-breakdown">';
+                allTypes.forEach(type => {
+                    const saleType = salesTypes[type] || 0;
+                    const purchaseType = purchaseTypes[type] || 0;
+                    if (saleType > 0 || purchaseType > 0) {
+                        typeBreakdown += `${getTypeLabel(type)}: Verkauf ${formatCurrency(saleType)}, Einkauf ${formatCurrency(purchaseType)}<br>`;
+                    }
+                });
+                typeBreakdown += '</div>';
+            }
+            
+            return `
+                <tr>
+                    <td>
+                        <strong>${trade}</strong>
+                        ${typeBreakdown}
+                    </td>
+                    <td class="number-cell">${formatCurrency(sales)}</td>
+                    <td class="number-cell">${formatCurrency(purchase)}</td>
+                    <td class="number-cell" style="color: ${db < 0 ? '#dc3545' : '#28a745'}">${formatCurrency(db)}</td>
+                    <td class="number-cell" style="color: ${db < 0 ? '#dc3545' : '#28a745'}">${dbPercent.toFixed(1)}%</td>
+                </tr>
+            `;
+        }).join('') + `
+            <tr style="font-weight: bold; background: #f8f9fa;">
+                <td>GESAMT</td>
+                <td class="number-cell">${formatCurrency(currentProject.salesPositions.reduce((s, p) => s + p.totalPrice, 0))}</td>
+                <td class="number-cell">${formatCurrency(currentProject.purchasePositions.reduce((s, p) => s + p.totalPrice, 0))}</td>
+                <td class="number-cell" style="color: ${(currentProject.salesPositions.reduce((s, p) => s + p.totalPrice, 0) - currentProject.purchasePositions.reduce((s, p) => s + p.totalPrice, 0)) < 0 ? '#dc3545' : '#28a745'}">
+                    ${formatCurrency(currentProject.salesPositions.reduce((s, p) => s + p.totalPrice, 0) - currentProject.purchasePositions.reduce((s, p) => s + p.totalPrice, 0))}
+                </td>
+                <td class="number-cell" style="color: ${(currentProject.salesPositions.reduce((s, p) => s + p.totalPrice, 0) - currentProject.purchasePositions.reduce((s, p) => s + p.totalPrice, 0)) < 0 ? '#dc3545' : '#28a745'}">
+                    ${(((currentProject.salesPositions.reduce((s, p) => s + p.totalPrice, 0) - currentProject.purchasePositions.reduce((s, p) => s + p.totalPrice, 0)) / currentProject.salesPositions.reduce((s, p) => s + p.totalPrice, 0)) * 100).toFixed(1)}%
+                </td>
+            </tr>
+        `;
+    }
+    
+    function saveProject() {
+        const projectNumber = document.getElementById('projectNumber').value.trim();
+        const customer = document.getElementById('customer').value.trim();
+        
+        if (!projectNumber || !customer) {
+            showMessage('Projektnummer und Kunde erforderlich', 'error');
+            return;
+        }
+        
+        currentProject.projectNumber = projectNumber;
+        currentProject.customer = customer;
+        currentProject.projectName = document.getElementById('projectName').value.trim();
+        currentProject.orderNumber = document.getElementById('orderNumber').value.trim();
+        currentProject.deliveryDate = document.getElementById('deliveryDate').value;
+        
+        try {
+            allProjects[projectNumber] = currentProject;
+            localStorage.setItem(`project_${projectNumber}`, JSON.stringify(currentProject));
+            showMessage('Projekt gespeichert', 'success');
+        } catch (e) {
+            showMessage('Fehler beim Speichern: ' + e.message, 'error');
+        }
+    }
+    
+    function printReport() {
+        if (!currentProject || !currentProject.projectNumber) {
+            showMessage('Kein Projekt geladen', 'error');
+            return;
+        }
+        
+        saveProject();
+        window.print();
+    }
+    
+    function exportExcel() {
+        if (!currentProject || !currentProject.projectNumber) {
+            showMessage('Kein Projekt geladen', 'error');
+            return;
+        }
+        
+        const wb = XLSX.utils.book_new();
+        
+        const salesData = [
+            ['Menge', 'Beschreibung', 'Gewerk', 'Typ', 'Einzelpreis', 'Gesamtpreis']
+        ];
+        
+        currentProject.salesPositions.forEach(pos => {
+            salesData.push([
+                pos.quantity,
+                pos.description,
+                pos.trade || 'Kein Gewerk',
+                getTypeLabel(pos.type),
+                pos.unitPrice,
+                pos.totalPrice
+            ]);
+        });
+        
+        const wsSales = XLSX.utils.aoa_to_sheet(salesData);
+        XLSX.utils.book_append_sheet(wb, wsSales, 'Verkauf');
+        
+        const purchaseData = [
+            ['Lieferant', 'Menge', 'Beschreibung', 'Gewerk', 'Typ', 'Einzelpreis', 'Gesamtpreis']
+        ];
+        
+        currentProject.purchasePositions.forEach(pos => {
+            purchaseData.push([
+                pos.supplier,
+                pos.quantity,
+                pos.description,
+                pos.trade || 'Kein Gewerk',
+                getTypeLabel(pos.type),
+                pos.unitPrice,
+                pos.totalPrice
+            ]);
+        });
+        
+        const wsPurchase = XLSX.utils.aoa_to_sheet(purchaseData);
+        XLSX.utils.book_append_sheet(wb, wsPurchase, 'Einkauf');
+        
+        const sortedTrades = [...currentProject.trades].sort();
+        const salesByTrade = {};
+        const purchaseByTrade = {};
+        
+        sortedTrades.forEach(trade => {
+            salesByTrade[trade] = 0;
+            purchaseByTrade[trade] = 0;
+        });
+        
+        currentProject.salesPositions.forEach(pos => {
+            if (pos.trade) {
+                salesByTrade[pos.trade] = (salesByTrade[pos.trade] || 0) + pos.totalPrice;
+            }
+        });
+        
+        currentProject.purchasePositions.forEach(pos => {
+            if (pos.trade) {
+                purchaseByTrade[pos.trade] = (purchaseByTrade[pos.trade] || 0) + pos.totalPrice;
+            }
+        });
+        
+        const tradeData = [['Gewerk', 'Verkauf', 'Einkauf', 'DB absolut', 'DB %']];
+        
+        sortedTrades.forEach(trade => {
+            const sales = salesByTrade[trade] || 0;
+            const purchase = purchaseByTrade[trade] || 0;
+            const db = sales - purchase;
+            const dbPercent = sales > 0 ? (db / sales * 100) : 0;
+            
+            tradeData.push([trade, sales, purchase, db, dbPercent]);
+        });
+        
+        const totalSales = currentProject.salesPositions.reduce((s, p) => s + p.totalPrice, 0);
+        const totalPurchase = currentProject.purchasePositions.reduce((s, p) => s + p.totalPrice, 0);
+        const totalDb = totalSales - totalPurchase;
+        const totalDbPercent = totalSales > 0 ? (totalDb / totalSales * 100) : 0;
+        
+        tradeData.push(['GESAMT', totalSales, totalPurchase, totalDb, totalDbPercent]);
+        
+        const wsTrade = XLSX.utils.aoa_to_sheet(tradeData);
+        XLSX.utils.book_append_sheet(wb, wsTrade, 'Gewerke');
+        
+        XLSX.writeFile(wb, `Nachkalkulation_${currentProject.projectNumber}.xlsx`);
+        showMessage('Excel exportiert', 'success');
+    }
+    
+    function exportJSON() {
+        if (!currentProject || !currentProject.projectNumber) {
+            showMessage('Kein Projekt geladen', 'error');
+            return;
+        }
+        
+        const dataStr = JSON.stringify(currentProject, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `project_${currentProject.projectNumber}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showMessage('Projekt exportiert', 'success');
+    }
+    
+    function importJSON(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const imported = JSON.parse(e.target.result);
+                
+                if (!imported.projectNumber || !imported.customer) {
+                    throw new Error('Ungültiges Projektformat');
+                }
+                
+                if (!imported.projectName) imported.projectName = '';
+                if (!imported.orderNumber) imported.orderNumber = '';
+                if (!imported.deliveryDate) imported.deliveryDate = '';
+                if (!imported.trades) imported.trades = [];
+                if (!imported.salesPositions) imported.salesPositions = [];
+                if (!imported.purchasePositions) imported.purchasePositions = [];
+                if (imported.hasAB === undefined) imported.hasAB = false;
+                if (imported.hasInvoice === undefined) imported.hasInvoice = false;
+                if (imported.hasDelivered === undefined) imported.hasDelivered = false;
+                if (imported.hasPostCalc === undefined) imported.hasPostCalc = false;
+                
+                allProjects[imported.projectNumber] = imported;
+                localStorage.setItem(`project_${imported.projectNumber}`, JSON.stringify(imported));
+                
+                renderDashboard();
+                updateYearFilter();
+                showMessage('Projekt importiert', 'success');
+            } catch (error) {
+                showMessage('Import-Fehler: ' + error.message, 'error');
+            }
+        };
+        reader.readAsText(file);
+        
+        event.target.value = '';
+    }
+    
+    function formatCurrency(value) {
+        return new Intl.NumberFormat('de-DE', {
+            style: 'currency',
+            currency: 'EUR'
+        }).format(value);
+    }
+    
+    function showMessage(text, type) {
+        const msg = document.getElementById('message');
+        msg.textContent = text;
+        msg.className = `message ${type} active`;
+        
+        setTimeout(() => {
+            msg.classList.remove('active');
+        }, 5000);
+    }
+
+    // Sicherstellen dass nur Dashboard beim Laden aktiv ist
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById('dashboardView').classList.add('active');
+        loadFromLocalStorage();
+        loadArticleDatabase();
+        renderDashboard();
+        renderArticles();
+        updateYearFilter();
+    });
+
+    // Force Dashboard on load
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            document.getElementById('dashboardView').classList.add('active');
+            document.getElementById('articlesView').classList.remove('active');
+            document.getElementById('editorView').classList.remove('active');
+        }, 100);
+    });
+
+    // Alle Projekte löschen
+    function clearAllProjects() {
+        if (!confirm('⚠️ ACHTUNG: Alle Projekte werden gelöscht!\n\nErstellen Sie vorher ein Backup!\n\nWirklich fortfahren?')) {
+            return;
+        }
+        
+        if (!confirm('Letzte Warnung: Alle Projekte unwiderruflich löschen?')) {
+            return;
+        }
+        
+        // Alle Projekt-Keys aus localStorage löschen
+        const keysToDelete = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith('project_')) {
+                keysToDelete.push(key);
+            }
+        }
+        
+        keysToDelete.forEach(key => localStorage.removeItem(key));
+        
+        // Memory leeren
+        allProjects = {};
+        currentProject = null;
+        
+        // Dashboard neu laden
+        renderDashboard();
+        showView('dashboard');
+        
+        showMessage(`${keysToDelete.length} Projekt(e) gelöscht. Bereit für neues Backup.`, 'success');
+    }
+
+    // Alle Artikel löschen
+    function clearAllArticles() {
+        if (!confirm('⚠️ ACHTUNG: Alle Artikel werden gelöscht!\n\nErstellen Sie vorher ein Backup!\n\nWirklich fortfahren?')) {
+            return;
+        }
+        
+        if (!confirm('Letzte Warnung: Alle Artikel unwiderruflich löschen?')) {
+            return;
+        }
+        
+        // Artikel aus localStorage löschen
+        localStorage.removeItem('articleDatabase');
+        
+        // Memory leeren
+        articleDatabase = {};
+        
+        // Ansicht neu laden
+        renderArticles();
+        updateArticleSelects();
+        
+        showMessage('Alle Artikel gelöscht. Bereit für neues Backup.', 'success');
+    }
+
+    // ========== SUCHE ==========
+
+    function performSearch() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.project-list tbody tr:not(.empty-state)');
+        let visibleCount = 0;
+        const totalCount = rows.length;
+        
+        if (searchTerm === '') {
+            rows.forEach(row => row.classList.remove('search-hidden'));
+            document.getElementById('searchResults').textContent = '';
+            return;
+        }
+        
+        rows.forEach(row => {
+            const projectNumber = row.cells[0]?.textContent.toLowerCase() || '';
+            const customer = row.cells[1]?.textContent.toLowerCase() || '';
+            const projectName = row.cells[2]?.textContent.toLowerCase() || '';
+            
+            // Suche in Verkaufspositionen
+            const projectNum = row.cells[0]?.textContent.trim();
+            const project = allProjects[projectNum];
+            let articlesMatch = false;
+            
+            if (project && project.salesPositions) {
+                articlesMatch = project.salesPositions.some(pos => 
+                    pos.description.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            const matches = projectNumber.includes(searchTerm) || 
+                            customer.includes(searchTerm) || 
+                            projectName.includes(searchTerm) ||
+                            articlesMatch;
+            
+            if (matches) {
+                row.classList.remove('search-hidden');
+                visibleCount++;
+            } else {
+                row.classList.add('search-hidden');
+            }
+        });
+        
+        document.getElementById('searchResults').textContent = 
+            `${visibleCount} von ${totalCount} Projekten gefunden`;
+    }
+
+    // ========== JAHRESFILTER ==========
+
+    function updateYearFilter() {
+        const yearSet = new Set();
+        
+        Object.keys(allProjects).forEach(projectNumber => {
+            const year = getYearFromProjectNumber(projectNumber);
+            if (year) yearSet.add(year);
+        });
+        
+        const years = Array.from(yearSet).sort((a, b) => a - b);
+        const optionsHTML = '<option value="all">Alle Jahre</option>' + 
+            years.map(year => `<option value="${year}">${year}</option>`).join('');
+        
+        // Dashboard-Filter
+        document.getElementById('yearFilter').innerHTML = optionsHTML;
+        
+        // Backup-Jahresauswahl ebenfalls aktualisieren
+        document.getElementById('backupYearSelect').innerHTML = optionsHTML;
+    }
+
+    function applyYearFilter() {
+        const selectedYear = document.getElementById('yearFilter').value;
+        
+        if (selectedYear === 'all') {
+            document.querySelectorAll('.project-list').forEach(list => {
+                list.style.display = 'block';
+            });
+        } else {
+            document.querySelectorAll('.project-list').forEach(list => {
+                const year = list.getAttribute('data-year');
+                list.style.display = (year === selectedYear) ? 'block' : 'none';
+            });
+        }
+    }
+
+    // ========== STATISTIKEN ==========
+
+    function renderStatistics() {
+        updateStatsYearFilter();
+        renderProjectStats();
+        renderCustomerStats();
+        renderGewerkeStats();
+        renderTimeStats();
+    }
+
+    function updateStatsYearFilter() {
+        const yearSet = new Set();
+        
+        Object.keys(allProjects).forEach(projectNumber => {
+            const year = getYearFromProjectNumber(projectNumber);
+            if (year) yearSet.add(year);
+        });
+        
+        const years = Array.from(yearSet).sort((a, b) => a - b);
+        const select = document.getElementById('statsYearFilter');
+        const currentValue = select.value;
+        
+        select.innerHTML = '<option value="all">Alle Jahre</option>' + 
+            years.map(year => `<option value="${year}">${year}</option>`).join('');
+        
+        // Wert wiederherstellen wenn möglich
+        if (currentValue && (currentValue === 'all' || years.includes(parseInt(currentValue)))) {
+            select.value = currentValue;
+        }
+    }
+
+    function getFilteredProjects() {
+        const selectedYear = document.getElementById('statsYearFilter').value;
+        
+        if (selectedYear === 'all') {
+            return Object.values(allProjects);
+        }
+        
+        return Object.values(allProjects).filter(project => {
+            const year = getYearFromProjectNumber(project.projectNumber);
+            return year === parseInt(selectedYear);
+        });
+    }
+
+    function renderProjectStats() {
+        const grid = document.getElementById('projectStatsGrid');
+        
+        const filteredProjects = getFilteredProjects();
+
+        let statusCounts = {
+            none: 0,
+            ab: 0,
+            invoice: 0,
+            postcalc: 0
+        };
+        
+        filteredProjects.forEach(project => {
+            const hasAB = project.hasAB || false;
+            const hasInvoice = project.hasInvoice || false;
+            const hasPostCalc = project.hasPostCalc || false;
+            
+            if (hasPostCalc) {
+                statusCounts.postcalc++;
+            } else if (hasInvoice) {
+                statusCounts.invoice++;
+            } else if (hasAB) {
+                statusCounts.ab++;
+            } else {
+                statusCounts.none++;
+            }
+        });
+        
+        const total = filteredProjects.length;
+        
+        grid.innerHTML = `
+            <div class="stat-card">
+                <h4>Status-Verteilung</h4>
+                <div class="stat-row">
+                    <span class="stat-label">Gesamt Projekte</span>
+                    <span class="stat-value">${total}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">⚪ Offen (kein Status)</span>
+                    <span class="stat-value">${statusCounts.none}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">🟢 AB erteilt</span>
+                    <span class="stat-value">${statusCounts.ab}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">🟡 Rechnung gestellt</span>
+                    <span class="stat-value">${statusCounts.invoice}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">⚫ Nachkalkulation</span>
+                    <span class="stat-value">${statusCounts.postcalc}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderCustomerStats() {
+        const customerData = {};
+
+        const filteredProjects = getFilteredProjects();
+        
+        filteredProjects.forEach(project => {
+            const customer = project.customer;
+            const totalSales = project.salesPositions.reduce((s, p) => s + p.totalPrice, 0);
+            const totalPurchase = project.purchasePositions.reduce((s, p) => s + p.totalPrice, 0);
+            const db = totalSales - totalPurchase;
+            
+            if (!customerData[customer]) {
+                customerData[customer] = {
+                    sales: 0,
+                    count: 0,
+                    db: 0
+                };
+            }
+            
+            customerData[customer].sales += totalSales;
+            customerData[customer].count += 1;
+            customerData[customer].db += db;
+        });
+        
+        // Top 10 nach Umsatz
+        const topSales = Object.entries(customerData)
+            .sort((a, b) => b[1].sales - a[1].sales)
+            .slice(0, 10);
+        
+        document.getElementById('topCustomersSales').innerHTML = topSales.map((item, index) => `
+            <li class="top-list-item">
+                <span class="rank">#${index + 1}</span>
+                <span class="name">${item[0]}</span>
+                <span class="value">${formatCurrency(item[1].sales)}</span>
+            </li>
+        `).join('');
+        
+        // Top 10 nach Projektanzahl
+        const topCount = Object.entries(customerData)
+            .sort((a, b) => b[1].count - a[1].count)
+            .slice(0, 10);
+        
+        document.getElementById('topCustomersCount').innerHTML = topCount.map((item, index) => `
+            <li class="top-list-item">
+                <span class="rank">#${index + 1}</span>
+                <span class="name">${item[0]}</span>
+                <span class="value">${item[1].count} Projekte</span>
+            </li>
+        `).join('');
+        
+        // Top 10 nach DB
+        const topDB = Object.entries(customerData)
+            .sort((a, b) => b[1].db - a[1].db)
+            .slice(0, 10);
+        
+        document.getElementById('topCustomersDB').innerHTML = topDB.map((item, index) => `
+            <li class="top-list-item">
+                <span class="rank">#${index + 1}</span>
+                <span class="name">${item[0]}</span>
+                <span class="value">${formatCurrency(item[1].db)}</span>
+            </li>
+        `).join('');
+    }
+
+    function renderGewerkeStats() {
+        const gewerkeData = {};
+        
+        const filteredProjects = getFilteredProjects();
+        
+        filteredProjects.forEach(project => {
+
+            project.salesPositions.forEach(pos => {
+                if (pos.trade) {
+                    if (!gewerkeData[pos.trade]) {
+                        gewerkeData[pos.trade] = { sales: 0, purchase: 0 };
+                    }
+                    gewerkeData[pos.trade].sales += pos.totalPrice;
+                }
+            });
+            
+            project.purchasePositions.forEach(pos => {
+                if (pos.trade) {
+                    if (!gewerkeData[pos.trade]) {
+                        gewerkeData[pos.trade] = { sales: 0, purchase: 0 };
+                    }
+                    gewerkeData[pos.trade].purchase += pos.totalPrice;
+                }
+            });
+        });
+        
+        // Umsatz pro Gewerk
+        const sortedBySales = Object.entries(gewerkeData)
+            .sort((a, b) => b[1].sales - a[1].sales);
+        
+        document.getElementById('gewerkeUmsatz').innerHTML = sortedBySales.map(item => {
+            const [trade, data] = item;
+            return `
+                <div class="stat-row">
+                    <span class="stat-label">${trade}</span>
+                    <span class="stat-value">${formatCurrency(data.sales)}</span>
+                </div>
+            `;
+        }).join('') || '<p style="color: #999;">Keine Gewerke-Daten verfügbar</p>';
+        
+        // DB pro Gewerk
+        const sortedByDB = Object.entries(gewerkeData)
+            .map(item => {
+                const [trade, data] = item;
+                return [trade, data.sales - data.purchase];
+            })
+            .sort((a, b) => b[1] - a[1]);
+        
+        document.getElementById('gewerkeDB').innerHTML = sortedByDB.map(item => {
+            const [trade, db] = item;
+            const color = db >= 0 ? '#28a745' : '#dc3545';
+            return `
+                <div class="stat-row">
+                    <span class="stat-label">${trade}</span>
+                    <span class="stat-value" style="color: ${color}">${formatCurrency(db)}</span>
+                </div>
+            `;
+        }).join('') || '<p style="color: #999;">Keine Gewerke-Daten verfügbar</p>';
+    }
+
+    function renderTimeStats() {
+        const selectedYear = document.getElementById('statsYearFilter').value;
+        const currentYear = selectedYear === 'all' ? new Date().getFullYear() : parseInt(selectedYear);
+        const monthlyData = {};
+        const quarterlyData = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
+        const monthlyOrdersData = {};
+        
+        // Initialisiere Monate
+        for (let i = 1; i <= 12; i++) {
+            monthlyData[i] = 0;
+            monthlyOrdersData[i] = 0;
+        }
+        
+        const filteredProjects = getFilteredProjects();
+    
+        filteredProjects.forEach(project => {
+
+            if (project.deliveryDate) {
+                const date = new Date(project.deliveryDate);
+                const month = date.getMonth() + 1;
+                const totalSales = project.salesPositions.reduce((s, p) => s + p.totalPrice, 0);
+                
+                monthlyData[month] += totalSales;
+                
+                // Quartal
+                if (month <= 3) quarterlyData.Q1 += totalSales;
+                else if (month <= 6) quarterlyData.Q2 += totalSales;
+                else if (month <= 9) quarterlyData.Q3 += totalSales;
+                else quarterlyData.Q4 += totalSales;
+            }
+            
+            // Auftragseingang (AB-Datum wenn vorhanden, sonst ignorieren)
+            if (project.hasAB && project.deliveryDate) {
+                const date = new Date(project.deliveryDate);
+                const month = date.getMonth() + 1;
+                monthlyOrdersData[month] += 1;
+            }
+        });
+        
+        // Monatsumsatz
+        const monthNames = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+        document.getElementById('monthlyRevenue').innerHTML = Object.entries(monthlyData).map(([month, revenue]) => {
+            return `
+                <div class="stat-row">
+                    <span class="stat-label">${monthNames[month - 1]}</span>
+                    <span class="stat-value">${formatCurrency(revenue)}</span>
+                </div>
+            `;
+        }).join('');
+        
+        // Quartalsumsatz
+        document.getElementById('quarterlyRevenue').innerHTML = Object.entries(quarterlyData).map(([quarter, revenue]) => {
+            return `
+                <div class="stat-row">
+                    <span class="stat-label">${quarter}</span>
+                    <span class="stat-value">${formatCurrency(revenue)}</span>
+                </div>
+            `;
+        }).join('');
+        
+        // Auftragseingang pro Monat
+        document.getElementById('monthlyOrders').innerHTML = Object.entries(monthlyOrdersData).map(([month, count]) => {
+            return `
+                <div class="stat-row">
+                    <span class="stat-label">${monthNames[month - 1]}</span>
+                    <span class="stat-value">${count} Aufträge</span>
+                </div>
+            `;
+        }).join('');
+    }
+</script>
