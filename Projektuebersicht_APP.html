@@ -1613,14 +1613,13 @@
         </div>
     </div>
 
-    <!-- SheetJS und MSAL werden über defer geladen (siehe unten) -->
-
-    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js" defer></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js" defer></script>
+    <!-- SheetJS und MSAL - synchron laden, Reihenfolge wichtig -->
+    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
     <script>
-        // Warten bis alle externen Scripts geladen sind
-        window.addEventListener('load', function() {
+        // Warten bis DOM vollständig geladen ist
+        document.addEventListener('DOMContentLoaded', function() {
 
         const SP_CONFIG = {
             tenantId:   '1100d6c4-c332-4483-a651-db30fc47132e',
@@ -3631,7 +3630,7 @@
     }
 
     // Sicherstellen dass nur Dashboard beim Laden aktiv ist
-    document.addEventListener('DOMContentLoaded', async () => {
+    (async () => {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.getElementById('dashboardView').classList.add('active');
 
@@ -3646,7 +3645,7 @@
             await initAppAfterLogin();
         }
         // Sonst bleibt das Login-Overlay sichtbar
-    });
+    })();
 
     // Alle Projekte löschen
     async function clearAllProjects() {
@@ -4175,5 +4174,5 @@
         }).join('');
     }
 
-        }); // Ende window.addEventListener('load')
+        }); // Ende DOMContentLoaded
     </script>
