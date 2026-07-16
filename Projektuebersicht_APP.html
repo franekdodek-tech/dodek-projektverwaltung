@@ -2545,7 +2545,6 @@
         // ========== DASHBOARD ==========
         
         function renderDashboard() {
-            loadFromLocalStorage();
             const container = document.getElementById('projectListContainer');
             
             const projectNumbers = Object.keys(allProjects).sort((a, b) => {
@@ -3783,8 +3782,9 @@
 
     function updateYearFilter() {
         const yearSet = new Set();
+        const projects = window.allProjects || allProjects;
         
-        Object.keys(allProjects).forEach(projectNumber => {
+        Object.keys(projects).forEach(projectNumber => {
             const year = getYearFromProjectNumber(projectNumber);
             if (year) yearSet.add(year);
         });
