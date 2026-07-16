@@ -1613,13 +1613,32 @@
         </div>
     </div>
 
-    <!-- SheetJS und MSAL - synchron laden, Reihenfolge wichtig -->
-    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-
+    <!-- App Initialisierung -->
     <script>
-        // Warten bis DOM vollständig geladen ist
-        document.addEventListener('DOMContentLoaded', function() {
+        function loadScript(src, callback) {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = callback;
+            script.onerror = function() {
+                document.getElementById('loginOverlay').innerHTML = `
+                    <div style="background:white;padding:40px;border-radius:8px;text-align:center;max-width:400px;">
+                        <div style="font-size:48px;margin-bottom:15px;">⚠️</div>
+                        <h2 style="color:#dc3545;margin-bottom:10px;">Verbindungsfehler</h2>
+                        <p>Microsoft Login konnte nicht geladen werden.<br>Bitte Internetverbindung prüfen und Seite neu laden.</p>
+                        <button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;">🔄 Neu laden</button>
+                    </div>`;
+            };
+            document.head.appendChild(script);
+        }
+
+        // Erst MSAL laden, dann SheetJS, dann App starten
+        loadScript('https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js', function() {
+            loadScript('https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js', function() {
+                initApp();
+            });
+        });
+
+        function initApp() {
 
         const SP_CONFIG = {
             tenantId:   '1100d6c4-c332-4483-a651-db30fc47132e',
@@ -4174,5 +4193,5 @@
         }).join('');
     }
 
-        }); // Ende DOMContentLoaded
+        } // Ende initApp
     </script>
