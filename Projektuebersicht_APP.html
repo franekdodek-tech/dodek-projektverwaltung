@@ -1697,8 +1697,10 @@
                 console.error('spFetch Fehler:', response.status, url, err);
                 throw new Error(`SharePoint Fehler ${response.status}: ${err}`);
             }
-            if (response.status === 204) return null;
-            return response.json();
+            if (response.status === 204 || response.status === 200 && options.method === 'DELETE') return null;
+            const text = await response.text();
+            if (!text) return null;
+            return JSON.parse(text);
         }
 
         // ========== SHAREPOINT PROJEKTE ==========
