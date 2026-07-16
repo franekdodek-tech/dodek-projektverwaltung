@@ -1688,9 +1688,11 @@
                 'Content-Type': 'application/json',
                 ...options.headers
             };
+            console.log('spFetch:', options.method || 'GET', url);
             const response = await fetch(url, { ...options, headers });
             if (!response.ok) {
                 const err = await response.text();
+                console.error('spFetch Fehler:', response.status, url, err);
                 throw new Error(`SharePoint Fehler ${response.status}: ${err}`);
             }
             if (response.status === 204) return null;
