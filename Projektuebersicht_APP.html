@@ -1030,10 +1030,39 @@
     </style>
 </head>
 <body>
+    <!-- LOGIN OVERLAY -->
+    <div id="loginOverlay" style="
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: #f5f5f5; z-index: 9999;
+        display: flex; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 40px; border-radius: 8px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.15); text-align: center; max-width: 400px; width: 90%;">
+            <div style="font-size: 48px; margin-bottom: 15px;">🏗️</div>
+            <h2 style="color: #366092; margin-bottom: 10px;">Dodek Projektverwaltung</h2>
+            <p style="color: #666; margin-bottom: 30px; font-size: 14px;">
+                Bitte mit Ihrem Microsoft-Konto anmelden um auf die Projektdaten zuzugreifen.
+            </p>
+            <button id="loginBtn" onclick="loginMicrosoft()" style="width: 100%; padding: 14px; font-size: 16px;">
+                🔑 Mit Microsoft anmelden
+            </button>
+            <p id="loginError" style="color: #dc3545; font-size: 13px; margin-top: 15px; display: none;"></p>
+        </div>
+    </div>
+
+    <!-- MAIN APP (wird nach Login eingeblendet) -->
+    <div id="mainApp" style="display: none;">
     <div class="container">
         <header>
-            <h1>Nachkalkulation - Projekt-Controlling</h1>
-            <p>Professionelle Projektkostenauswertung mit Artikelstamm</p>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1>Nachkalkulation - Projekt-Controlling</h1>
+                    <p>Professionelle Projektkostenauswertung mit Artikelstamm</p>
+                </div>
+                <div style="text-align: right; font-size: 13px;">
+                    <div id="userDisplayName" style="margin-bottom: 6px; font-weight: 600;"></div>
+                    <button onclick="logoutMicrosoft()" class="btn-secondary btn-small">Abmelden</button>
+                </div>
+            </div>
         </header>
         
         <div id="message" class="message"></div>
@@ -1584,11 +1613,225 @@
         </div>
     </div>
 
-    <!-- SheetJS für Excel-Export -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- SheetJS und MSAL werden über defer geladen (siehe unten) -->
+
+    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js" defer></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js" defer></script>
 
     <script>
-        // Konstanten
+        // Warten bis alle externen Scripts geladen sind
+        window.addEventListener('load', function() {
+
+        const SP_CONFIG = {
+            tenantId:   '1100d6c4-c332-4483-a651-db30fc47132e',
+            clientId:   'b1546e68-d699-43ac-8a09-277fd5f18b57',
+            siteUrl:    'https://dodekgmbh.sharepoint.com/sites/DodekProjektverwaltung',
+            listProjects: 'DodekProjekte',
+            listArticles: 'DodekArtikel'
+        };
+
+        const msalConfig = {
+            auth: {
+                clientId:    SP_CONFIG.clientId,
+                authority:   `https://login.microsoftonline.com/${SP_CONFIG.tenantId}`,
+                redirectUri: 'https://franekdodek-tech.github.io/dodek-projektverwaltung/Projektuebersicht_APP.html'
+            },
+            cache: { cacheLocation: 'sessionStorage' }
+        };
+
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        const SP_SCOPES = ['https://dodekgmbh.sharepoint.com/.default'];
+
+        let spAccessToken = null;
+
+        async function getSpToken() {
+            const accounts = msalInstance.getAllAccounts();
+            if (accounts.length === 0) throw new Error('Nicht angemeldet');
+            try {
+                const result = await msalInstance.acquireTokenSilent({
+                    scopes: SP_SCOPES,
+                    account: accounts[0]
+                });
+                spAccessToken = result.accessToken;
+                return result.accessToken;
+            } catch (e) {
+                const result = await msalInstance.acquireTokenPopup({ scopes: SP_SCOPES });
+                spAccessToken = result.accessToken;
+                return result.accessToken;
+            }
+        }
+
+        async function spFetch(url, options = {}) {
+            const token = await getSpToken();
+            const headers = {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json;odata=nometadata',
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+            const response = await fetch(url, { ...options, headers });
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(`SharePoint Fehler ${response.status}: ${err}`);
+            }
+            if (response.status === 204) return null;
+            return response.json();
+        }
+
+        // ========== SHAREPOINT PROJEKTE ==========
+
+        async function loadFromSharePoint() {
+            try {
+                showMessage('Projekte werden geladen...', 'success');
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listProjects}')/items?$select=Id,ProjectNumber,ProjectData&$top=500`;
+                const data = await spFetch(url);
+                allProjects = {};
+                (data.value || []).forEach(item => {
+                    try {
+                        if (item.ProjectData) {
+                            const project = JSON.parse(item.ProjectData);
+                            project._spId = item.Id;
+                            allProjects[project.projectNumber] = project;
+                        }
+                    } catch (e) {
+                        console.error('Fehler beim Parsen von Projekt', item.Id, e);
+                    }
+                });
+                renderDashboard();
+                updateYearFilter();
+                showMessage(`${Object.keys(allProjects).length} Projekt(e) geladen`, 'success');
+            } catch (e) {
+                showMessage('Fehler beim Laden: ' + e.message, 'error');
+                console.error(e);
+            }
+        }
+
+        async function saveProjectToSharePoint(project) {
+            const payload = {
+                ProjectNumber: project.projectNumber,
+                Customer:      project.customer || '',
+                ProjectName:   project.projectName || '',
+                OrderNumber:   project.orderNumber || '',
+                ProjectData:   JSON.stringify(project)
+            };
+            if (project._spId) {
+                // Update
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listProjects}')/items(${project._spId})`;
+                await spFetch(url, {
+                    method: 'PATCH',
+                    headers: { 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                // Neu anlegen
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listProjects}')/items`;
+                const result = await spFetch(url, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                project._spId = result.id;
+                allProjects[project.projectNumber] = project;
+            }
+        }
+
+        async function deleteProjectFromSharePoint(spId) {
+            if (!spId) return;
+            const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listProjects}')/items(${spId})`;
+            await spFetch(url, {
+                method: 'DELETE',
+                headers: { 'IF-MATCH': '*' }
+            });
+        }
+
+        // ========== SHAREPOINT ARTIKEL ==========
+
+        async function loadArticlesFromSharePoint() {
+            try {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listArticles}')/items?$select=Id,ArticleID,ArticleData&$top=500`;
+                const data = await spFetch(url);
+                articleDatabase = {};
+                (data.value || []).forEach(item => {
+                    try {
+                        if (item.ArticleData) {
+                            const article = JSON.parse(item.ArticleData);
+                            article._spId = item.Id;
+                            articleDatabase[article.id] = article;
+                        }
+                    } catch (e) {
+                        console.error('Fehler beim Parsen von Artikel', item.Id, e);
+                    }
+                });
+                renderArticles();
+            } catch (e) {
+                console.error('Fehler beim Laden der Artikel:', e);
+            }
+        }
+
+        async function saveArticleToSharePoint(article) {
+            const payload = {
+                ArticleID:   article.id,
+                ArticleData: JSON.stringify(article)
+            };
+            if (article._spId) {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listArticles}')/items(${article._spId})`;
+                await spFetch(url, {
+                    method: 'PATCH',
+                    headers: { 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listArticles}')/items`;
+                const result = await spFetch(url, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                article._spId = result.id;
+                articleDatabase[article.id] = article;
+            }
+        }
+
+        async function deleteArticleFromSharePoint(spId) {
+            if (!spId) return;
+            const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listArticles}')/items(${spId})`;
+            await spFetch(url, {
+                method: 'DELETE',
+                headers: { 'IF-MATCH': '*' }
+            });
+        }
+
+        // ========== LOGIN ==========
+
+        async function loginMicrosoft() {
+            try {
+                document.getElementById('loginBtn').disabled = true;
+                document.getElementById('loginBtn').textContent = 'Anmelden...';
+                await msalInstance.initialize();
+                await msalInstance.loginPopup({ scopes: SP_SCOPES });
+                await initAppAfterLogin();
+            } catch (e) {
+                showMessage('Anmeldung fehlgeschlagen: ' + e.message, 'error');
+                document.getElementById('loginBtn').disabled = false;
+                document.getElementById('loginBtn').textContent = '🔑 Mit Microsoft anmelden';
+            }
+        }
+
+        async function initAppAfterLogin() {
+            const accounts = msalInstance.getAllAccounts();
+            if (accounts.length === 0) return;
+            const account = accounts[0];
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            document.getElementById('userDisplayName').textContent = account.name || account.username;
+            await loadFromSharePoint();
+            await loadArticlesFromSharePoint();
+        }
+
+        function logoutMicrosoft() {
+            msalInstance.logoutPopup();
+        }
+
+        // ========== KONSTANTEN ==========
         const BACKUP_FILENAME = 'nachkalkulation_backup.json';
         const ARTICLE_BACKUP_FILENAME = 'artikel_backup.json';
 
@@ -1630,19 +1873,11 @@
         // ========== ARTIKEL-STAMM ==========
         
         function loadArticleDatabase() {
-            const stored = localStorage.getItem('articleDatabase');
-            if (stored) {
-                try {
-                    articleDatabase = JSON.parse(stored);
-                } catch (e) {
-                    console.error('Fehler beim Laden der Artikel', e);
-                    articleDatabase = {};
-                }
-            }
+            // Wird durch loadArticlesFromSharePoint ersetzt — kein direkter Aufruf mehr
         }
         
         function saveArticleDatabase() {
-            localStorage.setItem('articleDatabase', JSON.stringify(articleDatabase));
+            // Wird durch saveArticleToSharePoint ersetzt — kein direkter Aufruf mehr
         }
         
         function saveArticleBackup() {
@@ -1873,7 +2108,7 @@
             `;
         }
         
-        function saveArticle() {
+        async function saveArticle() {
             const articleId = document.getElementById('articleId').value.trim();
             const editingId = document.getElementById('editArticleId').value;
             
@@ -1905,32 +2140,45 @@
             }
             
             if (editingId && editingId !== articleId) {
+                const oldArticle = articleDatabase[editingId];
+                if (oldArticle && oldArticle._spId) {
+                    await deleteArticleFromSharePoint(oldArticle._spId);
+                }
                 delete articleDatabase[editingId];
             }
             
             articleDatabase[articleId] = article;
-            saveArticleDatabase();
-            renderArticles();
-            updateArticleSelects();
-            closeArticleModal();
-            
-            showMessage(editingId ? 'Artikel aktualisiert' : 'Artikel angelegt', 'success');
+            try {
+                await saveArticleToSharePoint(article);
+                renderArticles();
+                updateArticleSelects();
+                closeArticleModal();
+                showMessage(editingId ? 'Artikel aktualisiert' : 'Artikel angelegt', 'success');
+            } catch (e) {
+                showMessage('Fehler beim Speichern des Artikels: ' + e.message, 'error');
+            }
         }
         
         function editArticle(articleId) {
             openArticleModal(articleId);
         }
         
-        function deleteArticle(articleId) {
+        async function deleteArticle(articleId) {
             if (!confirm(`Artikel "${articleId}" wirklich löschen?`)) {
                 return;
             }
-            
-            delete articleDatabase[articleId];
-            saveArticleDatabase();
-            renderArticles();
-            updateArticleSelects();
-            showMessage('Artikel gelöscht', 'success');
+            const article = articleDatabase[articleId];
+            try {
+                if (article && article._spId) {
+                    await deleteArticleFromSharePoint(article._spId);
+                }
+                delete articleDatabase[articleId];
+                renderArticles();
+                updateArticleSelects();
+                showMessage('Artikel gelöscht', 'success');
+            } catch (e) {
+                showMessage('Fehler beim Löschen des Artikels: ' + e.message, 'error');
+            }
         }
         
         function updateArticleSelects() {
@@ -2130,9 +2378,20 @@
         }
         
         function saveToLocalStorage() {
+            // Wird durch saveProjectToSharePoint ersetzt — bleibt als Fallback für Backup-Import
             Object.keys(allProjects).forEach(projectNumber => {
                 localStorage.setItem(`project_${projectNumber}`, JSON.stringify(allProjects[projectNumber]));
             });
+        }
+
+        async function saveAllToSharePoint() {
+            showMessage('Speichere alle Projekte in SharePoint...', 'success');
+            let count = 0;
+            for (const project of Object.values(allProjects)) {
+                await saveProjectToSharePoint(project);
+                count++;
+            }
+            showMessage(`${count} Projekt(e) in SharePoint gespeichert`, 'success');
         }
         
         function saveBackupManually() {
@@ -2189,7 +2448,7 @@
             if (!file) return;
             
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 try {
                     const backupData = JSON.parse(e.target.result);
                     
@@ -2198,12 +2457,13 @@
                     }
                     
                     allProjects = backupData.projects;
-                    saveToLocalStorage();
+                    showMessage('Backup gelesen — Speichere in SharePoint...', 'success');
+                    await saveAllToSharePoint();
                     renderDashboard();
                     updateYearFilter();
                     
                     const projectCount = Object.keys(allProjects).length;
-                    showMessage(`Backup geladen: ${projectCount} Projekt(e) wiederhergestellt`, 'success');
+                    showMessage(`Migration abgeschlossen: ${projectCount} Projekt(e) in SharePoint gespeichert`, 'success');
                 } catch (error) {
                     showMessage('Backup-Fehler: ' + error.message, 'error');
                 }
@@ -2404,27 +2664,27 @@
             renderDashboard();
         }
         
-        function toggleAB(projectNumber, checked) {
+        async function toggleAB(projectNumber, checked) {
             allProjects[projectNumber].hasAB = checked;
-            saveToLocalStorage();
+            await saveProjectToSharePoint(allProjects[projectNumber]);
             renderDashboard();
         }
         
-        function toggleInvoice(projectNumber, checked) {
+        async function toggleInvoice(projectNumber, checked) {
             allProjects[projectNumber].hasInvoice = checked;
-            saveToLocalStorage();
+            await saveProjectToSharePoint(allProjects[projectNumber]);
             renderDashboard();
         }
         
-        function toggleDelivered(projectNumber, checked) {
+        async function toggleDelivered(projectNumber, checked) {
             allProjects[projectNumber].hasDelivered = checked;
-            saveToLocalStorage();
+            await saveProjectToSharePoint(allProjects[projectNumber]);
             renderDashboard();
         }
         
-        function togglePostCalc(projectNumber, checked) {
+        async function togglePostCalc(projectNumber, checked) {
             allProjects[projectNumber].hasPostCalc = checked;
-            saveToLocalStorage();
+            await saveProjectToSharePoint(allProjects[projectNumber]);
             renderDashboard();
         }
         
@@ -2500,19 +2760,25 @@
             showView('editor');
         }
         
-        function deleteProject(projectNumber) {
+        async function deleteProject(projectNumber) {
             if (!confirm(`Projekt "${projectNumber}" wirklich löschen?`)) {
                 return;
             }
-            
-            delete allProjects[projectNumber];
-            localStorage.removeItem(`project_${projectNumber}`);
-            renderDashboard();
-            updateYearFilter();
-            showMessage('Projekt gelöscht', 'success');
+            const project = allProjects[projectNumber];
+            try {
+                if (project && project._spId) {
+                    await deleteProjectFromSharePoint(project._spId);
+                }
+                delete allProjects[projectNumber];
+                renderDashboard();
+                updateYearFilter();
+                showMessage('Projekt gelöscht', 'success');
+            } catch (e) {
+                showMessage('Fehler beim Löschen: ' + e.message, 'error');
+            }
         }
         
-        function deleteCurrentProject() {
+        async function deleteCurrentProject() {
             if (!currentProject || !currentProject.projectNumber) {
                 showMessage('Kein Projekt geladen', 'error');
                 return;
@@ -2522,15 +2788,21 @@
                 return;
             }
             
-            delete allProjects[currentProject.projectNumber];
-            localStorage.removeItem(`project_${currentProject.projectNumber}`);
-            currentProject = null;
-            showView('dashboard');
-            updateYearFilter();
-            showMessage('Projekt gelöscht', 'success');
+            try {
+                if (currentProject._spId) {
+                    await deleteProjectFromSharePoint(currentProject._spId);
+                }
+                delete allProjects[currentProject.projectNumber];
+                currentProject = null;
+                showView('dashboard');
+                updateYearFilter();
+                showMessage('Projekt gelöscht', 'success');
+            } catch (e) {
+                showMessage('Fehler beim Löschen: ' + e.message, 'error');
+            }
         }
 
-        function closeProject() {
+        async function closeProject() {
             if (!currentProject || !currentProject.projectNumber) {
                 showMessage('Kein Projekt geladen', 'error');
                 return;
@@ -2552,7 +2824,7 @@
                 pos.assignedTo = 'not_required';
             });
 
-            saveToLocalStorage();
+            await saveProjectToSharePoint(currentProject);
             renderPurchasePositions();
             showMessage(`Projekt abgeschlossen: ${count} EK-Position(en) aktualisiert`, 'success');
         }
@@ -3157,7 +3429,7 @@
         `;
     }
     
-    function saveProject() {
+    async function saveProject() {
         const projectNumber = document.getElementById('projectNumber').value.trim();
         const customer = document.getElementById('customer').value.trim();
         
@@ -3174,7 +3446,7 @@
         
         try {
             allProjects[projectNumber] = currentProject;
-            localStorage.setItem(`project_${projectNumber}`, JSON.stringify(currentProject));
+            await saveProjectToSharePoint(currentProject);
             showMessage('Projekt gespeichert', 'success');
         } catch (e) {
             showMessage('Fehler beim Speichern: ' + e.message, 'error');
@@ -3307,7 +3579,7 @@
         if (!file) return;
         
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const imported = JSON.parse(e.target.result);
                 
@@ -3327,11 +3599,11 @@
                 if (imported.hasPostCalc === undefined) imported.hasPostCalc = false;
                 
                 allProjects[imported.projectNumber] = imported;
-                localStorage.setItem(`project_${imported.projectNumber}`, JSON.stringify(imported));
+                await saveProjectToSharePoint(imported);
                 
                 renderDashboard();
                 updateYearFilter();
-                showMessage('Projekt importiert', 'success');
+                showMessage('Projekt importiert und in SharePoint gespeichert', 'success');
             } catch (error) {
                 showMessage('Import-Fehler: ' + error.message, 'error');
             }
@@ -3359,78 +3631,64 @@
     }
 
     // Sicherstellen dass nur Dashboard beim Laden aktiv ist
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.getElementById('dashboardView').classList.add('active');
-        loadFromLocalStorage();
-        loadArticleDatabase();
-        renderDashboard();
-        renderArticles();
-        updateYearFilter();
-    });
 
-    // Force Dashboard on load
-    window.addEventListener('load', function() {
-        setTimeout(function() {
-            document.getElementById('dashboardView').classList.add('active');
-            document.getElementById('articlesView').classList.remove('active');
-            document.getElementById('editorView').classList.remove('active');
-        }, 100);
+        await msalInstance.initialize();
+
+        // MSAL Redirect Response abfangen
+        try { await msalInstance.handleRedirectPromise(); } catch(e) {}
+
+        // Bereits angemeldete Session wiederverwenden
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length > 0) {
+            await initAppAfterLogin();
+        }
+        // Sonst bleibt das Login-Overlay sichtbar
     });
 
     // Alle Projekte löschen
-    function clearAllProjects() {
+    async function clearAllProjects() {
         if (!confirm('⚠️ ACHTUNG: Alle Projekte werden gelöscht!\n\nErstellen Sie vorher ein Backup!\n\nWirklich fortfahren?')) {
             return;
         }
-        
         if (!confirm('Letzte Warnung: Alle Projekte unwiderruflich löschen?')) {
             return;
         }
-        
-        // Alle Projekt-Keys aus localStorage löschen
-        const keysToDelete = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('project_')) {
-                keysToDelete.push(key);
+        showMessage('Lösche alle Projekte aus SharePoint...', 'success');
+        let count = 0;
+        for (const project of Object.values(allProjects)) {
+            if (project._spId) {
+                await deleteProjectFromSharePoint(project._spId);
+                count++;
             }
         }
-        
-        keysToDelete.forEach(key => localStorage.removeItem(key));
-        
-        // Memory leeren
         allProjects = {};
         currentProject = null;
-        
-        // Dashboard neu laden
         renderDashboard();
         showView('dashboard');
-        
-        showMessage(`${keysToDelete.length} Projekt(e) gelöscht. Bereit für neues Backup.`, 'success');
+        showMessage(`${count} Projekt(e) gelöscht.`, 'success');
     }
 
     // Alle Artikel löschen
-    function clearAllArticles() {
+    async function clearAllArticles() {
         if (!confirm('⚠️ ACHTUNG: Alle Artikel werden gelöscht!\n\nErstellen Sie vorher ein Backup!\n\nWirklich fortfahren?')) {
             return;
         }
-        
         if (!confirm('Letzte Warnung: Alle Artikel unwiderruflich löschen?')) {
             return;
         }
-        
-        // Artikel aus localStorage löschen
-        localStorage.removeItem('articleDatabase');
-        
-        // Memory leeren
+        showMessage('Lösche alle Artikel aus SharePoint...', 'success');
+        for (const article of Object.values(articleDatabase)) {
+            if (article._spId) {
+                await deleteArticleFromSharePoint(article._spId);
+            }
+        }
         articleDatabase = {};
-        
-        // Ansicht neu laden
         renderArticles();
         updateArticleSelects();
-        
-        showMessage('Alle Artikel gelöscht. Bereit für neues Backup.', 'success');
+        showMessage('Alle Artikel gelöscht.', 'success');
     }
 
     // ========== SUCHE ==========
@@ -3916,4 +4174,6 @@
             `;
         }).join('');
     }
-</script>
+
+        }); // Ende window.addEventListener('load')
+    </script>
