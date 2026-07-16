@@ -1709,6 +1709,7 @@
                 const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidProjects}')/items?$select=Id,ProjectNumber,ProjectData&$top=500`;
                 const data = await spFetch(url);
                 allProjects = {};
+                window.allProjects = allProjects;
                 let parseErrors = 0;
                 let noData = 0;
                 console.log('SharePoint Einträge gesamt:', (data.value || []).length);
@@ -1886,13 +1887,21 @@
             { id: 'invoiced',     label: 'Abgerechnet',   color: '#6c757d' }
         ];
         
-        // Globale Variablen
-        let currentProject = null;
-        let allProjects = {};
-        let articleDatabase = {};
-        let multiPositions = [];
-        let currentBOM = [];
-        let collapsedYears = new Set();
+        // Globale Variablen — auf window gesetzt damit sie überall erreichbar sind
+        window.currentProject = null;
+        window.allProjects = {};
+        window.articleDatabase = {};
+        window.multiPositions = [];
+        window.currentBOM = [];
+        window.collapsedYears = new Set();
+
+        // Lokale Aliase für internen Gebrauch
+        let currentProject = window.currentProject;
+        let allProjects = window.allProjects;
+        let articleDatabase = window.articleDatabase;
+        let multiPositions = window.multiPositions;
+        let currentBOM = window.currentBOM;
+        let collapsedYears = window.collapsedYears;
         
         // Initialisierung
         //document.addEventListener('DOMContentLoaded', () => {
@@ -4251,6 +4260,7 @@
         window.renderTasks = renderTasks;
         window.clearAllProjects = clearAllProjects;
         window.clearAllArticles = clearAllArticles;
+        window.applyYearFilter = applyYearFilter;
         window.fillPurchaseFromArticle = typeof fillPurchaseFromArticle !== 'undefined' ? fillPurchaseFromArticle : null;
         window.fillSalesFromArticle = typeof fillSalesFromArticle !== 'undefined' ? fillSalesFromArticle : null;
 
