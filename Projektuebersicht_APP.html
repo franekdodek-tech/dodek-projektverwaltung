@@ -1833,6 +1833,7 @@
                 document.getElementById('loginBtn').textContent = '🔑 Mit Microsoft anmelden';
             }
         }
+        window.loginMicrosoft = loginMicrosoft;
 
         async function initAppAfterLogin() {
             const accounts = msalInstance.getAllAccounts();
@@ -1848,6 +1849,7 @@
         function logoutMicrosoft() {
             msalInstance.logoutPopup();
         }
+        window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
         const BACKUP_FILENAME = 'nachkalkulation_backup.json';
@@ -4192,6 +4194,53 @@
             `;
         }).join('');
     }
+
+        // Alle vom HTML aufgerufenen Funktionen global verfügbar machen
+        window.showView = showView;
+        window.createNewProject = createNewProject;
+        window.openProject = openProject;
+        window.saveProject = saveProject;
+        window.deleteProject = deleteProject;
+        window.deleteCurrentProject = deleteCurrentProject;
+        window.closeProject = closeProject;
+        window.addSalesPosition = addSalesPosition;
+        window.deleteSalesPosition = deleteSalesPosition;
+        window.updateSalesPosition = updateSalesPosition;
+        window.addPurchasePosition = addPurchasePosition;
+        window.deletePurchasePosition = deletePurchasePosition;
+        window.updatePurchasePosition = updatePurchasePosition;
+        window.addTrade = addTrade;
+        window.removeTrade = removeTrade;
+        window.toggleYear = toggleYear;
+        window.toggleAB = toggleAB;
+        window.toggleInvoice = toggleInvoice;
+        window.toggleDelivered = toggleDelivered;
+        window.togglePostCalc = togglePostCalc;
+        window.openArticleModal = openArticleModal;
+        window.closeArticleModal = closeArticleModal;
+        window.saveArticle = saveArticle;
+        window.editArticle = editArticle;
+        window.deleteArticle = deleteArticle;
+        window.addBOMItem = addBOMItem;
+        window.removeBOMItem = removeBOMItem;
+        window.saveArticleBackup = saveArticleBackup;
+        window.saveBackupManually = saveBackupManually;
+        window.loadBackupFile = loadBackupFile;
+        window.exportExcel = exportExcel;
+        window.exportJSON = exportJSON;
+        window.importJSON = importJSON;
+        window.printReport = printReport;
+        window.openMultiPositionDialog = openMultiPositionDialog;
+        window.closeMultiPositionDialog = closeMultiPositionDialog;
+        window.addMultiPositionRow = addMultiPositionRow;
+        window.removeMultiPositionRow = removeMultiPositionRow;
+        window.saveMultiPositions = saveMultiPositions;
+        window.openProjectFromTasks = openProjectFromTasks;
+        window.renderTasks = renderTasks;
+        window.clearAllProjects = clearAllProjects;
+        window.clearAllArticles = clearAllArticles;
+        window.fillPurchaseFromArticle = typeof fillPurchaseFromArticle !== 'undefined' ? fillPurchaseFromArticle : null;
+        window.fillSalesFromArticle = typeof fillSalesFromArticle !== 'undefined' ? fillSalesFromArticle : null;
 
         } // Ende initApp
     </script>
