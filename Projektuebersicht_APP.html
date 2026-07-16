@@ -1709,17 +1709,25 @@
                 const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidProjects}')/items?$select=Id,ProjectNumber,ProjectData&$top=500`;
                 const data = await spFetch(url);
                 allProjects = {};
+                let parseErrors = 0;
+                let noData = 0;
+                console.log('SharePoint Einträge gesamt:', (data.value || []).length);
                 (data.value || []).forEach(item => {
                     try {
                         if (item.ProjectData) {
                             const project = JSON.parse(item.ProjectData);
                             project._spId = item.Id;
                             allProjects[project.projectNumber] = project;
+                        } else {
+                            noData++;
+                            console.warn('Kein ProjectData bei Item ID:', item.Id, 'ProjectNumber:', item.ProjectNumber);
                         }
                     } catch (e) {
-                        console.error('Fehler beim Parsen von Projekt', item.Id, e);
+                        parseErrors++;
+                        console.error('Parse-Fehler bei Item ID:', item.Id, 'ProjectNumber:', item.ProjectNumber, e);
                     }
                 });
+                console.log('Geladen:', Object.keys(allProjects).length, '| Parse-Fehler:', parseErrors, '| Kein Data:', noData);
                 renderDashboard();
                 updateYearFilter();
                 showMessage(`${Object.keys(allProjects).length} Projekt(e) geladen`, 'success');
