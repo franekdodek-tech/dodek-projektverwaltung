@@ -1632,7 +1632,7 @@
         }
 
         // Erst MSAL laden, dann SheetJS, dann App starten
-        loadScript('https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js', function() {
+        loadScript('msal-browser.min.js', function() {
             loadScript('https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js', function() {
                 initApp();
             });
