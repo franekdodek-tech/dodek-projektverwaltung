@@ -1708,8 +1708,7 @@
                 showMessage('Projekte werden geladen...', 'success');
                 const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidProjects}')/items?$select=Id,ProjectNumber,ProjectData&$top=500`;
                 const data = await spFetch(url);
-                allProjects = {};
-                window.allProjects = allProjects;
+                window.allProjects = {};
                 let parseErrors = 0;
                 let noData = 0;
                 console.log('SharePoint Einträge gesamt:', (data.value || []).length);
@@ -1718,7 +1717,7 @@
                         if (item.ProjectData) {
                             const project = JSON.parse(item.ProjectData);
                             project._spId = item.Id;
-                            allProjects[project.projectNumber] = project;
+                            window.allProjects[project.projectNumber] = project;
                         } else {
                             noData++;
                             console.warn('Kein ProjectData bei Item ID:', item.Id, 'ProjectNumber:', item.ProjectNumber);
@@ -1728,10 +1727,10 @@
                         console.error('Parse-Fehler bei Item ID:', item.Id, 'ProjectNumber:', item.ProjectNumber, e);
                     }
                 });
-                console.log('Geladen:', Object.keys(allProjects).length, '| Parse-Fehler:', parseErrors, '| Kein Data:', noData);
+                console.log('Geladen:', Object.keys(window.allProjects).length, '| Parse-Fehler:', parseErrors, '| Kein Data:', noData);
                 renderDashboard();
                 updateYearFilter();
-                showMessage(`${Object.keys(allProjects).length} Projekt(e) geladen`, 'success');
+                showMessage(`${Object.keys(window.allProjects).length} Projekt(e) geladen`, 'success');
             } catch (e) {
                 showMessage('Fehler beim Laden: ' + e.message, 'error');
                 console.error(e);
@@ -1887,7 +1886,7 @@
             { id: 'invoiced',     label: 'Abgerechnet',   color: '#6c757d' }
         ];
         
-        // Globale Variablen — auf window gesetzt damit sie überall erreichbar sind
+        // Globale Variablen — direkt auf window, keine lokalen Kopien
         window.currentProject = null;
         window.allProjects = {};
         window.articleDatabase = {};
@@ -1895,13 +1894,33 @@
         window.currentBOM = [];
         window.collapsedYears = new Set();
 
-        // Lokale Aliase für internen Gebrauch
-        let currentProject = window.currentProject;
-        let allProjects = window.allProjects;
-        let articleDatabase = window.articleDatabase;
-        let multiPositions = window.multiPositions;
-        let currentBOM = window.currentBOM;
-        let collapsedYears = window.collapsedYears;
+        // allProjects als direkter Verweis auf window.allProjects
+        // WICHTIG: Immer window.allProjects verwenden bei Neuzuweisungen
+        var currentProject = window.currentProject;
+        var articleDatabase = window.articleDatabase;
+        var multiPositions = window.multiPositions;
+        var currentBOM = window.currentBOM;
+        var collapsedYears = window.collapsedYears;
+
+        // allProjects wird direkt als window.allProjects verwendet
+        // Lokaler Alias der bei Lesezugriffen funktioniert
+        Object.defineProperty(window, 'allProjects', {
+            get: function() { return window._allProjects || {}; },
+            set: function(v) { window._allProjects = v; },
+            configurable: true
+        });
+        window.allProjects = {};
+        // Lokale Variable die immer auf window._allProjects zeigt
+        var allProjects = new Proxy({}, {
+            get: function(t, k) { return window._allProjects[k]; },
+            set: function(t, k, v) { window._allProjects[k] = v; return true; },
+            deleteProperty: function(t, k) { delete window._allProjects[k]; return true; },
+            ownKeys: function() { return Object.keys(window._allProjects); },
+            has: function(t, k) { return k in window._allProjects; },
+            getOwnPropertyDescriptor: function(t, k) {
+                return Object.getOwnPropertyDescriptor(window._allProjects, k);
+            }
+        });
         
         // Initialisierung
         //document.addEventListener('DOMContentLoaded', () => {
@@ -2420,7 +2439,7 @@
         
         function saveToLocalStorage() {
             // Wird durch saveProjectToSharePoint ersetzt — bleibt als Fallback für Backup-Import
-            Object.keys(allProjects).forEach(projectNumber => {
+            Object.keys(window.allProjects).forEach(projectNumber => {
                 localStorage.setItem(`project_${projectNumber}`, JSON.stringify(allProjects[projectNumber]));
             });
         }
@@ -2497,13 +2516,13 @@
                         throw new Error('Ungültiges Backup-Format');
                     }
                     
-                    allProjects = backupData.projects;
+                    window.allProjects = backupData.projects;
                     showMessage('Backup gelesen — Speichere in SharePoint...', 'success');
                     await saveAllToSharePoint();
                     renderDashboard();
                     updateYearFilter();
                     
-                    const projectCount = Object.keys(allProjects).length;
+                    const projectCount = Object.keys(window.allProjects).length;
                     showMessage(`Migration abgeschlossen: ${projectCount} Projekt(e) in SharePoint gespeichert`, 'success');
                 } catch (error) {
                     showMessage('Backup-Fehler: ' + error.message, 'error');
@@ -2547,7 +2566,7 @@
         function renderDashboard() {
             const container = document.getElementById('projectListContainer');
             
-            const projectNumbers = Object.keys(allProjects).sort((a, b) => {
+            const projectNumbers = Object.keys(window.allProjects).sort((a, b) => {
                 const yearA = getYearFromProjectNumber(a);
                 const yearB = getYearFromProjectNumber(b);
                 if (yearA !== yearB) return yearA - yearB;
@@ -3705,6 +3724,7 @@
             }
         }
         allProjects = {};
+        window.allProjects = {};
         currentProject = null;
         renderDashboard();
         showView('dashboard');
@@ -3782,9 +3802,8 @@
 
     function updateYearFilter() {
         const yearSet = new Set();
-        const projects = window.allProjects || allProjects;
         
-        Object.keys(projects).forEach(projectNumber => {
+        Object.keys(window.allProjects).forEach(projectNumber => {
             const year = getYearFromProjectNumber(projectNumber);
             if (year) yearSet.add(year);
         });
@@ -3833,7 +3852,7 @@
         const yearSelect = document.getElementById('tasksYearFilter');
         if (yearSelect.options.length <= 1) {
             const years = new Set();
-            Object.keys(allProjects).forEach(pn => {
+            Object.keys(window.allProjects).forEach(pn => {
                 const y = getYearFromProjectNumber(pn);
                 if (y) years.add(y);
             });
@@ -3933,7 +3952,7 @@
     function updateStatsYearFilter() {
         const yearSet = new Set();
         
-        Object.keys(allProjects).forEach(projectNumber => {
+        Object.keys(window.allProjects).forEach(projectNumber => {
             const year = getYearFromProjectNumber(projectNumber);
             if (year) yearSet.add(year);
         });
