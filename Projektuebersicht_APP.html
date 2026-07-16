@@ -1743,6 +1743,10 @@
                 Customer:      project.customer || '',
                 ProjectName:   project.projectName || '',
                 OrderNumber:   project.orderNumber || '',
+                HasAB:         project.hasAB || false,
+                HasInvoice:    project.hasInvoice || false,
+                HasDelivered:  project.hasDelivered || false,
+                HasPostCalc:   project.hasPostCalc || false,
                 ProjectData:   JSON.stringify(project)
             };
             if (project._spId) {
