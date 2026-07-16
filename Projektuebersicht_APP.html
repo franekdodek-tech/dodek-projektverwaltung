@@ -1641,11 +1641,13 @@
         function initApp() {
 
         const SP_CONFIG = {
-            tenantId:   '1100d6c4-c332-4483-a651-db30fc47132e',
-            clientId:   'b1546e68-d699-43ac-8a09-277fd5f18b57',
-            siteUrl:    'https://dodekgmbh.sharepoint.com/sites/DodekProjektverwaltung',
+            tenantId:     '1100d6c4-c332-4483-a651-db30fc47132e',
+            clientId:     'b1546e68-d699-43ac-8a09-277fd5f18b57',
+            siteUrl:      'https://dodekgmbh.sharepoint.com/sites/DodekProjektverwaltung',
             listProjects: 'DodekProjekte',
-            listArticles: 'DodekArtikel'
+            listArticles: 'DodekArtikel',
+            guidProjects: '1e1a835c-20b9-41ea-920f-f8b391981c71',
+            guidArticles: '26a0bbca-31bf-4a0d-8bd2-abe07d614725'
         };
 
         const msalConfig = {
@@ -1704,7 +1706,7 @@
         async function loadFromSharePoint() {
             try {
                 showMessage('Projekte werden geladen...', 'success');
-                const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listProjects}')/items?$select=Id,ProjectNumber,ProjectData&$top=500`;
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidProjects}')/items?$select=Id,ProjectNumber,ProjectData&$top=500`;
                 const data = await spFetch(url);
                 allProjects = {};
                 (data.value || []).forEach(item => {
@@ -1737,7 +1739,7 @@
             };
             if (project._spId) {
                 // Update
-                const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listProjects}')/items(${project._spId})`;
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidProjects}')/items(${project._spId})`;
                 await spFetch(url, {
                     method: 'PATCH',
                     headers: { 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' },
@@ -1745,7 +1747,7 @@
                 });
             } else {
                 // Neu anlegen
-                const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listProjects}')/items`;
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidProjects}')/items`;
                 const result = await spFetch(url, {
                     method: 'POST',
                     body: JSON.stringify(payload)
@@ -1757,7 +1759,7 @@
 
         async function deleteProjectFromSharePoint(spId) {
             if (!spId) return;
-            const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listProjects}')/items(${spId})`;
+            const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidProjects}')/items(${spId})`;
             await spFetch(url, {
                 method: 'DELETE',
                 headers: { 'IF-MATCH': '*' }
@@ -1768,7 +1770,7 @@
 
         async function loadArticlesFromSharePoint() {
             try {
-                const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listArticles}')/items?$select=Id,ArticleID,ArticleData&$top=500`;
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidArticles}')/items?$select=Id,ArticleID,ArticleData&$top=500`;
                 const data = await spFetch(url);
                 articleDatabase = {};
                 (data.value || []).forEach(item => {
@@ -1794,14 +1796,14 @@
                 ArticleData: JSON.stringify(article)
             };
             if (article._spId) {
-                const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listArticles}')/items(${article._spId})`;
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidArticles}')/items(${article._spId})`;
                 await spFetch(url, {
                     method: 'PATCH',
                     headers: { 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' },
                     body: JSON.stringify(payload)
                 });
             } else {
-                const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listArticles}')/items`;
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidArticles}')/items`;
                 const result = await spFetch(url, {
                     method: 'POST',
                     body: JSON.stringify(payload)
@@ -1813,7 +1815,7 @@
 
         async function deleteArticleFromSharePoint(spId) {
             if (!spId) return;
-            const url = `${SP_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SP_CONFIG.listArticles}')/items(${spId})`;
+            const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidArticles}')/items(${spId})`;
             await spFetch(url, {
                 method: 'DELETE',
                 headers: { 'IF-MATCH': '*' }
