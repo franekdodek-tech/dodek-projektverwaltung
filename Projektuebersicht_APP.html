@@ -1897,7 +1897,7 @@
         window.allProjects = {};
         window.articleDatabase = {};
         window.multiPositions = [];
-        window.currentBOM = [];
+        window.currentBOM = []; window.currentBOM = currentBOM;
         window.collapsedYears = new Set();
 
         // allProjects als direkter Verweis auf window.allProjects
@@ -2045,7 +2045,7 @@
         }
         
         function openArticleModal(articleId = null) {
-            currentBOM = [];
+            currentBOM = []; window.currentBOM = currentBOM;
             
             if (articleId) {
                 const article = articleDatabase[articleId];
@@ -2058,7 +2058,7 @@
                 document.getElementById('articleTrade').value = article.trade || '';
                 document.getElementById('articleType').value = article.type || 'material';
                 document.getElementById('articleDescription').value = article.description || '';
-                currentBOM = article.bom || [];
+                currentBOM = article.bom || []; window.currentBOM = currentBOM;
             } else {
                 document.getElementById('articleModalTitle').textContent = 'Neuer Artikel';
                 document.getElementById('editArticleId').value = '';
@@ -2160,13 +2160,13 @@
             list.innerHTML = currentBOM.map((item, index) => `
                 <div class="bom-item">
                     <input type="text" placeholder="Lieferant" value="${item.supplier || ''}" 
-                        onchange="currentBOM[${index}].supplier = this.value; renderBOM();" style="width: 100%;">
+                        onchange="window.currentBOM[${index}].supplier = this.value; renderBOM();" style="width: 100%;">
                     <input type="text" placeholder="Komponentenname" value="${item.name || ''}" 
-                        onchange="currentBOM[${index}].name = this.value; renderBOM();" style="width: 100%;">
+                        onchange="window.currentBOM[${index}].name = this.value; renderBOM();" style="width: 100%;">
                     <input type="number" step="0.01" placeholder="Menge" value="${item.quantity}" 
-                        onchange="currentBOM[${index}].quantity = parseFloat(this.value); calculatePurchaseFromBOM();" style="width: 100%;">
+                        onchange="window.currentBOM[${index}].quantity = parseFloat(this.value); calculatePurchaseFromBOM();" style="width: 100%;">
                     <input type="number" step="0.01" placeholder="Preis (€)" value="${item.price}" 
-                        onchange="currentBOM[${index}].price = parseFloat(this.value); calculatePurchaseFromBOM();" style="width: 100%;">
+                        onchange="window.currentBOM[${index}].price = parseFloat(this.value); calculatePurchaseFromBOM();" style="width: 100%;">
                     <button onclick="removeBOMItem(${index})" class="btn-danger btn-small">×</button>
                 </div>
             `).join('') + `
@@ -3262,6 +3262,7 @@
             }
             
             multiPositions = [createEmptyMultiPosition()];
+            window.multiPositions = multiPositions;
             document.getElementById('multiSupplier').value = '';
             renderMultiPositionList();
             document.getElementById('multiPositionModal').classList.add('active');
@@ -3309,29 +3310,29 @@
                         <div class="form-group">
                             <label>Beschreibung *</label>
                             <input type="text" value="${pos.description}" 
-                                   onchange="multiPositions[${index}].description = this.value" 
+                                   onchange="window.multiPositions[${index}].description = this.value" 
                                    placeholder="Positionsbeschreibung">
                         </div>
                         <div class="form-group">
                             <label>Menge *</label>
                             <input type="number" step="0.01" value="${pos.quantity}" 
-                                   onchange="multiPositions[${index}].quantity = parseFloat(this.value)">
+                                   onchange="window.multiPositions[${index}].quantity = parseFloat(this.value)">
                         </div>
                         <div class="form-group">
                             <label>Einzelpreis (€) *</label>
                             <input type="number" step="0.01" value="${pos.unitPrice}" 
-                                   onchange="multiPositions[${index}].unitPrice = parseFloat(this.value)">
+                                   onchange="window.multiPositions[${index}].unitPrice = parseFloat(this.value)">
                         </div>
                         <div class="form-group">
                             <label>Gewerk</label>
-                            <select onchange="multiPositions[${index}].trade = this.value">
+                            <select onchange="window.multiPositions[${index}].trade = this.value">
                             <option value="">Kein Gewerk</option>
                             ${sortedTrades.map(t => `<option value="${t}" ${pos.trade === t ? 'selected' : ''}>${t}</option>`).join('')}
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Typ</label>
-                        <select onchange="multiPositions[${index}].type = this.value">
+                        <select onchange="window.multiPositions[${index}].type = this.value">
                             <option value="material" ${pos.type === 'material' ? 'selected' : ''}>Material</option>
                             <option value="hour" ${pos.type === 'hour' ? 'selected' : ''}>Stunden</option>
                             <option value="shipping" ${pos.type === 'shipping' ? 'selected' : ''}>Versand</option>
@@ -4291,6 +4292,13 @@
         window.getYearFromProjectNumber = getYearFromProjectNumber;
         window.fillPurchaseFromArticle = typeof fillPurchaseFromArticle !== 'undefined' ? fillPurchaseFromArticle : null;
         window.fillSalesFromArticle = typeof fillSalesFromArticle !== 'undefined' ? fillSalesFromArticle : null;
+        window.loadArticleBackup = typeof loadArticleBackup !== 'undefined' ? loadArticleBackup : null;
+        window.loadArticleBackupFile = typeof loadArticleBackupFile !== 'undefined' ? loadArticleBackupFile : null;
+        window.renderStatistics = renderStatistics;
+        window.updateDeliveryWeek = updateDeliveryWeek;
+        window.calculateMarginFromPrices = calculateMarginFromPrices;
+        window.calculatePurchaseFromBOM = calculatePurchaseFromBOM;
+        window.renderBOM = renderBOM;
 
         } // Ende initApp
     </script>
