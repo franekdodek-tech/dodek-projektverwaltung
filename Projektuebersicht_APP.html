@@ -1560,7 +1560,6 @@
                         <div style="flex: 1; min-width: 150px;">
                             <label>Zuständig</label>
                             <select id="newTaskAssignedTo">
-                                ${TEAM_MEMBERS.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
                             </select>
                         </div>
                         <div>
@@ -4471,6 +4470,14 @@
         function renderProjectTasks() {
             const tbody = document.getElementById('tasksProjectTable');
             if (!tbody) return;
+
+            // Zuständigkeits-Dropdown befüllen falls noch leer
+            const assignedToSelect = document.getElementById('newTaskAssignedTo');
+            if (assignedToSelect && assignedToSelect.options.length === 0) {
+                assignedToSelect.innerHTML = TEAM_MEMBERS.map(m =>
+                    `<option value="${m.id}">${m.name}</option>`
+                ).join('');
+            }
 
             if (!currentProject.tasks || currentProject.tasks.length === 0) {
                 tbody.innerHTML = `
