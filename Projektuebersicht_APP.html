@@ -1224,17 +1224,6 @@
             <!-- Filter-Leiste -->
             <div style="background: white; padding: 15px 20px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
                 <div class="year-filter">
-                    <label>Status:</label>
-                    <select id="tasksStatusFilter" onchange="renderTasks()">
-                        <option value="all">Alle</option>
-                        <option value="open">Offen</option>
-                        <option value="ordered">Bestellt</option>
-                        <option value="partial">Teilgeliefert</option>
-                        <option value="delivered">Geliefert</option>
-                        <option value="invoiced">Abgerechnet</option>
-                    </select>
-                </div>
-                <div class="year-filter">
                     <label>Zuständig:</label>
                     <select id="tasksMemberFilter" onchange="renderTasks()">
                         <option value="all">Alle</option>
@@ -1246,11 +1235,20 @@
                         <option value="all">Alle Jahre</option>
                     </select>
                 </div>
+                <div class="year-filter">
+                    <label>
+                        <input type="checkbox" id="tasksHideDone" onchange="renderTasks()" checked>
+                        Erledigte ausblenden
+                    </label>
+                </div>
                 <span id="tasksCount" style="margin-left: auto; font-size: 13px; color: #666;"></span>
             </div>
 
-            <!-- Tabelle -->
-            <div class="positions-section">
+            <!-- Gruppe: Einkauf -->
+            <div class="positions-section" style="margin-bottom: 20px;">
+                <div class="section-header">
+                    <h3>🛒 Einkauf</h3>
+                </div>
                 <div class="positions-table-wrapper">
                     <table>
                         <thead>
@@ -1260,14 +1258,35 @@
                                 <th>Lieferant</th>
                                 <th>Beschreibung</th>
                                 <th>Gewerk</th>
-                                <th class="number-cell">Menge</th>
                                 <th class="number-cell">Gesamtpreis</th>
                                 <th>Status</th>
                                 <th>Zuständig</th>
                                 <th class="action-cell">Aktion</th>
                             </tr>
                         </thead>
-                        <tbody id="tasksTable"></tbody>
+                        <tbody id="tasksPurchaseTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Gruppe: Allgemein -->
+            <div class="positions-section">
+                <div class="section-header">
+                    <h3>📌 Allgemein</h3>
+                </div>
+                <div class="positions-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Projekt</th>
+                                <th>Kunde</th>
+                                <th>Aufgabe</th>
+                                <th>Zuständig</th>
+                                <th>Status</th>
+                                <th class="action-cell">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasksGeneralTable"></tbody>
                     </table>
                 </div>
             </div>
@@ -1525,6 +1544,46 @@
                 </div>
             </div>
             
+            <!-- AUFGABEN -->
+            <div class="positions-section">
+                <div class="section-header">
+                    <h3>Aufgaben</h3>
+                </div>
+
+                <div class="add-position-form">
+                    <h4 style="margin-bottom: 15px; color: #366092;">Neue Aufgabe hinzufügen</h4>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+                        <div style="flex: 2; min-width: 200px;">
+                            <label>Beschreibung *</label>
+                            <input type="text" id="newTaskDescription" placeholder="z.B. Aufstellungsplan abklären">
+                        </div>
+                        <div style="flex: 1; min-width: 150px;">
+                            <label>Zuständig</label>
+                            <select id="newTaskAssignedTo">
+                                ${TEAM_MEMBERS.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <button onclick="addTask()" class="btn-success">+ Aufgabe hinzufügen</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="positions-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Beschreibung</th>
+                                <th>Zuständig</th>
+                                <th>Status</th>
+                                <th class="action-cell">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasksProjectTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="export-section">
                 <h3 style="margin-bottom: 15px;">Export & Berichte</h3>
                 <div class="export-buttons">
@@ -1899,10 +1958,10 @@
         const TEAM_MEMBERS = [
             { id: 'unassigned',     name: '-- Nicht zugewiesen --' },
             { id: 'not_required',   name: '-- Nicht notwendig --' },
-            { id: 'member1',        name: 'Mitarbeiter 1' },
-            { id: 'member2',        name: 'Mitarbeiter 2' },
-            { id: 'member3',        name: 'Mitarbeiter 3' },
-            { id: 'member4',        name: 'Mitarbeiter 4' }
+            { id: 'franek',         name: 'Franek' },
+            { id: 'hagen',          name: 'Hagen' },
+            { id: 'harry',          name: 'Harry' },
+            { id: 'nicole',         name: 'Nicole' }
         ];
 
         // Bestellstatus EK-Positionen
@@ -1912,6 +1971,13 @@
             { id: 'partial',      label: 'Teilgeliefert', color: '#ffc107' },
             { id: 'delivered',    label: 'Geliefert',     color: '#28a745' },
             { id: 'invoiced',     label: 'Abgerechnet',   color: '#6c757d' }
+        ];
+
+        // Aufgabenstatus
+        const TASK_STATUS = [
+            { id: 'open',        label: 'Offen',          color: '#dc3545' },
+            { id: 'inprogress',  label: 'In Bearbeitung', color: '#fd7e14' },
+            { id: 'done',        label: 'Erledigt',       color: '#28a745' }
         ];
         
         // Globale Variablen — direkt auf window, keine lokalen Kopien
@@ -2803,6 +2869,7 @@
             updateArticleSelects();
             renderSalesPositions();
             renderPurchasePositions();
+            renderProjectTasks();
             updateSummary();
             updateTradeTable();
             
@@ -2828,6 +2895,9 @@
                     if (!pos.assignedTo) pos.assignedTo = 'unassigned';
                 });
             }
+
+            // Migration: tasks Array initialisieren falls nicht vorhanden
+            if (!currentProject.tasks) currentProject.tasks = [];
             
             document.getElementById('projectNumber').value = currentProject.projectNumber;
             document.getElementById('customer').value = currentProject.customer;
@@ -3905,75 +3975,105 @@
             });
         }
 
-        const statusFilter = document.getElementById('tasksStatusFilter').value;
         const memberFilter = document.getElementById('tasksMemberFilter').value;
         const yearFilter   = document.getElementById('tasksYearFilter').value;
+        const hideDone     = document.getElementById('tasksHideDone').checked;
 
-        // Alle EK-Positionen aller Projekte sammeln
-        const rows = [];
-        Object.values(allProjects).forEach(project => {
+        // ---- GRUPPE 1: EK-Positionen ----
+        const purchaseRows = [];
+        const purchaseStatusOrder = { open: 0, ordered: 1, partial: 2, delivered: 3, invoiced: 4 };
+
+        Object.values(window.allProjects).forEach(project => {
             const year = getYearFromProjectNumber(project.projectNumber);
             if (yearFilter !== 'all' && String(year) !== yearFilter) return;
 
-            (project.purchasePositions || []).forEach((pos, idx) => {
+            (project.purchasePositions || []).forEach((pos) => {
                 const posStatus     = pos.status     || 'open';
                 const posAssignedTo = pos.assignedTo || 'unassigned';
-
-                if (statusFilter !== 'all' && posStatus !== statusFilter) return;
+                if (hideDone && posStatus === 'invoiced') return;
                 if (memberFilter !== 'all' && posAssignedTo !== memberFilter) return;
-
-                rows.push({ project, pos, idx });
+                purchaseRows.push({ project, pos });
             });
         });
 
-        // Sortierung: Status-Priorität (offen zuerst), dann Projekt
-        const statusOrder = { open: 0, ordered: 1, partial: 2, delivered: 3, invoiced: 4 };
-        rows.sort((a, b) => {
-            const sa = statusOrder[a.pos.status || 'open'];
-            const sb = statusOrder[b.pos.status || 'open'];
+        purchaseRows.sort((a, b) => {
+            const sa = purchaseStatusOrder[a.pos.status || 'open'];
+            const sb = purchaseStatusOrder[b.pos.status || 'open'];
             if (sa !== sb) return sa - sb;
             return a.project.projectNumber.localeCompare(b.project.projectNumber);
         });
 
-        document.getElementById('tasksCount').textContent =
-            `${rows.length} Position(en) gefunden`;
-
-        const tbody = document.getElementById('tasksTable');
-
-        if (rows.length === 0) {
-            tbody.innerHTML = `
+        const purchaseTbody = document.getElementById('tasksPurchaseTable');
+        if (purchaseRows.length === 0) {
+            purchaseTbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:#999;">Keine Einkaufspositionen gefunden.</td></tr>';
+        } else {
+            purchaseTbody.innerHTML = purchaseRows.map(({ project, pos }) => {
+                const statusObj = PURCHASE_STATUS.find(s => s.id === (pos.status || 'open')) || PURCHASE_STATUS[0];
+                const memberObj = TEAM_MEMBERS.find(m => m.id === (pos.assignedTo || 'unassigned')) || TEAM_MEMBERS[0];
+                return `
                 <tr>
-                    <td colspan="10" style="text-align: center; padding: 40px; color: #999;">
-                        Keine Positionen gefunden. Filter anpassen.
+                    <td><span class="project-number">${project.projectNumber}</span></td>
+                    <td>${project.customer}</td>
+                    <td>${pos.supplier || '—'}</td>
+                    <td>${pos.description}</td>
+                    <td>${pos.trade || '—'}</td>
+                    <td class="number-cell">${formatCurrency(pos.totalPrice)}</td>
+                    <td><span style="font-weight:600;color:${statusObj.color};">${statusObj.label}</span></td>
+                    <td>${memberObj.name}</td>
+                    <td class="action-cell">
+                        <button class="btn-small" onclick="openProjectFromTasks('${project.projectNumber}')" title="Zum Projekt springen">→ Projekt</button>
                     </td>
                 </tr>`;
-            return;
+            }).join('');
         }
 
-        tbody.innerHTML = rows.map(({ project, pos }) => {
-            const statusObj  = PURCHASE_STATUS.find(s => s.id === (pos.status || 'open')) || PURCHASE_STATUS[0];
-            const memberObj  = TEAM_MEMBERS.find(m => m.id === (pos.assignedTo || 'unassigned')) || TEAM_MEMBERS[0];
-            return `
-            <tr>
-                <td><span class="project-number">${project.projectNumber}</span></td>
-                <td>${project.customer}</td>
-                <td>${pos.supplier || '—'}</td>
-                <td>${pos.description}</td>
-                <td>${pos.trade || '—'}</td>
-                <td class="number-cell">${pos.quantity}</td>
-                <td class="number-cell">${formatCurrency(pos.totalPrice)}</td>
-                <td>
-                    <span style="font-weight: 600; color: ${statusObj.color};">
-                        ${statusObj.label}
-                    </span>
-                </td>
-                <td>${memberObj.name}</td>
-                <td class="action-cell">
-                    <button class="btn-small" onclick="openProjectFromTasks('${project.projectNumber}')"
-                            title="Zum Projekt springen">→ Projekt</button>
-                </td>
-            </tr>`;
-        }).join('');
+        // ---- GRUPPE 2: Allgemeine Aufgaben ----
+        const generalRows = [];
+        const taskStatusOrder = { open: 0, inprogress: 1, done: 2 };
+
+        Object.values(window.allProjects).forEach(project => {
+            const year = getYearFromProjectNumber(project.projectNumber);
+            if (yearFilter !== 'all' && String(year) !== yearFilter) return;
+
+            (project.tasks || []).forEach((task) => {
+                const taskStatus     = task.status     || 'open';
+                const taskAssignedTo = task.assignedTo || 'unassigned';
+                if (hideDone && taskStatus === 'done') return;
+                if (memberFilter !== 'all' && taskAssignedTo !== memberFilter) return;
+                generalRows.push({ project, task });
+            });
+        });
+
+        generalRows.sort((a, b) => {
+            const sa = taskStatusOrder[a.task.status || 'open'];
+            const sb = taskStatusOrder[b.task.status || 'open'];
+            if (sa !== sb) return sa - sb;
+            return a.project.projectNumber.localeCompare(b.project.projectNumber);
+        });
+
+        const generalTbody = document.getElementById('tasksGeneralTable');
+        if (generalRows.length === 0) {
+            generalTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999;">Keine allgemeinen Aufgaben gefunden.</td></tr>';
+        } else {
+            generalTbody.innerHTML = generalRows.map(({ project, task }) => {
+                const statusObj = TASK_STATUS.find(s => s.id === (task.status || 'open')) || TASK_STATUS[0];
+                const memberObj = TEAM_MEMBERS.find(m => m.id === (task.assignedTo || 'unassigned')) || TEAM_MEMBERS[0];
+                return `
+                <tr>
+                    <td><span class="project-number">${project.projectNumber}</span></td>
+                    <td>${project.customer}</td>
+                    <td>${task.description}</td>
+                    <td>${memberObj.name}</td>
+                    <td><span style="font-weight:600;color:${statusObj.color};">${statusObj.label}</span></td>
+                    <td class="action-cell">
+                        <button class="btn-small" onclick="openProjectFromTasks('${project.projectNumber}')" title="Zum Projekt springen">→ Projekt</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        const total = purchaseRows.length + generalRows.length;
+        document.getElementById('tasksCount').textContent = `${purchaseRows.length} Einkauf · ${generalRows.length} Allgemein · ${total} gesamt`;
     }
 
     function openProjectFromTasks(projectNumber) {
@@ -4333,6 +4433,92 @@
         window.calculateMarginFromPrices = calculateMarginFromPrices;
         window.calculatePurchaseFromBOM = calculatePurchaseFromBOM;
         window.renderBOM = renderBOM;
+
+        // ========== AUFGABEN ==========
+
+        function addTask() {
+            const description = document.getElementById('newTaskDescription').value.trim();
+            if (!description) {
+                showMessage('Beschreibung erforderlich', 'error');
+                return;
+            }
+            const task = {
+                id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                description,
+                assignedTo: document.getElementById('newTaskAssignedTo').value,
+                status: 'open'
+            };
+            if (!currentProject.tasks) currentProject.tasks = [];
+            currentProject.tasks.push(task);
+            document.getElementById('newTaskDescription').value = '';
+            document.getElementById('newTaskAssignedTo').value = 'unassigned';
+            renderProjectTasks();
+            saveProject();
+        }
+
+        function deleteTask(index) {
+            currentProject.tasks.splice(index, 1);
+            renderProjectTasks();
+            saveProject();
+        }
+
+        function updateTask(index, field, value) {
+            currentProject.tasks[index][field] = value;
+            if (field === 'status') renderProjectTasks();
+            saveProject();
+        }
+
+        function renderProjectTasks() {
+            const tbody = document.getElementById('tasksProjectTable');
+            if (!tbody) return;
+
+            if (!currentProject.tasks || currentProject.tasks.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 30px; color: #999;">
+                            Keine Aufgaben vorhanden.
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = currentProject.tasks.map((task, index) => {
+                const statusObj = TASK_STATUS.find(s => s.id === (task.status || 'open')) || TASK_STATUS[0];
+                const statusOptions = TASK_STATUS.map(s =>
+                    `<option value="${s.id}" ${(task.status || 'open') === s.id ? 'selected' : ''}>${s.label}</option>`
+                ).join('');
+                const memberOptions = TEAM_MEMBERS.map(m =>
+                    `<option value="${m.id}" ${(task.assignedTo || 'unassigned') === m.id ? 'selected' : ''}>${m.name}</option>`
+                ).join('');
+                return `
+                <tr style="${task.status === 'done' ? 'opacity: 0.6;' : ''}">
+                    <td class="editable-cell">
+                        <input type="text" value="${task.description}"
+                               onchange="updateTask(${index}, 'description', this.value)"
+                               style="min-width: 250px;">
+                    </td>
+                    <td class="editable-cell">
+                        <select onchange="updateTask(${index}, 'assignedTo', this.value)">
+                            ${memberOptions}
+                        </select>
+                    </td>
+                    <td class="editable-cell">
+                        <select onchange="updateTask(${index}, 'status', this.value)"
+                                style="font-weight: 600; color: ${statusObj.color}; border-color: ${statusObj.color};">
+                            ${statusOptions}
+                        </select>
+                    </td>
+                    <td class="action-cell">
+                        <button onclick="deleteTask(${index})" class="btn-danger btn-small">Löschen</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        window.addTask = addTask;
+        window.deleteTask = deleteTask;
+        window.updateTask = updateTask;
+        window.renderProjectTasks = renderProjectTasks;
 
         // ========== DRAG & DROP ==========
 
