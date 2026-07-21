@@ -1,10 +1,16 @@
 # Dodek Projektverwaltung
 
-Browserbasierte Projektcontrolling- und Nachkalkulations-App für Dodek Technik GmbH & Co. KG.
+Browserbasierte Projektcontrolling- und Nachkalkulations-App für Dodek GmbH & Co. KG.
+
+🌐 **App aufrufen:** [https://franekdodek-tech.github.io/dodek-projektverwaltung/](https://franekdodek-tech.github.io/dodek-projektverwaltung/)
+
+---
 
 ## Zweck
 
-Die App dient als digitales Projektbuch für ca. 150 Aufträge pro Jahr. Sie erfasst alle laufenden Projekte, verwaltet Verkaufs- und Einkaufspositionen und ermöglicht eine vollständige Nachkalkulation pro Auftrag sowie projektübergreifende Auswertungen.
+Die App dient als digitales Projektbuch für ca. 150 Aufträge pro Jahr. Sie erfasst alle laufenden Projekte, verwaltet Verkaufs- und Einkaufspositionen, ermöglicht eine vollständige Nachkalkulation pro Auftrag sowie projektübergreifende Auswertungen und Aufgabenverwaltung.
+
+---
 
 ## Funktionsumfang
 
@@ -19,12 +25,20 @@ Die App dient als digitales Projektbuch für ca. 150 Aufträge pro Jahr. Sie erf
 ### Projekteditierung
 - Stammdaten: Projektnummer, Kunde, Projektbezeichnung, Auftragsnummer, Lieferdatum (mit KW-Anzeige)
 - Gewerke-Verwaltung pro Projekt
-- **Verkaufspositionen** (VK): Manuell oder aus Artikelstamm, mit Gewerk- und Typ-Zuordnung
-- **Einkaufspositionen** (EK): Manuell, aus Artikelstamm oder per BOM-Import, mit:
+- **Verkaufspositionen** (VK): Manuell oder aus Artikelstamm, mit Gewerk- und Typ-Zuordnung, Einzelpreis editierbar, Drag & Drop Sortierung
+- **Einkaufspositionen** (EK): Manuell, aus Artikelstamm oder per BOM-Import, Einzelpreis editierbar, Drag & Drop Sortierung, mit:
   - Bestellstatus: Offen / Bestellt / Teilgeliefert / Geliefert / Abgerechnet
-  - Zuständigkeitszuweisung an Teammitglied
+  - Zuständigkeitszuweisung an Teammitglied (Franek, Hagen, Harry, Nicole)
+- **Aufgaben**: Projektbezogene Freitextaufgaben mit Zuständigkeit und Status (Offen / In Bearbeitung / Erledigt)
+- **"Projekt abschließen"** Button — setzt alle EK-Positionen auf Abgerechnet / Nicht notwendig
 - Gewerke-Tabelle mit VK/EK/DB-Aufschlüsselung
 - Zusammenfassungskacheln (VK, EK, DB absolut und %)
+
+### Aufgabenliste (projektübergreifend)
+- Zwei Gruppen: **🛒 Einkauf** (EK-Positionen) und **📌 Allgemein** (Projektaufgaben)
+- Filter nach Zuständigkeit und Jahr
+- Checkbox "Erledigte ausblenden" (Standard: aktiv)
+- Direkter Sprung ins Projekt per Button
 
 ### Artikelstamm
 - Artikel mit ID, Bezeichnung, EK-Preis, Marge, VK-Preis, Gewerk, Typ
@@ -44,50 +58,81 @@ Die App dient als digitales Projektbuch für ca. 150 Aufträge pro Jahr. Sie erf
 - JSON-Backup / -Restore für Gesamtdaten und Artikelstamm
 - Druckbarer PDF-Report
 
+---
+
 ## Technischer Aufbau
 
-- **Single-file HTML-Anwendung** — keine Installation, kein Server, läuft direkt im Browser
-- **Datenspeicherung**: `localStorage` des Browsers (je Gerät lokal)
-- **Abhängigkeiten**: SheetJS (Excel-Export, CDN)
+- **Single-file HTML-Anwendung** — keine Installation, läuft im Browser
+- **Hosting**: GitHub Pages ([franekdodek-tech.github.io](https://franekdodek-tech.github.io/dodek-projektverwaltung/))
+- **Datenspeicherung**: SharePoint-Listen (`DodekProjekte`, `DodekArtikel`) über Microsoft REST API
+- **Authentifizierung**: Microsoft OAuth 2.0 (Azure AD / Entra ID), delegierte Berechtigung `AllSites.Write`
+- **Abhängigkeiten**: MSAL Browser 2.38.3 (lokal im Repo), SheetJS (CDN, Excel-Export)
 - **Zielplattform**: Desktop-Browser (Chrome, Edge, Firefox)
+- **Nutzer**: 4 Personen mit M365-Account (Dodek GmbH & Co. KG)
 
-## Geplante Erweiterungen
+### Azure / SharePoint Konfiguration
+| Parameter | Wert |
+|---|---|
+| SharePoint Site | `https://dodekgmbh.sharepoint.com/sites/DodekProjektverwaltung` |
+| Liste Projekte | `DodekProjekte` |
+| Liste Artikel | `DodekArtikel` |
+| Tenant-ID | in `SP_CONFIG` im App-Code |
+| Client-ID | in `SP_CONFIG` im App-Code |
+| Redirect URI | `https://franekdodek-tech.github.io/dodek-projektverwaltung/Projektuebersicht_APP.html` |
+
+---
+
+## Phasenstatus
 
 ### Phase 1 ✅ Abgeschlossen
-- [x] Bestellstatus pro EK-Position (Offen / Bestellt / Teilgeliefert / Geliefert / Abgerechnet)
-- [x] Zuständigkeitszuweisung pro EK-Position an Teammitglied
-- [x] "Projekt abschließen" Button — setzt alle EK-Positionen auf Abgerechnet / Nicht notwendig
-- [x] Projektübergreifende Aufgabenliste mit Filter nach Status, Zuständigkeit und Jahr
+- Bestellstatus pro EK-Position (Offen / Bestellt / Teilgeliefert / Geliefert / Abgerechnet)
+- Zuständigkeitszuweisung pro EK-Position an Teammitglied
+- "Projekt abschließen" Button
+- Projektübergreifende Aufgabenliste
+- Einzelpreis editierbar in VK und EK
+- Drag & Drop Sortierung für VK und EK Positionen
+- Aufgaben-Sektion im Projekt (allgemeine Projektaufgaben)
+- Aufgabenliste in zwei Gruppen (Einkauf / Allgemein) mit Filter
 
-### Phase 2
-- SharePoint als zentrale Datenbasis (Mehrbenutzer-Betrieb für 4 Nutzer, M365)
-- Microsoft Login (Azure AD OAuth)
+### Phase 2 ✅ Abgeschlossen
+- SharePoint als zentrale Datenbasis (Mehrbenutzer-Betrieb)
+- Microsoft Login (Azure AD OAuth über GitHub Pages)
+- Datenmigration aus localStorage-Backups
+- SharePoint-Felder HasAB / HasInvoice / HasDelivered / HasPostCalc für spätere Power Automate Nutzung
 
-### Phase 3
+### Phase 3 ⏳ Ausstehend
 - Power Automate: automatische E-Mail-Benachrichtigung bei Aufgabenzuweisung
+- Voraussetzung: Phase 2 stabil im Produktivbetrieb
+
+---
 
 ## Konfiguration
 
-Vor dem Einsatz sind zwei Konstanten im `<script>`-Block anzupassen:
+Team-Mitglieder werden in der Konstante `TEAM_MEMBERS` im `<script>`-Block gepflegt:
 
 ```javascript
-// Team-Mitglieder (Namen und IDs anpassen)
 const TEAM_MEMBERS = [
-    { id: 'unassigned', name: '-- Nicht zugewiesen --' },
-    { id: 'member1',    name: 'Mitarbeiter 1' },
-    ...
+    { id: 'unassigned',   name: '-- Nicht zugewiesen --' },
+    { id: 'not_required', name: '-- Nicht notwendig --' },
+    { id: 'franek',       name: 'Franek' },
+    { id: 'hagen',        name: 'Hagen' },
+    { id: 'harry',        name: 'Harry' },
+    { id: 'nicole',       name: 'Nicole' }
 ];
 ```
 
+---
+
 ## Datensicherung
 
-Da die Daten im `localStorage` des Browsers liegen, **regelmäßige JSON-Backups über die Backup-Verwaltung in der App anlegen**. Backups können jahresweise oder als Gesamtpaket exportiert und wiederhergestellt werden.
+Projektdaten liegen zentral in SharePoint — kein manuelles Backup mehr erforderlich. SharePoint versioniert automatisch. JSON-Backup / -Restore bleibt als Notfalloption in der App erhalten.
 
-## Branching-Strategie
+---
+
+## Deployment
+
+Änderungen an `Projektuebersicht_APP.html` im `main`-Branch werden automatisch über GitHub Pages deployed. Kein Build-Prozess, keine Pipeline.
 
 ```
-main          — stabile, getestete Version
-feature/...   — aktive Entwicklungsblöcke
+main  →  GitHub Pages  →  https://franekdodek-tech.github.io/dodek-projektverwaltung/
 ```
-
-Commits folgen dem Schema: `Block N: Kurzbeschreibung der Änderung`
