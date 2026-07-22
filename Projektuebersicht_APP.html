@@ -1895,7 +1895,15 @@
                         if (item.ArticleData) {
                             const article = JSON.parse(item.ArticleData);
                             article._spId = item.Id;
-                            articleDatabase[article.id] = article;
+                            // Fallback: id aus articleId oder SharePoint ArticleID Spalte
+                            if (!article.id) {
+                                article.id = article.articleId || item.ArticleID || null;
+                            }
+                            if (article.id) {
+                                articleDatabase[article.id] = article;
+                            } else {
+                                console.warn('Artikel ohne ID übersprungen, SP-ID:', item.Id);
+                            }
                         }
                     } catch (e) {
                         console.error('Fehler beim Parsen von Artikel', item.Id, e);
