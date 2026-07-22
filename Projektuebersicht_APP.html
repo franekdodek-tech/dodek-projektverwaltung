@@ -1487,6 +1487,10 @@
                             <input type="text" id="newPurchaseSupplier" placeholder="Lieferant">
                         </div>
                         <div class="form-group">
+                            <label for="newPurchaseSupplierArticleNumber">Lieferanten-Artikelnr.</label>
+                            <input type="text" id="newPurchaseSupplierArticleNumber" placeholder="z.B. HF-2435-K">
+                        </div>
+                        <div class="form-group">
                             <label for="newPurchaseDescription">Beschreibung *</label>
                             <input type="text" id="newPurchaseDescription" placeholder="Positionsbeschreibung" required>
                         </div>
@@ -1522,6 +1526,7 @@
                             <tr>
                                 <th style="width:30px;"></th>
                                 <th>Lieferant</th>
+                                <th>Lief.-Artikelnr.</th>
                                 <th>Menge</th>
                                 <th>Beschreibung</th>
                                 <th>Gewerk</th>
@@ -1594,6 +1599,24 @@
         </div>
     </div>
     
+    <!-- BOM IMPORT DIALOG -->
+    <div id="bomImportModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="bomImportTitle">Einkaufskomponenten übernehmen?</h3>
+                <button class="modal-close" onclick="closeBOMImportDialog()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: #555;">Der Artikel hat eine Stückliste. Sollen die Einkaufskomponenten automatisch in die EK-Liste übernommen werden?</p>
+                <div id="bomImportList" style="background: #f8f9fa; border-radius: 4px; padding: 12px; margin-bottom: 20px; font-size: 13px;"></div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button onclick="closeBOMImportDialog()" class="btn-secondary">Nein, nur VK</button>
+                    <button onclick="confirmBOMImport()" class="btn-success">✅ Ja, EK übernehmen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ARTICLE MODAL -->
     <div id="articleModal" class="modal">
         <div class="modal-content">
@@ -2219,6 +2242,7 @@
         function addBOMItem() {
             currentBOM.push({
                 supplier: '',
+                supplierArticleNumber: '',
                 name: '',
                 quantity: 1,
                 price: 0
@@ -2248,6 +2272,8 @@
                 <div class="bom-item">
                     <input type="text" placeholder="Lieferant" value="${item.supplier || ''}" 
                         onchange="window.currentBOM[${index}].supplier = this.value; renderBOM();" style="width: 100%;">
+                    <input type="text" placeholder="Lieferanten-Artikelnr." value="${item.supplierArticleNumber || ''}" 
+                        onchange="window.currentBOM[${index}].supplierArticleNumber = this.value;" style="width: 100%;">
                     <input type="text" placeholder="Komponentenname" value="${item.name || ''}" 
                         onchange="window.currentBOM[${index}].name = this.value; renderBOM();" style="width: 100%;">
                     <input type="number" step="0.01" placeholder="Menge" value="${item.quantity}" 
@@ -2418,6 +2444,7 @@
                         const position = {
                             id: `purchase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                             supplier: bomItem.supplier || '',
+                            supplierArticleNumber: bomItem.supplierArticleNumber || '',
                             description: bomItem.name,
                             quantity: bomItem.quantity,
                             unitPrice: bomItem.price,
@@ -3113,6 +3140,15 @@
             };
             
             currentProject.salesPositions.push(position);
+
+            // BOM-Dialog: prüfen ob gewählter Artikel eine Stückliste hat
+            const salesArticleId = document.getElementById('salesArticleSelect').value;
+            if (salesArticleId && articleDatabase[salesArticleId]) {
+                const selectedArticle = articleDatabase[salesArticleId];
+                if (selectedArticle.bom && selectedArticle.bom.length > 0) {
+                    showBOMImportDialog(selectedArticle);
+                }
+            }
             
             document.getElementById('newSalesDescription').value = '';
             document.getElementById('newSalesQuantity').value = '1';
@@ -3232,6 +3268,8 @@
             const position = {
                 id: `purchase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 supplier: document.getElementById('newPurchaseSupplier').value.trim(),
+                supplierArticleNumber: document.getElementById('newPurchaseSupplierArticleNumber') ? 
+                    document.getElementById('newPurchaseSupplierArticleNumber').value.trim() : '',
                 description: description,
                 quantity: quantity,
                 unitPrice: unitPrice,
@@ -3245,6 +3283,7 @@
             currentProject.purchasePositions.push(position);
             
             document.getElementById('newPurchaseSupplier').value = '';
+            document.getElementById('newPurchaseSupplierArticleNumber').value = '';
             document.getElementById('newPurchaseDescription').value = '';
             document.getElementById('newPurchaseQuantity').value = '1';
             document.getElementById('newPurchaseUnitPrice').value = '0';
@@ -3263,7 +3302,7 @@
             if (currentProject.purchasePositions.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="10" style="text-align: center; padding: 40px; color: #999;">
+                        <td colspan="11" style="text-align: center; padding: 40px; color: #999;">
                             Keine Einkaufspositionen vorhanden. Fügen Sie oben eine Position hinzu.
                         </td>
                     </tr>
@@ -3286,6 +3325,11 @@
                     <td class="editable-cell">
                         <input type="text" value="${pos.supplier || ''}" 
                                onchange="updatePurchasePosition(${index}, 'supplier', this.value)">
+                    </td>
+                    <td class="editable-cell">
+                        <input type="text" value="${pos.supplierArticleNumber || ''}"
+                               onchange="updatePurchasePosition(${index}, 'supplierArticleNumber', this.value)"
+                               placeholder="Artikelnr." style="width: 100px;">
                     </td>
                     <td class="editable-cell number-cell">
                         <input type="number" step="0.01" value="${pos.quantity}" 
@@ -4432,6 +4476,67 @@
         window.calculateMarginFromPrices = calculateMarginFromPrices;
         window.calculatePurchaseFromBOM = calculatePurchaseFromBOM;
         window.renderBOM = renderBOM;
+
+        // ========== BOM IMPORT DIALOG ==========
+
+        let _pendingBOMArticle = null;
+
+        function showBOMImportDialog(article) {
+            _pendingBOMArticle = article;
+            document.getElementById('bomImportTitle').textContent = `Komponenten für "${article.name}" übernehmen?`;
+
+            const bomTotal = article.bom.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+            let listHTML = `<strong>Stückliste (${article.bom.length} Komponenten, EK gesamt: ${formatCurrency(bomTotal)})</strong><br><br>`;
+            article.bom.forEach(item => {
+                listHTML += `• `;
+                if (item.supplier) listHTML += `<em>${item.supplier}</em>: `;
+                if (item.supplierArticleNumber) listHTML += `[${item.supplierArticleNumber}] `;
+                listHTML += `${item.name} — ${item.quantity}× ${formatCurrency(item.price)} = <strong>${formatCurrency(item.quantity * item.price)}</strong><br>`;
+            });
+            document.getElementById('bomImportList').innerHTML = listHTML;
+            document.getElementById('bomImportModal').classList.add('active');
+        }
+
+        function closeBOMImportDialog() {
+            document.getElementById('bomImportModal').classList.remove('active');
+            _pendingBOMArticle = null;
+            renderSalesPositions();
+            updateSummary();
+        }
+
+        async function confirmBOMImport() {
+            if (!_pendingBOMArticle) return;
+            const article = _pendingBOMArticle;
+
+            article.bom.forEach(bomItem => {
+                if (bomItem.name && bomItem.name.trim() !== '') {
+                    const position = {
+                        id: `purchase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                        supplier: bomItem.supplier || '',
+                        supplierArticleNumber: bomItem.supplierArticleNumber || '',
+                        description: bomItem.name,
+                        quantity: bomItem.quantity,
+                        unitPrice: bomItem.price,
+                        totalPrice: bomItem.quantity * bomItem.price,
+                        type: article.type || 'material',
+                        trade: article.trade || '',
+                        status: 'open',
+                        assignedTo: 'unassigned'
+                    };
+                    currentProject.purchasePositions.push(position);
+                }
+            });
+
+            closeBOMImportDialog();
+            renderPurchasePositions();
+            updateSummary();
+            await saveProject();
+            showMessage(`${article.bom.length} Komponenten als EK-Positionen übernommen`, 'success');
+        }
+
+        window.showBOMImportDialog = showBOMImportDialog;
+        window.closeBOMImportDialog = closeBOMImportDialog;
+        window.confirmBOMImport = confirmBOMImport;
 
         // ========== AUFGABEN ==========
 
