@@ -2054,13 +2054,13 @@
             try {
                 const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidStock}')/items?$select=Id,ItemName,LagerData&$top=500`;
                 const data = await spFetch(url);
-                stockDatabase = {};
+                window.stockDatabase = {};
                 (data.value || []).forEach(item => {
                     try {
                         if (item.LagerData) {
                             const stock = JSON.parse(item.LagerData);
                             stock._spId = item.Id;
-                            stockDatabase[stock.id] = stock;
+                            window.stockDatabase[stock.id] = stock;
                         }
                     } catch (e) {
                         console.error('Fehler beim Parsen von Lagerartikel', item.Id, e);
@@ -4813,8 +4813,7 @@
                 articleId: document.getElementById('newStockArticleId').value.trim() || ''
             };
 
-            stockDatabase[item.id] = item;
-            window.stockDatabase = stockDatabase;
+            window.stockDatabase[item.id] = item;
 
             saveStockItemToSharePoint(item).then(() => {
                 renderStock();
@@ -4829,18 +4828,18 @@
         }
 
         function updateStockItem(id, field, value) {
-            if (!stockDatabase[id]) return;
-            stockDatabase[id][field] = field === 'name' || field === 'unit' || field === 'articleId'
+            if (!window.stockDatabase[id]) return;
+            window.stockDatabase[id][field] = field === 'name' || field === 'unit' || field === 'articleId'
                 ? value : (parseInt(value) || 0);
-            saveStockItemToSharePoint(stockDatabase[id]);
+            saveStockItemToSharePoint(window.stockDatabase[id]);
             renderStock();
         }
 
         async function deleteStockItem(id) {
-            if (!confirm(`Lagerartikel "${stockDatabase[id]?.name}" löschen?`)) return;
-            const item = stockDatabase[id];
+            if (!confirm(`Lagerartikel "${window.stockDatabase[id]?.name}" löschen?`)) return;
+            const item = window.stockDatabase[id];
             if (item?._spId) await deleteStockItemFromSharePoint(item._spId);
-            delete stockDatabase[id];
+            delete window.stockDatabase[id];
             renderStock();
             showMessage('Lagerartikel gelöscht', 'success');
         }
@@ -4849,7 +4848,7 @@
             const tbody = document.getElementById('stockTable');
             if (!tbody) return;
 
-            const items = Object.values(stockDatabase);
+            const items = Object.values(window.stockDatabase);
 
             if (items.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#999;">Keine Lagerartikel vorhanden.</td></tr>`;
