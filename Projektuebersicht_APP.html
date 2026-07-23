@@ -1115,6 +1115,7 @@
             <button onclick="showView('dashboard')">📊 Projektübersicht</button>
             <button onclick="showView('statistics')">📈 Statistiken</button>
             <button onclick="showView('tasks')">📋 Aufgaben</button>
+            <button onclick="showView('stock')">📦 Lager</button>
             <button onclick="showView('editor')" id="editorButton" style="display: none;">📝 Projekt bearbeiten</button>
             <button onclick="showView('articles')">📦 Artikelstamm</button>
         </div>
@@ -1287,6 +1288,65 @@
                             </tr>
                         </thead>
                         <tbody id="tasksGeneralTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- STOCK VIEW -->
+        <div id="stockView" class="view">
+            <h2 style="margin-bottom: 20px;">📦 Lagerverwaltung</h2>
+
+            <!-- Neuer Lagerartikel -->
+            <div class="positions-section" style="margin-bottom: 20px;">
+                <div class="section-header">
+                    <h3>Neuen Lagerartikel anlegen</h3>
+                </div>
+                <div class="add-position-form">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+                        <div style="flex: 2; min-width: 200px;">
+                            <label>Artikelname *</label>
+                            <input type="text" id="newStockName" placeholder="z.B. Filterpatrone DN80">
+                        </div>
+                        <div style="min-width: 120px;">
+                            <label>Bestand</label>
+                            <input type="number" id="newStockQuantity" value="0" min="0" step="1">
+                        </div>
+                        <div style="min-width: 120px;">
+                            <label>Mindestmenge</label>
+                            <input type="number" id="newStockMinQuantity" value="1" min="0" step="1">
+                        </div>
+                        <div style="min-width: 150px;">
+                            <label>Einheit</label>
+                            <input type="text" id="newStockUnit" placeholder="Stück / m / kg">
+                        </div>
+                        <div style="min-width: 120px;">
+                            <label>Artikelnummer</label>
+                            <input type="text" id="newStockArticleId" placeholder="optional">
+                        </div>
+                        <div>
+                            <button onclick="addStockItem()" class="btn-success">+ Hinzufügen</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lagerliste -->
+            <div class="positions-section">
+                <div class="positions-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Artikelname</th>
+                                <th>Artikelnummer</th>
+                                <th class="number-cell">Bestand</th>
+                                <th>Einheit</th>
+                                <th class="number-cell">Mindestmenge</th>
+                                <th>Status</th>
+                                <th class="action-cell">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockTable"></tbody>
                     </table>
                 </div>
             </div>
@@ -1749,8 +1809,10 @@
             siteUrl:      'https://dodekgmbh.sharepoint.com/sites/DodekProjektverwaltung',
             listProjects: 'DodekProjekte',
             listArticles: 'DodekArtikel',
+            listStock:    'DodekLager',
             guidProjects: '1e1a835c-20b9-41ea-920f-f8b391981c71',
-            guidArticles: '26a0bbca-31bf-4a0d-8bd2-abe07d614725'
+            guidArticles: '26a0bbca-31bf-4a0d-8bd2-abe07d614725',
+            guidStock:    'df491bc5-f23b-493a-a8d0-37a15024cf29'
         };
 
         const msalConfig = {
@@ -1947,6 +2009,61 @@
             });
         }
 
+        // ========== SHAREPOINT LAGER ==========
+
+        async function loadStockFromSharePoint() {
+            try {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidStock}')/items?$select=Id,ItemName,LagerData&$top=500`;
+                const data = await spFetch(url);
+                stockDatabase = {};
+                (data.value || []).forEach(item => {
+                    try {
+                        if (item.LagerData) {
+                            const stock = JSON.parse(item.LagerData);
+                            stock._spId = item.Id;
+                            stockDatabase[stock.id] = stock;
+                        }
+                    } catch (e) {
+                        console.error('Fehler beim Parsen von Lagerartikel', item.Id, e);
+                    }
+                });
+            } catch (e) {
+                console.error('Fehler beim Laden des Lagers:', e);
+            }
+        }
+
+        async function saveStockItemToSharePoint(item) {
+            const payload = {
+                ItemName:  item.name,
+                LagerData: JSON.stringify(item)
+            };
+            if (item._spId) {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidStock}')/items(${item._spId})`;
+                await spFetch(url, {
+                    method: 'PATCH',
+                    headers: { 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidStock}')/items`;
+                const result = await spFetch(url, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                item._spId = result.id;
+                stockDatabase[item.id] = item;
+            }
+        }
+
+        async function deleteStockItemFromSharePoint(spId) {
+            if (!spId) return;
+            const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidStock}')/items(${spId})`;
+            await spFetch(url, {
+                method: 'DELETE',
+                headers: { 'IF-MATCH': '*' }
+            });
+        }
+
         // ========== LOGIN ==========
 
         async function loginMicrosoft() {
@@ -1973,6 +2090,7 @@
             document.getElementById('userDisplayName').textContent = account.name || account.username;
             await loadFromSharePoint();
             await loadArticlesFromSharePoint();
+            await loadStockFromSharePoint();
         }
 
         function logoutMicrosoft() {
@@ -2000,6 +2118,7 @@
             { id: 'ordered',      label: 'Bestellt',      color: '#fd7e14' },
             { id: 'partial',      label: 'Teilgeliefert', color: '#ffc107' },
             { id: 'delivered',    label: 'Geliefert',     color: '#28a745' },
+            { id: 'fromstock',    label: 'Aus Lager',     color: '#28a745' },
             { id: 'invoiced',     label: 'Abgerechnet',   color: '#6c757d' }
         ];
 
@@ -2014,6 +2133,7 @@
         window.currentProject = null;
         window.allProjects = {};
         window.articleDatabase = {};
+        window.stockDatabase = {};
         window.multiPositions = [];
         window.currentBOM = []; window.currentBOM = currentBOM;
         window.collapsedYears = new Set();
@@ -2022,6 +2142,7 @@
         // WICHTIG: Immer window.allProjects verwenden bei Neuzuweisungen
         var currentProject = window.currentProject;
         var articleDatabase = window.articleDatabase;
+        var stockDatabase = window.stockDatabase;
         var multiPositions = window.multiPositions;
         var currentBOM = window.currentBOM;
         var collapsedYears = window.collapsedYears;
@@ -2687,6 +2808,10 @@
                 document.getElementById('tasksView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
                 renderTasks();
+            } else if (viewName === 'stock') {
+                document.getElementById('stockView').classList.add('active');
+                document.getElementById('editorButton').style.display = 'none';
+                renderStock();
             }
         }
         
@@ -4485,6 +4610,118 @@
         window.calculateMarginFromPrices = calculateMarginFromPrices;
         window.calculatePurchaseFromBOM = calculatePurchaseFromBOM;
         window.renderBOM = renderBOM;
+
+        // ========== LAGERVERWALTUNG ==========
+
+        function addStockItem() {
+            const name = document.getElementById('newStockName').value.trim();
+            if (!name) { showMessage('Artikelname erforderlich', 'error'); return; }
+
+            const item = {
+                id: `stock_${Date.now()}`,
+                name,
+                quantity: parseInt(document.getElementById('newStockQuantity').value) || 0,
+                minQuantity: parseInt(document.getElementById('newStockMinQuantity').value) || 1,
+                unit: document.getElementById('newStockUnit').value.trim() || 'Stück',
+                articleId: document.getElementById('newStockArticleId').value.trim() || ''
+            };
+
+            stockDatabase[item.id] = item;
+            window.stockDatabase = stockDatabase;
+
+            saveStockItemToSharePoint(item).then(() => {
+                renderStock();
+                showMessage('Lagerartikel angelegt', 'success');
+            });
+
+            document.getElementById('newStockName').value = '';
+            document.getElementById('newStockQuantity').value = '0';
+            document.getElementById('newStockMinQuantity').value = '1';
+            document.getElementById('newStockUnit').value = '';
+            document.getElementById('newStockArticleId').value = '';
+        }
+
+        function updateStockItem(id, field, value) {
+            if (!stockDatabase[id]) return;
+            stockDatabase[id][field] = field === 'name' || field === 'unit' || field === 'articleId'
+                ? value : (parseInt(value) || 0);
+            saveStockItemToSharePoint(stockDatabase[id]);
+            renderStock();
+        }
+
+        async function deleteStockItem(id) {
+            if (!confirm(`Lagerartikel "${stockDatabase[id]?.name}" löschen?`)) return;
+            const item = stockDatabase[id];
+            if (item?._spId) await deleteStockItemFromSharePoint(item._spId);
+            delete stockDatabase[id];
+            renderStock();
+            showMessage('Lagerartikel gelöscht', 'success');
+        }
+
+        function renderStock() {
+            const tbody = document.getElementById('stockTable');
+            if (!tbody) return;
+
+            const items = Object.values(stockDatabase);
+
+            if (items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#999;">Keine Lagerartikel vorhanden.</td></tr>`;
+                return;
+            }
+
+            // Kritische Artikel zuerst
+            items.sort((a, b) => {
+                const aCrit = a.quantity < a.minQuantity;
+                const bCrit = b.quantity < b.minQuantity;
+                if (aCrit !== bCrit) return aCrit ? -1 : 1;
+                return a.name.localeCompare(b.name);
+            });
+
+            tbody.innerHTML = items.map(item => {
+                const critical = item.quantity < item.minQuantity;
+                const statusLabel = critical ? '🔴 Unter Mindestmenge' : '✅ OK';
+                const statusColor = critical ? '#dc3545' : '#28a745';
+                const rowStyle = critical ? 'background: #fff5f5;' : '';
+                return `
+                <tr style="${rowStyle}">
+                    <td class="editable-cell">
+                        <input type="text" value="${item.name}"
+                               onchange="updateStockItem('${item.id}', 'name', this.value)"
+                               style="min-width: 180px;">
+                    </td>
+                    <td class="editable-cell">
+                        <input type="text" value="${item.articleId || ''}"
+                               onchange="updateStockItem('${item.id}', 'articleId', this.value)"
+                               placeholder="optional" style="width: 100px;">
+                    </td>
+                    <td class="number-cell editable-cell">
+                        <input type="number" value="${item.quantity}" min="0" step="1"
+                               onchange="updateStockItem('${item.id}', 'quantity', this.value)"
+                               style="width: 70px; text-align: right; font-weight: 600;
+                                      color: ${critical ? '#dc3545' : 'inherit'};">
+                    </td>
+                    <td class="editable-cell">
+                        <input type="text" value="${item.unit || 'Stück'}"
+                               onchange="updateStockItem('${item.id}', 'unit', this.value)"
+                               style="width: 70px;">
+                    </td>
+                    <td class="number-cell editable-cell">
+                        <input type="number" value="${item.minQuantity}" min="0" step="1"
+                               onchange="updateStockItem('${item.id}', 'minQuantity', this.value)"
+                               style="width: 70px; text-align: right;">
+                    </td>
+                    <td style="font-weight: 600; color: ${statusColor};">${statusLabel}</td>
+                    <td class="action-cell">
+                        <button onclick="deleteStockItem('${item.id}')" class="btn-danger btn-small">Löschen</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        window.addStockItem = addStockItem;
+        window.updateStockItem = updateStockItem;
+        window.deleteStockItem = deleteStockItem;
+        window.renderStock = renderStock;
 
         // ========== BOM IMPORT DIALOG ==========
 
