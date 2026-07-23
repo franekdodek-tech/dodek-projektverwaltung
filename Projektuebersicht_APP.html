@@ -1271,7 +1271,7 @@
             </div>
 
             <!-- Gruppe: Allgemein -->
-            <div class="positions-section">
+            <div class="positions-section" style="margin-bottom: 20px;">
                 <div class="section-header">
                     <h3>📌 Allgemein</h3>
                 </div>
@@ -1291,6 +1291,28 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Gruppe: Lager -->
+            <div class="positions-section">
+                <div class="section-header">
+                    <h3>📦 Lager — Nachbestellbedarf</h3>
+                </div>
+                <div class="positions-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Artikel</th>
+                                <th class="number-cell">Bestand</th>
+                                <th class="number-cell">Mindestmenge</th>
+                                <th>Einheit</th>
+                                <th>Status</th>
+                                <th class="action-cell">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasksStockTable"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- STOCK VIEW -->
@@ -1303,6 +1325,14 @@
                     <h3>Neuen Lagerartikel anlegen</h3>
                 </div>
                 <div class="add-position-form">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 10px;">
+                        <div style="flex: 2; min-width: 200px;">
+                            <label>Aus Artikelstamm übernehmen</label>
+                            <select id="stockArticleSelect" onchange="fillStockFromArticle()">
+                                <option value="">-- Artikel wählen (optional) --</option>
+                            </select>
+                        </div>
+                    </div>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
                         <div style="flex: 2; min-width: 200px;">
                             <label>Artikelname *</label>
@@ -2811,6 +2841,7 @@
             } else if (viewName === 'stock') {
                 document.getElementById('stockView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
+                updateStockArticleSelect();
                 renderStock();
             }
         }
@@ -4167,7 +4198,7 @@
             (project.purchasePositions || []).forEach((pos) => {
                 const posStatus     = pos.status     || 'open';
                 const posAssignedTo = pos.assignedTo || 'unassigned';
-                if (hideDone && posStatus === 'invoiced') return;
+                if (hideDone && ['invoiced', 'delivered', 'fromstock'].includes(posStatus)) return;
                 if (memberFilter !== 'all' && posAssignedTo !== memberFilter) return;
                 purchaseRows.push({ project, pos });
             });
@@ -4250,7 +4281,34 @@
         }
 
         const total = purchaseRows.length + generalRows.length;
-        document.getElementById('tasksCount').textContent = `${purchaseRows.length} Einkauf · ${generalRows.length} Allgemein · ${total} gesamt`;
+        document.getElementById('tasksCount').textContent = `${purchaseRows.length} Einkauf · ${generalRows.length} Allgemein`;
+
+        // ---- GRUPPE 3: Lager Nachbestellbedarf ----
+        const stockItems = Object.values(window.stockDatabase || {});
+        const criticalStock = stockItems.filter(item => item.quantity < item.minQuantity);
+
+        const stockTbody = document.getElementById('tasksStockTable');
+        if (criticalStock.length === 0) {
+            stockTbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:#999;">Alle Lagerartikel über Mindestmenge. ✅</td></tr>`;
+        } else {
+            stockTbody.innerHTML = criticalStock.map(item => {
+                const diff = item.minQuantity - item.quantity;
+                return `
+                <tr style="background:#fff5f5;">
+                    <td><strong>${item.name}</strong>${item.articleId ? ` <span style="color:#999;font-size:12px;">[${item.articleId}]</span>` : ''}</td>
+                    <td class="number-cell" style="color:#dc3545;font-weight:600;">${item.quantity} ${item.unit}</td>
+                    <td class="number-cell">${item.minQuantity} ${item.unit}</td>
+                    <td>${item.unit}</td>
+                    <td style="color:#dc3545;font-weight:600;">🔴 ${diff} ${item.unit} fehlen</td>
+                    <td class="action-cell">
+                        <button class="btn-small" onclick="showView('stock')" title="Zum Lager springen">→ Lager</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        document.getElementById('tasksCount').textContent =
+            `${purchaseRows.length} Einkauf · ${generalRows.length} Allgemein · ${criticalStock.length} Lager kritisch`;
     }
 
     function openProjectFromTasks(projectNumber) {
@@ -4613,6 +4671,32 @@
 
         // ========== LAGERVERWALTUNG ==========
 
+        function updateStockArticleSelect() {
+            const select = document.getElementById('stockArticleSelect');
+            if (!select) return;
+            const current = select.value;
+            select.innerHTML = '<option value="">-- Artikel wählen (optional) --</option>';
+            Object.values(articleDatabase).sort((a, b) => a.name.localeCompare(b.name)).forEach(article => {
+                const opt = document.createElement('option');
+                opt.value = article.id;
+                opt.textContent = `${article.id} — ${article.name}`;
+                select.appendChild(opt);
+            });
+            select.value = current;
+        }
+
+        function fillStockFromArticle() {
+            const articleId = document.getElementById('stockArticleSelect').value;
+            if (!articleId || !articleDatabase[articleId]) return;
+            const article = articleDatabase[articleId];
+            document.getElementById('newStockName').value = article.name;
+            document.getElementById('newStockArticleId').value = article.id;
+            // Lieferant aus erster BOM-Komponente übernehmen falls vorhanden
+            if (article.bom && article.bom.length > 0 && article.bom[0].supplier) {
+                document.getElementById('newStockUnit').value = 'Stück';
+            }
+        }
+
         function addStockItem() {
             const name = document.getElementById('newStockName').value.trim();
             if (!name) { showMessage('Artikelname erforderlich', 'error'); return; }
@@ -4722,6 +4806,8 @@
         window.updateStockItem = updateStockItem;
         window.deleteStockItem = deleteStockItem;
         window.renderStock = renderStock;
+        window.fillStockFromArticle = fillStockFromArticle;
+        window.updateStockArticleSelect = updateStockArticleSelect;
 
         // ========== BOM IMPORT DIALOG ==========
 
