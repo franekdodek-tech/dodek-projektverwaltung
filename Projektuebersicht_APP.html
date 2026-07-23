@@ -291,7 +291,8 @@
         
         .actions-cell {
             text-align: center;
-            width: 100px;
+            width: 80px;
+            white-space: nowrap;
         }
         
         .project-header {
@@ -3723,9 +3724,10 @@
             return;
         }
         
+        const positions = window.multiPositions || [];
         let validPositions = 0;
         
-        multiPositions.forEach(pos => {
+        positions.forEach(pos => {
             if (!pos.description || isNaN(pos.quantity) || isNaN(pos.unitPrice)) {
                 return;
             }
@@ -3733,12 +3735,15 @@
             const position = {
                 id: `purchase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 supplier: supplier,
+                supplierArticleNumber: pos.supplierArticleNumber || '',
                 description: pos.description,
                 quantity: pos.quantity,
                 unitPrice: pos.unitPrice,
                 totalPrice: pos.quantity * pos.unitPrice,
                 type: pos.type,
-                trade: pos.trade
+                trade: pos.trade,
+                status: 'open',
+                assignedTo: 'unassigned'
             };
             
             currentProject.purchasePositions.push(position);
@@ -3753,6 +3758,7 @@
         renderPurchasePositions();
         updateSummary();
         updateTradeTable();
+        saveProject();
         closeMultiPositionDialog();
         showMessage(`${validPositions} Position(en) hinzugefügt`, 'success');
     }
