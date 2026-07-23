@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nachkalkulation - Projekt-Controlling</title>
+    <title>Dodek Hub</title>
     <style>
         * {
             margin: 0;
@@ -1076,8 +1076,8 @@
         <header>
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <h1>Nachkalkulation - Projekt-Controlling</h1>
-                    <p>Professionelle Projektkostenauswertung mit Artikelstamm</p>
+                    <h1>Dodek Hub</h1>
+                    <p>Projektsteuerung · Einkauf · Aufgaben · Lager</p>
                 </div>
                 <div style="text-align: right; font-size: 13px;">
                     <div id="userDisplayName" style="margin-bottom: 6px; font-weight: 600;"></div>
@@ -1426,12 +1426,20 @@
                 <div class="trade-management">
                     <h4>Gewerke verwalten</h4>
                     <div class="trade-list" id="tradeList"></div>
+                    
+                    <!-- Standardgewerke als Buttons -->
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 13px; color: #555;">Schnellauswahl:</label>
+                        <div id="defaultTradeButtons" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+                    </div>
+
+                    <!-- Freitext für Sonderfälle -->
                     <div class="add-trade-form">
                         <div class="form-group" style="flex: 1; max-width: 300px;">
-                            <label for="newTradeName">Neues Gewerk hinzufügen</label>
-                            <input type="text" id="newTradeName" placeholder="z.B. Elektroinstallation">
+                            <label for="newTradeName">Sondergewerk hinzufügen</label>
+                            <input type="text" id="newTradeName" placeholder="z.B. Sonderanfertigung">
                         </div>
-                        <button onclick="addTrade()" class="btn-success">Gewerk hinzufügen</button>
+                        <button onclick="addTrade()" class="btn-success">+ Hinzufügen</button>
                     </div>
                 </div>
                 
@@ -2158,6 +2166,13 @@
             { id: 'open',        label: 'Offen',          color: '#dc3545' },
             { id: 'inprogress',  label: 'In Bearbeitung', color: '#fd7e14' },
             { id: 'done',        label: 'Erledigt',       color: '#28a745' }
+        ];
+
+        // Standard-Gewerke für Schnellauswahl
+        const DEFAULT_TRADES = [
+            'Filteranlage', 'Ventilator', 'WRG', 'Rohrleitung',
+            'Elektrik', 'Steuerung', 'Montage', 'Service',
+            'Schallschutz', 'Erfassungselemente'
         ];
         
         // Globale Variablen — direkt auf window, keine lokalen Kopien
@@ -3243,22 +3258,46 @@
             const list = document.getElementById('tradeList');
             
             if (currentProject.trades.length === 0) {
-                list.innerHTML = '<p style="color: #999; font-size: 13px;">Keine Gewerke vorhanden. Fügen Sie unten ein Gewerk hinzu.</p>';
-                return;
+                list.innerHTML = '<p style="color: #999; font-size: 13px;">Keine Gewerke vorhanden. Bitte unten auswählen oder eintragen.</p>';
+            } else {
+                const sortedTrades = [...currentProject.trades].sort();
+                list.innerHTML = sortedTrades.map((trade) => {
+                    const index = currentProject.trades.indexOf(trade);
+                    return `
+                        <div class="trade-tag">
+                            <span>${trade}</span>
+                            <button onclick="removeTrade(${index})" title="Gewerk entfernen">×</button>
+                        </div>
+                    `;
+                }).join('');
             }
-            
-            const sortedTrades = [...currentProject.trades].sort();
-            
-            list.innerHTML = sortedTrades.map((trade) => {
-                const index = currentProject.trades.indexOf(trade);
-                return `
-                    <div class="trade-tag">
-                        <span>${trade}</span>
-                        <button onclick="removeTrade(${index})" title="Gewerk entfernen">×</button>
-                    </div>
-                `;
-            }).join('');
+
+            // Schnellauswahl-Buttons rendern — bereits gesetzte ausgegraut
+            const btnContainer = document.getElementById('defaultTradeButtons');
+            if (btnContainer) {
+                btnContainer.innerHTML = DEFAULT_TRADES.map(trade => {
+                    const active = currentProject.trades.includes(trade);
+                    return `<button 
+                        onclick="addTradeByName('${trade}')"
+                        style="padding: 5px 12px; font-size: 12px; border-radius: 15px; border: 1px solid ${active ? '#28a745' : '#366092'}; 
+                               background: ${active ? '#28a745' : 'white'}; color: ${active ? 'white' : '#366092'}; 
+                               cursor: ${active ? 'default' : 'pointer'};"
+                        ${active ? 'disabled' : ''}
+                        title="${active ? 'Bereits hinzugefügt' : 'Klicken zum Hinzufügen'}"
+                    >${trade}</button>`;
+                }).join('');
+            }
         }
+
+        function addTradeByName(tradeName) {
+            if (currentProject.trades.includes(tradeName)) return;
+            currentProject.trades.push(tradeName);
+            renderTradeList();
+            updateTradeSelects();
+            updateTradeTable();
+        }
+
+        window.addTradeByName = addTradeByName;
         
         function addTrade() {
             const tradeName = document.getElementById('newTradeName').value.trim();
