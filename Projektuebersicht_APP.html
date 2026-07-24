@@ -253,6 +253,18 @@
         .project-list tbody tr.status-invoice:hover {
             background: #fff9b3;
         }
+
+        .project-list tbody tr.status-filter-hidden {
+            display: none;
+        }
+
+        .project-list tbody tr.status-needs-postcalc {
+            background: #f3e8ff;
+        }
+        
+        .project-list tbody tr.status-needs-postcalc:hover {
+            background: #ead5ff;
+        }
         
         .project-list tbody tr.status-postcalc {
             background: white;
@@ -1139,6 +1151,17 @@
                     <label>Jahr:</label>
                     <select id="yearFilter" onchange="applyYearFilter()">
                         <option value="all">Alle Jahre</option>
+                    </select>
+                </div>
+                <div class="year-filter">
+                    <label>Status-Filter:</label>
+                    <select id="statusFilter" onchange="applyYearFilter()">
+                        <option value="all">Alle</option>
+                        <option value="none">Kein AB</option>
+                        <option value="ab">AB gesetzt</option>
+                        <option value="invoice">Rechnung (offen)</option>
+                        <option value="needs-postcalc">Nachkalk. ausstehend</option>
+                        <option value="postcalc">Vollständig</option>
                     </select>
                 </div>
             </div>
@@ -2171,8 +2194,8 @@
         // Standard-Gewerke für Schnellauswahl
         const DEFAULT_TRADES = [
             'Filteranlage', 'Ventilator', 'WRG', 'Rohrleitung',
-            'Elektrik', 'Steuerung', 'Montage', 'Service',
-            'Schallschutz', 'Erfassungselemente'
+            'Elektrik', 'Steuerung', 'Montage', 'UVV',
+            'Schallschutz', 'Erfassungselemente', 'Ersatzteile'
         ];
         
         // Globale Variablen — direkt auf window, keine lokalen Kopien
@@ -2980,7 +3003,7 @@
                 if (hasPostCalc) {
                     statusClass = 'status-postcalc';
                 } else if (hasInvoice) {
-                    statusClass = 'status-invoice';
+                    statusClass = 'status-needs-postcalc';
                 } else if (hasAB) {
                     statusClass = 'status-ab';
                 }
@@ -4257,17 +4280,29 @@
 
     function applyYearFilter() {
         const selectedYear = document.getElementById('yearFilter').value;
-        
-        if (selectedYear === 'all') {
-            document.querySelectorAll('.project-list').forEach(list => {
-                list.style.display = 'block';
-            });
-        } else {
-            document.querySelectorAll('.project-list').forEach(list => {
-                const year = list.getAttribute('data-year');
-                list.style.display = (year === selectedYear) ? 'block' : 'none';
-            });
-        }
+        const statusFilter = document.getElementById('statusFilter')?.value || 'all';
+
+        document.querySelectorAll('.project-list').forEach(list => {
+            const year = list.getAttribute('data-year');
+            const yearMatch = selectedYear === 'all' || year === selectedYear;
+            list.style.display = yearMatch ? 'block' : 'none';
+        });
+
+        // Status-Filter auf Zeilen anwenden
+        document.querySelectorAll('.project-list tbody tr').forEach(row => {
+            if (statusFilter === 'all') {
+                row.classList.remove('status-filter-hidden');
+                return;
+            }
+            const cls = row.className;
+            let match = false;
+            if (statusFilter === 'none')          match = cls.includes('status-none');
+            else if (statusFilter === 'ab')        match = cls.includes('status-ab');
+            else if (statusFilter === 'invoice')   match = cls.includes('status-invoice');
+            else if (statusFilter === 'needs-postcalc') match = cls.includes('status-needs-postcalc');
+            else if (statusFilter === 'postcalc')  match = cls.includes('status-postcalc');
+            row.classList.toggle('status-filter-hidden', !match);
+        });
     }
 
     // ========== AUFGABENLISTE ==========
