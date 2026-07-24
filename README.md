@@ -1,6 +1,6 @@
-# Dodek Projektverwaltung
+# Dodek Hub
 
-Browserbasierte Projektcontrolling- und Nachkalkulations-App für Dodek GmbH & Co. KG.
+Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Aufgaben, Artikelstamm und Lager in einer Anwendung.
 
 🌐 **App aufrufen:** [https://franekdodek-tech.github.io/dodek-projektverwaltung/](https://franekdodek-tech.github.io/dodek-projektverwaltung/)
 
@@ -8,51 +8,64 @@ Browserbasierte Projektcontrolling- und Nachkalkulations-App für Dodek GmbH & C
 
 ## Zweck
 
-Die App dient als digitales Projektbuch für ca. 150 Aufträge pro Jahr. Sie erfasst alle laufenden Projekte, verwaltet Verkaufs- und Einkaufspositionen, ermöglicht eine vollständige Nachkalkulation pro Auftrag sowie projektübergreifende Auswertungen und Aufgabenverwaltung.
+Dodek Hub ist das zentrale operative System für ca. 150 Aufträge pro Jahr. Es deckt ab: Projektsteuerung, Angebots- und Auftragskalkulation, Einkaufsverwaltung, Aufgaben- und Teamkoordination, Artikelstamm mit Stücklisten sowie Lagerverwaltung.
 
 ---
 
 ## Funktionsumfang
 
-### Projektübersicht (Dashboard)
+### 📊 Dashboard
 - Alle Projekte gelistet, nach Jahrgängen gruppiert und kollabierbar
 - Farbliche Statusanzeige je Projekt (kein AB / AB gesetzt / Rechnung / Nachkalkulation)
 - Schnellzugriff auf AB, Rechnung, Geliefert, Nachkalkulation per Checkbox
 - Volltextsuche über Projektnummer, Kunde, Bezeichnung und Artikelpositionen
 - Jahresfilter
 - VK/EK/DB-Summen pro Jahrgang
+- **Projekt kopieren** — übernimmt VK/EK-Positionen und Gewerke ohne Stammdaten (Gedächtnisstütze für Standardkomponenten)
 
-### Projekteditierung
+### 📁 Projekteditierung
 - Stammdaten: Projektnummer, Kunde, Projektbezeichnung, Auftragsnummer, Lieferdatum (mit KW-Anzeige)
-- Gewerke-Verwaltung pro Projekt
-- **Verkaufspositionen** (VK): Manuell oder aus Artikelstamm, mit Gewerk- und Typ-Zuordnung, Einzelpreis editierbar, Drag & Drop Sortierung
+- **Gewerke-Schnellauswahl** per Buttonbox (Filteranlage, Ventilator, WRG, Rohrleitung, Elektrik, Steuerung, Montage, Service, Schallschutz, Erfassungselemente) + Freitexteingabe für Sonderfälle
+- **Verkaufspositionen** (VK): Manuell oder aus Artikelstamm, Einzelpreis editierbar, Drag & Drop Sortierung
+  - BOM-Dialog: wenn VK-Artikel eine Stückliste hat → automatischer Import als EK-Positionen
 - **Einkaufspositionen** (EK): Manuell, aus Artikelstamm oder per BOM-Import, Einzelpreis editierbar, Drag & Drop Sortierung, mit:
-  - Bestellstatus: Offen / Bestellt / Teilgeliefert / Geliefert / Abgerechnet
-  - Zuständigkeitszuweisung an Teammitglied (Franek, Hagen, Harry, Nicole)
+  - Bestellstatus: Offen / Bestellt / Teilgeliefert / Geliefert / Aus Lager / Abgerechnet
+  - Lieferantenartikelnummer pro Position
+  - Zuständigkeitszuweisung (Franek, Hagen, Harry, Nicole)
+  - Mehrere Positionen eines Lieferanten per Dialog
 - **Aufgaben**: Projektbezogene Freitextaufgaben mit Zuständigkeit und Status (Offen / In Bearbeitung / Erledigt)
-- **"Projekt abschließen"** Button — setzt alle EK-Positionen auf Abgerechnet / Nicht notwendig
+- **"Projekt abschließen"** — setzt alle EK-Positionen auf Abgerechnet / Nicht notwendig
 - Gewerke-Tabelle mit VK/EK/DB-Aufschlüsselung
 - Zusammenfassungskacheln (VK, EK, DB absolut und %)
 
-### Aufgabenliste (projektübergreifend)
-- Zwei Gruppen: **🛒 Einkauf** (EK-Positionen) und **📌 Allgemein** (Projektaufgaben)
+### 📋 Aufgabenliste (projektübergreifend)
+- Drei Gruppen: **🛒 Einkauf** (EK-Positionen) / **📌 Allgemein** (Projektaufgaben) / **📦 Lager** (Nachbestellbedarf)
 - Filter nach Zuständigkeit und Jahr
-- Checkbox "Erledigte ausblenden" (Standard: aktiv)
-- Direkter Sprung ins Projekt per Button
+- Checkbox "Erledigte ausblenden" — blendet Geliefert, Aus Lager, Abgerechnet und Erledigt aus
+- Direkter Sprung ins Projekt bzw. ins Lager per Button
 
-### Artikelstamm
+### 📦 Lagerverwaltung
+- Lagerartikel mit Bestand, Mindestmenge, Einheit, optionaler Artikelnummer
+- Übernahme aus Artikelstamm per Dropdown
+- Farbliche Kennzeichnung: grün = OK, rot = unter Mindestmenge
+- Kritische Artikel werden zuerst angezeigt
+- Daten in SharePoint `DodekLager`
+- Kritische Artikel erscheinen automatisch in der Aufgabenliste
+
+### 🗂️ Artikelstamm
 - Artikel mit ID, Bezeichnung, EK-Preis, Marge, VK-Preis, Gewerk, Typ
-- Stücklisten (BOM) pro Artikel mit Lieferant, Komponente, Menge, Preis
+- Artikel-ID beim Bearbeiten änderbar
+- Stücklisten (BOM) pro Artikel mit Lieferant, Lieferantenartikelnummer, Komponente, Menge, Preis
 - Artikelauswahl beim Anlegen von VK- und EK-Positionen
-- BOM-Import: Stückliste eines Artikels wird automatisch in EK-Positionen umgewandelt
+- BOM-Import: Stückliste wird automatisch in EK-Positionen umgewandelt (inkl. Lieferantenartikelnummern)
 
-### Statistiken
+### 📈 Statistiken
 - Jahresbezogene Auswertungen
 - Top-10 Kunden nach Umsatz, Projektanzahl und Deckungsbeitrag
 - Gewerke-Analyse
 - Zeitliche Verteilung
 
-### Export
+### 💾 Export
 - Excel-Export pro Projekt (Verkauf, Einkauf, Gewerke auf separaten Sheets)
 - JSON-Export / -Import pro Projekt
 - JSON-Backup / -Restore für Gesamtdaten und Artikelstamm
@@ -62,54 +75,61 @@ Die App dient als digitales Projektbuch für ca. 150 Aufträge pro Jahr. Sie erf
 
 ## Technischer Aufbau
 
-- **Single-file HTML-Anwendung** — keine Installation, läuft im Browser
+- **Single-file HTML-Anwendung** — keine Installation, läuft direkt im Browser
 - **Hosting**: GitHub Pages ([franekdodek-tech.github.io](https://franekdodek-tech.github.io/dodek-projektverwaltung/))
-- **Datenspeicherung**: SharePoint-Listen (`DodekProjekte`, `DodekArtikel`) über Microsoft REST API
+- **Datenspeicherung**: SharePoint-Listen über Microsoft REST API
 - **Authentifizierung**: Microsoft OAuth 2.0 (Azure AD / Entra ID), delegierte Berechtigung `AllSites.Write`
 - **Abhängigkeiten**: MSAL Browser 2.38.3 (lokal im Repo), SheetJS (CDN, Excel-Export)
 - **Zielplattform**: Desktop-Browser (Chrome, Edge, Firefox)
 - **Nutzer**: 4 Personen mit M365-Account (Dodek GmbH & Co. KG)
 
-### Azure / SharePoint Konfiguration
+### SharePoint Konfiguration
+
 | Parameter | Wert |
 |---|---|
 | SharePoint Site | `https://dodekgmbh.sharepoint.com/sites/DodekProjektverwaltung` |
-| Liste Projekte | `DodekProjekte` |
-| Liste Artikel | `DodekArtikel` |
+| Liste Projekte | `DodekProjekte` (GUID in `SP_CONFIG`) |
+| Liste Artikel | `DodekArtikel` (GUID in `SP_CONFIG`) |
+| Liste Lager | `DodekLager` (GUID in `SP_CONFIG`) |
 | Tenant-ID | in `SP_CONFIG` im App-Code |
 | Client-ID | in `SP_CONFIG` im App-Code |
 | Redirect URI | `https://franekdodek-tech.github.io/dodek-projektverwaltung/Projektuebersicht_APP.html` |
+
+> **Hinweis:** SharePoint-Listen werden über GUID angesprochen (nicht über Namen) da der interne Titel in dieser Umgebung leer bleibt.
 
 ---
 
 ## Phasenstatus
 
 ### Phase 1 ✅ Abgeschlossen
-- Bestellstatus pro EK-Position (Offen / Bestellt / Teilgeliefert / Geliefert / Abgerechnet)
-- Zuständigkeitszuweisung pro EK-Position an Teammitglied
+- EK-Bestellstatus und Zuständigkeit
 - "Projekt abschließen" Button
-- Projektübergreifende Aufgabenliste
+- Aufgaben-Sektion im Projekt
+- Aufgabenliste projektübergreifend (Einkauf / Allgemein / Lager)
 - Einzelpreis editierbar in VK und EK
-- Drag & Drop Sortierung für VK und EK Positionen
-- Aufgaben-Sektion im Projekt (allgemeine Projektaufgaben)
-- Aufgabenliste in zwei Gruppen (Einkauf / Allgemein) mit Filter
+- Drag & Drop Sortierung
+- Gewerke-Schnellauswahl per Buttonbox
+- BOM-Import Dialog beim VK-Hinzufügen
+- Lieferantenartikelnummer in BOM und EK
+- Projekt kopieren
+- Lagerverwaltung mit SharePoint-Anbindung
+- "Aus Lager" als EK-Bestellstatus
 
 ### Phase 2 ✅ Abgeschlossen
-- SharePoint als zentrale Datenbasis (Mehrbenutzer-Betrieb)
+- SharePoint als zentrale Datenbasis (Mehrbenutzer-Betrieb für 4 Nutzer)
 - Microsoft Login (Azure AD OAuth über GitHub Pages)
 - Datenmigration aus localStorage-Backups
-- SharePoint-Felder HasAB / HasInvoice / HasDelivered / HasPostCalc für spätere Power Automate Nutzung
+- SharePoint-Felder HasAB / HasInvoice / HasDelivered / HasPostCalc
 
 ### Phase 3 ⏳ Ausstehend
-- Power Automate: automatische E-Mail-Benachrichtigung bei Aufgabenzuweisung
+- Power Automate: E-Mail-Benachrichtigung bei Aufgabenzuweisung
 - Voraussetzung: Phase 2 stabil im Produktivbetrieb
 
 ---
 
 ## Konfiguration
 
-Team-Mitglieder werden in der Konstante `TEAM_MEMBERS` im `<script>`-Block gepflegt:
-
+### Team-Mitglieder
 ```javascript
 const TEAM_MEMBERS = [
     { id: 'unassigned',   name: '-- Nicht zugewiesen --' },
@@ -121,17 +141,26 @@ const TEAM_MEMBERS = [
 ];
 ```
 
+### Standard-Gewerke
+```javascript
+const DEFAULT_TRADES = [
+    'Filteranlage', 'Ventilator', 'WRG', 'Rohrleitung',
+    'Elektrik', 'Steuerung', 'Montage', 'Service',
+    'Schallschutz', 'Erfassungselemente'
+];
+```
+
 ---
 
 ## Datensicherung
 
-Projektdaten liegen zentral in SharePoint — kein manuelles Backup mehr erforderlich. SharePoint versioniert automatisch. JSON-Backup / -Restore bleibt als Notfalloption in der App erhalten.
+Projektdaten liegen zentral in SharePoint — SharePoint versioniert automatisch. JSON-Backup / -Restore bleibt als Notfalloption in der App erhalten.
 
 ---
 
 ## Deployment
 
-Änderungen an `Projektuebersicht_APP.html` im `main`-Branch werden automatisch über GitHub Pages deployed. Kein Build-Prozess, keine Pipeline.
+Änderungen an `Projektuebersicht_APP.html` im `main`-Branch werden automatisch über GitHub Pages deployed.
 
 ```
 main  →  GitHub Pages  →  https://franekdodek-tech.github.io/dodek-projektverwaltung/
