@@ -4192,21 +4192,34 @@
             const customer = row.cells[1]?.textContent.toLowerCase() || '';
             const projectName = row.cells[2]?.textContent.toLowerCase() || '';
             
-            // Suche in Verkaufspositionen
             const projectNum = row.cells[0]?.textContent.trim();
-            const project = allProjects[projectNum];
-            let articlesMatch = false;
+            const project = window.allProjects[projectNum];
+            let positionsMatch = false;
             
-            if (project && project.salesPositions) {
-                articlesMatch = project.salesPositions.some(pos => 
-                    pos.description.toLowerCase().includes(searchTerm)
-                );
+            if (project) {
+                if (project.salesPositions) {
+                    positionsMatch = project.salesPositions.some(pos =>
+                        pos.description?.toLowerCase().includes(searchTerm)
+                    );
+                }
+                if (!positionsMatch && project.purchasePositions) {
+                    positionsMatch = project.purchasePositions.some(pos =>
+                        pos.description?.toLowerCase().includes(searchTerm) ||
+                        pos.supplier?.toLowerCase().includes(searchTerm) ||
+                        (pos.supplierArticleNumber || '').toLowerCase().includes(searchTerm)
+                    );
+                }
+                if (!positionsMatch && project.tasks) {
+                    positionsMatch = project.tasks.some(task =>
+                        task.description?.toLowerCase().includes(searchTerm)
+                    );
+                }
             }
             
-            const matches = projectNumber.includes(searchTerm) || 
-                            customer.includes(searchTerm) || 
+            const matches = projectNumber.includes(searchTerm) ||
+                            customer.includes(searchTerm) ||
                             projectName.includes(searchTerm) ||
-                            articlesMatch;
+                            positionsMatch;
             
             if (matches) {
                 row.classList.remove('search-hidden');
@@ -4216,9 +4229,10 @@
             }
         });
         
-        document.getElementById('searchResults').textContent = 
+        document.getElementById('searchResults').textContent =
             `${visibleCount} von ${totalCount} Projekten gefunden`;
     }
+
 
     // ========== JAHRESFILTER ==========
 
