@@ -278,6 +278,10 @@
             padding: 12px;
             font-size: 14px;
         }
+
+        .positions-section td {
+            vertical-align: top;
+        }
         
         .project-number {
             font-weight: 700;
@@ -2337,10 +2341,16 @@
 
         // Auto-wachsende Textarea
         function autoGrow(el) {
-            el.style.height = 'auto';
+            el.style.height = '30px';
             el.style.height = el.scrollHeight + 'px';
         }
         window.autoGrow = autoGrow;
+
+        // Alle Textareas nach dem Rendern anpassen
+        function autoGrowAll() {
+            document.querySelectorAll('textarea.auto-grow').forEach(el => autoGrow(el));
+        }
+        window.autoGrowAll = autoGrowAll;
 
         async function loginMicrosoft() {
             try {
@@ -3718,7 +3728,7 @@
                                onchange="updateSalesPosition(${index}, 'quantity', parseFloat(this.value))" style="width: 80px;">
                     </td>
                     <td class="editable-cell">
-                        <textarea class="auto-grow" oninput="autoGrow(this)" onchange="updateSalesPosition(${index}, 'description', this.value)" style="min-width:200px;">${pos.description}</textarea>
+                        <textarea class="auto-grow" oninput="autoGrow(this)" onfocus="autoGrow(this)" onchange="updateSalesPosition(${index}, 'description', this.value)" style="min-width:200px;">${pos.description}</textarea>
                     </td>
                     <td class="editable-cell">
                         <select onchange="updateSalesPosition(${index}, 'trade', this.value)">
@@ -3747,6 +3757,7 @@
                 </tr>
             `}).join('');
             initDragAndDrop('salesTable', currentProject.salesPositions, renderSalesPositions);
+            autoGrowAll();
         }
         
         function updateSalesPosition(index, field, value) {
@@ -3854,7 +3865,7 @@
                 <tr draggable="true">
                     <td class="drag-handle" title="Ziehen zum Sortieren">⠿</td>
                     <td class="editable-cell">
-                        <textarea class="auto-grow" oninput="autoGrow(this)"
+                        <textarea class="auto-grow" oninput="autoGrow(this)" onfocus="autoGrow(this)"
                                onchange="updatePurchasePosition(${index}, 'supplier', this.value)">${pos.supplier || ''}</textarea>
                     </td>
                     <td class="editable-cell number-cell">
@@ -3862,7 +3873,7 @@
                                onchange="updatePurchasePosition(${index}, 'quantity', parseFloat(this.value))" style="width: 80px;">
                     </td>
                     <td class="editable-cell">
-                        <textarea class="auto-grow" oninput="autoGrow(this)"
+                        <textarea class="auto-grow" oninput="autoGrow(this)" onfocus="autoGrow(this)"
                                onchange="updatePurchasePosition(${index}, 'description', this.value)" style="min-width: 200px;">${pos.description}</textarea>
                     </td>
                     <td class="editable-cell">
@@ -3903,6 +3914,7 @@
                 </tr>
             `}).join('');
             initDragAndDrop('purchaseTable', currentProject.purchasePositions, renderPurchasePositions);
+            autoGrowAll();
         }
         
         function updatePurchasePosition(index, field, value) {
@@ -5340,7 +5352,7 @@
                 return `
                 <tr>
                     <td class="editable-cell">
-                        <textarea class="auto-grow" oninput="autoGrow(this)"
+                        <textarea class="auto-grow" oninput="autoGrow(this)" onfocus="autoGrow(this)"
                                onchange="updateQuotePosition(${index}, 'description', this.value)"
                                style="min-width:200px;">${pos.description}</textarea>
                     </td>
@@ -5382,6 +5394,7 @@
             }).join('');
 
             renderQuoteSummary();
+            autoGrowAll();
         }
 
         function renderQuoteSummary() {
@@ -5824,7 +5837,7 @@
                 return `
                 <tr style="${task.status === 'done' ? 'opacity: 0.6;' : ''}">
                     <td class="editable-cell">
-                        <textarea class="auto-grow" oninput="autoGrow(this)"
+                        <textarea class="auto-grow" oninput="autoGrow(this)" onfocus="autoGrow(this)"
                                onchange="updateTask(${index}, 'description', this.value)"
                                style="min-width: 250px;">${task.description}</textarea>
                     </td>
@@ -5844,6 +5857,7 @@
                     </td>
                 </tr>`;
             }).join('');
+            autoGrowAll();
         }
 
         window.addTask = addTask;
