@@ -1960,6 +1960,7 @@
                 renderDashboard();
                 updateYearFilter();
                 showMessage(`${Object.keys(window.allProjects).length} Projekt(e) geladen`, 'success');
+                applyPermissions();
             } catch (e) {
                 showMessage('Fehler beim Laden: ' + e.message, 'error');
                 console.error(e);
@@ -2150,9 +2151,21 @@
             document.getElementById('loginOverlay').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
             document.getElementById('userDisplayName').textContent = account.name || account.username;
+
+            // Rolle ermitteln
+            const email = (account.username || '').toLowerCase().trim();
+            window.currentUserRole = PERMISSIONS[email] || 'reader';
+
+            // Rolle anzeigen
+            const roleLabels = { admin: '👑 Admin', editor: '✏️ Editor', reader: '👁️ Leser' };
+            const roleEl = document.getElementById('userDisplayName');
+            roleEl.textContent = `${account.name || account.username} (${roleLabels[window.currentUserRole]})`;
+
             await loadFromSharePoint();
             await loadArticlesFromSharePoint();
             await loadStockFromSharePoint();
+
+            applyPermissions();
         }
 
         function logoutMicrosoft() {
@@ -2197,6 +2210,17 @@
             'Elektrik', 'Steuerung', 'Montage', 'UVV',
             'Schallschutz', 'Erfassungselemente', 'Ersatzteile'
         ];
+
+        // Nutzerrechte
+        const PERMISSIONS = {
+            'franek.dodek@dodek.de':  'admin',
+            'hagen.dodek@dodek.de':   'editor',
+            'nicole.merk@dodek.de':   'editor',
+            'harry.dodek@dodek.de':   'reader'
+        };
+
+        // Aktuelle Nutzerrolle — wird nach Login gesetzt
+        window.currentUserRole = 'reader'; // sicherster Default
         
         // Globale Variablen — direkt auf window, keine lokalen Kopien
         window.currentProject = null;
@@ -2864,6 +2888,7 @@
             } else if (viewName === 'editor') {
                 document.getElementById('editorView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'inline-block';
+                applyPermissions();
                 updateArticleSelects();
             } else if (viewName === 'articles') {
                 document.getElementById('articlesView').classList.add('active');
@@ -5154,5 +5179,74 @@
 
         window.initDragAndDrop = initDragAndDrop;
 
-        } // Ende initApp
+        function applyPermissions() {
+            const role = window.currentUserRole || 'reader';
+            const isAdmin  = role === 'admin';
+            const isEditor = role === 'editor' || isAdmin;
+
+            // Hilfsfunktion: Element deaktivieren/ausblenden
+            function disable(selector) {
+                document.querySelectorAll(selector).forEach(el => {
+                    if (el.tagName === 'BUTTON' || el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+                        el.disabled = true;
+                        el.title = 'Keine Berechtigung';
+                        el.style.opacity = '0.4';
+                        el.style.cursor = 'not-allowed';
+                    } else {
+                        el.style.display = 'none';
+                    }
+                });
+            }
+
+            // Reader: alles readonly
+            if (!isEditor) {
+                // Alle Speichern/Anlegen/Bearbeiten Buttons
+                disable('button[onclick="saveProject()"]');
+                disable('button[onclick="createNewProject()"]');
+                disable('button[onclick="addSalesPosition()"]');
+                disable('button[onclick="addPurchasePosition()"]');
+                disable('button[onclick="addTrade()"]');
+                disable('button[onclick="addTask()"]');
+                disable('button[onclick="addStockItem()"]');
+                disable('button[onclick="saveArticle()"]');
+                disable('button[onclick="openArticleModal()"]');
+                disable('button[onclick="closeProject()"]');
+                disable('button[onclick="saveMultiPositions()"]');
+                disable('button[onclick="openMultiPositionDialog()"]');
+                disable('button[onclick="confirmBOMImport()"]');
+                // Alle Inputs und Selects in editierbaren Zellen
+                document.querySelectorAll('.editable-cell input, .editable-cell select').forEach(el => {
+                    el.disabled = true;
+                    el.style.background = '#f0f0f0';
+                });
+            }
+
+            // Editor und Reader: kein Löschen
+            if (!isAdmin) {
+                disable('button[onclick^="deleteProject"]');
+                disable('button[onclick^="deleteCurrentProject"]');
+                disable('button[onclick^="deleteSalesPosition"]');
+                disable('button[onclick^="deletePurchasePosition"]');
+                disable('button[onclick^="deleteArticle"]');
+                disable('button[onclick^="deleteStockItem"]');
+                disable('button[onclick^="deleteTask"]');
+                disable('button[onclick^="clearAllProjects"]');
+                disable('button[onclick^="clearAllArticles"]');
+                // Kopieren-Button auch weg bei nicht-Admin und nicht-Editor
+                if (!isEditor) {
+                    disable('button[onclick^="copyProject"]');
+                }
+            }
+
+            // Editor: Artikelstamm nur lesen, nicht bearbeiten/löschen
+            if (!isAdmin) {
+                disable('button[onclick="openArticleModal()"]');
+                disable('button[onclick^="editArticle"]');
+                disable('button[onclick^="deleteArticle"]');
+                disable('button[onclick^="removeBOMItem"]');
+                disable('button[onclick^="addBOMItem"]');
+            }
+        }
+
+        window.applyPermissions = applyPermissions;
     </script>
