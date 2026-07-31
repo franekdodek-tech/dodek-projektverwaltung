@@ -1,6 +1,6 @@
 # Dodek Hub
 
-Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Aufgaben, Artikelstamm und Lager in einer Anwendung.
+Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Aufgaben, Vorkalkulation, Artikelstamm und Lager in einer Anwendung.
 
 🌐 **App aufrufen:** [https://franekdodek-tech.github.io/dodek-projektverwaltung/](https://franekdodek-tech.github.io/dodek-projektverwaltung/)
 
@@ -8,7 +8,7 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Aufg
 
 ## Zweck
 
-Dodek Hub ist das zentrale operative System für ca. 150 Aufträge pro Jahr. Es deckt ab: Projektsteuerung, Angebots- und Auftragskalkulation, Einkaufsverwaltung, Aufgaben- und Teamkoordination, Artikelstamm mit Stücklisten sowie Lagerverwaltung.
+Dodek Hub ist das zentrale operative System für ca. 150 Aufträge pro Jahr. Es deckt ab: Projektsteuerung, Angebotskalkulation, Einkaufsverwaltung, Aufgaben- und Teamkoordination, Artikelstamm mit Stücklisten, Vorkalkulation sowie Lagerverwaltung.
 
 ---
 
@@ -25,50 +25,66 @@ Dodek Hub ist das zentrale operative System für ca. 150 Aufträge pro Jahr. Es 
 
 ### 📁 Projekteditierung
 - Stammdaten: Projektnummer, Kunde, Projektbezeichnung, Auftragsnummer, Lieferdatum (mit KW-Anzeige)
-- **Gewerke-Schnellauswahl** per Buttonbox + Freitexteingabe für Sonderfälle
-- **Verkaufspositionen** (VK): Manuell oder aus Artikelstamm, Einzelpreis editierbar, Drag & Drop Sortierung
+- **Gewerke-Schnellauswahl** per Buttonbox (Filteranlage, Ventilator, WRG, Rohrleitung, Elektrik, Steuerung, Montage, UVV, Schallschutz, Erfassungselemente, Ersatzteile) + Freitexteingabe für Sonderfälle
+- **Verkaufspositionen** (VK): Manuell oder aus Artikelstamm, Einzelpreis editierbar, Drag & Drop Sortierung, auto-wachsende Beschreibungsfelder
   - BOM-Dialog: wenn VK-Artikel eine Stückliste hat → automatischer Import als EK-Positionen
-- **Einkaufspositionen** (EK): Manuell, aus Artikelstamm oder per BOM-Import, Einzelpreis editierbar, Drag & Drop Sortierung, mit:
+- **Einkaufspositionen** (EK): Manuell, aus Artikelstamm oder per BOM-Import, Einzelpreis editierbar, Drag & Drop Sortierung, auto-wachsende Felder, mit:
   - Bestellstatus: Offen / Bestellt / Teilgeliefert / Geliefert / Aus Lager / Abgerechnet
-  - Lieferantenartikelnummer pro Position
   - Zuständigkeitszuweisung (Franek, Hagen, Harry, Nicole)
   - Mehrere Positionen eines Lieferanten per Dialog
-- **Aufgaben**: Projektbezogene Freitextaufgaben mit Zuständigkeit und Status
+- **Aufgaben**: Projektbezogene Freitextaufgaben mit Zuständigkeit und Status (Offen / In Bearbeitung / Erledigt), auto-wachsende Felder
 - **"Projekt abschließen"** — setzt alle EK-Positionen auf Abgerechnet / Nicht notwendig
 - Gewerke-Tabelle mit VK/EK/DB-Aufschlüsselung
+- Zusammenfassungskacheln (VK, EK, DB absolut und %)
 
 ### 📋 Aufgabenliste (projektübergreifend)
 - Drei Gruppen: **🛒 Einkauf** / **📌 Allgemein** / **📦 Lager** (Nachbestellbedarf)
 - Filter nach Zuständigkeit und Jahr
 - Checkbox "Erledigte ausblenden" — blendet Geliefert, Aus Lager, Abgerechnet und Erledigt aus
+- Direkter Sprung ins Projekt bzw. ins Lager
+
+### 🧮 Vorkalkulation
+- Eigenständige Kalkulationen vor Projektanlage
+- Positionen aus Artikelstamm oder Freitext mit Gewerk-Zuordnung
+- **Zwei Faktoren**: Wiederverkauf und Endkunde — VK-Preise werden automatisch berechnet
+- **VK Hand**: manuelles Preisfeld pro Position ohne automatische Berechnung
+- Deckungsbeitragsanzeige pro Position (%) und in der Zusammenfassung (absolut + %)
+- VK Hand Kachel erscheint automatisch wenn Hand-Werte eingetragen sind
+- **Drucken**: internes Drucklayout mit allen Preisebenen und DB
+- **In Projekt umwandeln**: VK, EK-Positionen und Gewerke werden übernommen
+- Gespeichert in SharePoint `DodekVorkalkulation`
 
 ### 📦 Lagerverwaltung
 - Lagerartikel mit Bestand, Mindestmenge, Einheit, optionaler Artikelnummer
 - Übernahme aus Artikelstamm per Dropdown
 - Farbliche Kennzeichnung: grün = OK, rot = unter Mindestmenge
-- Kritische Artikel erscheinen automatisch in der Aufgabenliste
+- Kritische Artikel erscheinen automatisch in der Aufgabenliste (Gruppe 📦 Lager)
+- Gespeichert in SharePoint `DodekLager`
 
 ### 🗂️ Artikelstamm
 - Artikel mit ID, Bezeichnung, EK-Preis, Marge, VK-Preis, Gewerk, Typ
 - Artikel-ID beim Bearbeiten änderbar
 - Stücklisten (BOM) mit Lieferant, Lieferantenartikelnummer, Komponente, Menge, Preis
-- BOM-Import: Stückliste wird automatisch in EK-Positionen umgewandelt
+- BOM-Import: Stückliste wird automatisch in EK-Positionen umgewandelt (inkl. Lieferantenartikelnummern)
+- Nur Admin kann Artikel anlegen, bearbeiten oder löschen
 
 ### 📈 Statistiken
 - Jahresbezogene Auswertungen
-- Top-10 Kunden, Gewerke-Analyse, zeitliche Verteilung
+- Top-10 Kunden nach Umsatz, Projektanzahl und Deckungsbeitrag
+- Gewerke-Analyse, zeitliche Verteilung
 
 ### 💾 Export
-- Excel-Export pro Projekt
+- Excel-Export pro Projekt (Verkauf, Einkauf, Gewerke auf separaten Sheets)
 - JSON-Export / -Import pro Projekt
-- JSON-Backup / -Restore
-- Druckbarer PDF-Report
+- JSON-Backup / -Restore für Gesamtdaten und Artikelstamm
+- Druckbarer PDF-Report pro Projekt
+- Druckbares internes Kalkulationsblatt pro Vorkalkulation
 
 ---
 
 ## Nutzerrechte
 
-Rollenbasiertes Berechtigungssystem auf Basis des Microsoft-Logins.
+Rollenbasiertes Berechtigungssystem auf Basis des Microsoft-Logins. Die Rolle wird nach dem Login oben rechts angezeigt: 👑 Admin / ✏️ Editor / 👁️ Leser
 
 | Recht | Admin | Editor | Reader |
 |---|---|---|---|
@@ -79,6 +95,7 @@ Rollenbasiertes Berechtigungssystem auf Basis des Microsoft-Logins.
 | EK/VK Positionen bearbeiten | ✅ | ✅ | ❌ |
 | Aufgaben bearbeiten | ✅ | ✅ | ❌ |
 | Lager bearbeiten | ✅ | ✅ | ❌ |
+| Vorkalkulation bearbeiten | ✅ | ✅ | ❌ |
 | Artikelstamm nutzen | ✅ | ✅ | ✅ |
 | Artikelstamm anlegen/bearbeiten | ✅ | ❌ | ❌ |
 | Alles löschen | ✅ | ❌ | ❌ |
@@ -94,7 +111,7 @@ const PERMISSIONS = {
 };
 ```
 
-Unbekannte E-Mail-Adressen erhalten automatisch `reader`. Die Rolle wird nach dem Login oben rechts angezeigt: 👑 Admin / ✏️ Editor / 👁️ Leser.
+Unbekannte E-Mail-Adressen erhalten automatisch `reader`.
 
 ---
 
@@ -105,7 +122,7 @@ Unbekannte E-Mail-Adressen erhalten automatisch `reader`. Die Rolle wird nach de
 - **Datenspeicherung**: SharePoint-Listen über Microsoft REST API
 - **Authentifizierung**: Microsoft OAuth 2.0 (Azure AD / Entra ID), delegierte Berechtigung `AllSites.Write`
 - **Abhängigkeiten**: MSAL Browser 2.38.3 (lokal im Repo), SheetJS (CDN)
-- **Nutzer**: 4 Personen mit M365-Account
+- **Nutzer**: 4 Personen mit M365-Account (Dodek GmbH & Co. KG)
 
 ### SharePoint Konfiguration
 
@@ -115,6 +132,7 @@ Unbekannte E-Mail-Adressen erhalten automatisch `reader`. Die Rolle wird nach de
 | Liste Projekte | `DodekProjekte` |
 | Liste Artikel | `DodekArtikel` |
 | Liste Lager | `DodekLager` |
+| Liste Vorkalkulation | `DodekVorkalkulation` |
 | Redirect URI | `https://franekdodek-tech.github.io/dodek-projektverwaltung/Projektuebersicht_APP.html` |
 
 > Listen werden über GUID angesprochen — konfiguriert in `SP_CONFIG` im App-Code.
@@ -129,14 +147,15 @@ Unbekannte E-Mail-Adressen erhalten automatisch `reader`. Die Rolle wird nach de
 - Gewerke-Schnellauswahl, BOM-Dialog, Projekt kopieren
 - Rollenbasierte Nutzerrechte (Admin / Editor / Reader)
 - Status-Filter im Dashboard, violette Zeilen für ausstehende Nachkalkulation
-
-### Phase 2d ⏳ Vorkalkulation
-- Kalkulation aus Artikelstamm mit zwei Faktoren (Wiederverkauf / Endkunde)
-- Deckungsbeitragsanzeige
-- Druckbares Ausgabeformat
+- Vorkalkulation mit zwei Faktoren, DB-Anzeige, Drucken, Projekt-Umwandlung
+- Auto-wachsende Beschreibungsfelder
 
 ### Phase 3 ⏳ Ausstehend
 - Power Automate: E-Mail-Benachrichtigung bei Aufgabenzuweisung
+
+### Geplant (noch offen)
+- Lagerverwaltung PopUp: Wareneingänge buchen, Zulauf vermerken, Preishistorie
+- Lieferantenstamm
 
 ---
 
