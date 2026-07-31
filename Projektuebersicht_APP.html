@@ -576,6 +576,25 @@
             border-radius: 3px;
             font-size: 13px;
         }
+
+        .editable-cell textarea.auto-grow {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 13px;
+            resize: none;
+            overflow: hidden;
+            min-height: 30px;
+            line-height: 1.4;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        /* Drucklayout: Zellentext umbrechend */
+        @media print {
+            td { word-break: break-word; white-space: normal; }
+        }
         
         .number-cell {
             text-align: right;
@@ -1780,7 +1799,6 @@
                             <tr>
                                 <th style="width:30px;"></th>
                                 <th>Lieferant</th>
-                                <th>Lief.-Artikelnr.</th>
                                 <th>Menge</th>
                                 <th>Beschreibung</th>
                                 <th>Gewerk</th>
@@ -2317,7 +2335,12 @@
             });
         }
 
-        // ========== LOGIN ==========
+        // Auto-wachsende Textarea
+        function autoGrow(el) {
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+        }
+        window.autoGrow = autoGrow;
 
         async function loginMicrosoft() {
             try {
@@ -3695,8 +3718,7 @@
                                onchange="updateSalesPosition(${index}, 'quantity', parseFloat(this.value))" style="width: 80px;">
                     </td>
                     <td class="editable-cell">
-                        <input type="text" value="${pos.description}" 
-                               onchange="updateSalesPosition(${index}, 'description', this.value)" style="min-width: 200px;">
+                        <textarea class="auto-grow" oninput="autoGrow(this)" onchange="updateSalesPosition(${index}, 'description', this.value)" style="min-width:200px;">${pos.description}</textarea>
                     </td>
                     <td class="editable-cell">
                         <select onchange="updateSalesPosition(${index}, 'trade', this.value)">
@@ -3811,7 +3833,7 @@
             if (currentProject.purchasePositions.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="11" style="text-align: center; padding: 40px; color: #999;">
+                        <td colspan="10" style="text-align: center; padding: 40px; color: #999;">
                             Keine Einkaufspositionen vorhanden. Fügen Sie oben eine Position hinzu.
                         </td>
                     </tr>
@@ -3832,21 +3854,16 @@
                 <tr draggable="true">
                     <td class="drag-handle" title="Ziehen zum Sortieren">⠿</td>
                     <td class="editable-cell">
-                        <input type="text" value="${pos.supplier || ''}" 
-                               onchange="updatePurchasePosition(${index}, 'supplier', this.value)">
-                    </td>
-                    <td class="editable-cell">
-                        <input type="text" value="${pos.supplierArticleNumber || ''}"
-                               onchange="updatePurchasePosition(${index}, 'supplierArticleNumber', this.value)"
-                               placeholder="Artikelnr." style="width: 100px;">
+                        <textarea class="auto-grow" oninput="autoGrow(this)"
+                               onchange="updatePurchasePosition(${index}, 'supplier', this.value)">${pos.supplier || ''}</textarea>
                     </td>
                     <td class="editable-cell number-cell">
                         <input type="number" step="0.01" value="${pos.quantity}" 
                                onchange="updatePurchasePosition(${index}, 'quantity', parseFloat(this.value))" style="width: 80px;">
                     </td>
                     <td class="editable-cell">
-                        <input type="text" value="${pos.description}" 
-                               onchange="updatePurchasePosition(${index}, 'description', this.value)" style="min-width: 200px;">
+                        <textarea class="auto-grow" oninput="autoGrow(this)"
+                               onchange="updatePurchasePosition(${index}, 'description', this.value)" style="min-width: 200px;">${pos.description}</textarea>
                     </td>
                     <td class="editable-cell">
                         <select onchange="updatePurchasePosition(${index}, 'trade', this.value)">
@@ -5323,9 +5340,9 @@
                 return `
                 <tr>
                     <td class="editable-cell">
-                        <input type="text" value="${pos.description}"
+                        <textarea class="auto-grow" oninput="autoGrow(this)"
                                onchange="updateQuotePosition(${index}, 'description', this.value)"
-                               style="min-width:200px;">
+                               style="min-width:200px;">${pos.description}</textarea>
                     </td>
                     <td class="editable-cell">
                         <select onchange="updateQuotePosition(${index}, 'trade', this.value)">
@@ -5807,9 +5824,9 @@
                 return `
                 <tr style="${task.status === 'done' ? 'opacity: 0.6;' : ''}">
                     <td class="editable-cell">
-                        <input type="text" value="${task.description}"
+                        <textarea class="auto-grow" oninput="autoGrow(this)"
                                onchange="updateTask(${index}, 'description', this.value)"
-                               style="min-width: 250px;">
+                               style="min-width: 250px;">${task.description}</textarea>
                     </td>
                     <td class="editable-cell">
                         <select onchange="updateTask(${index}, 'assignedTo', this.value)">
