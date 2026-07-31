@@ -230,48 +230,56 @@
             background: #f8f9fa;
         }
         
+        /* Kein Haken → Rot */
         .project-list tbody tr.status-none {
             background: #ffe6e6;
         }
-        
         .project-list tbody tr.status-none:hover {
             background: #ffd6d6;
         }
-        
+
+        /* Nur AB → Gelb */
         .project-list tbody tr.status-ab {
-            background: #e6ffe6;
-        }
-        
-        .project-list tbody tr.status-ab:hover {
-            background: #d6ffd6;
-        }
-        
-        .project-list tbody tr.status-invoice {
             background: #fffacd;
         }
-        
+        .project-list tbody tr.status-ab:hover {
+            background: #fff3a0;
+        }
+
+        /* AB + Geliefert → Orange */
+        .project-list tbody tr.status-delivered {
+            background: #ffe0b2;
+        }
+        .project-list tbody tr.status-delivered:hover {
+            background: #ffd199;
+        }
+
+        /* AB + Geliefert + Rechnung → Lila */
+        .project-list tbody tr.status-invoice {
+            background: #f3e8ff;
+        }
         .project-list tbody tr.status-invoice:hover {
-            background: #fff9b3;
+            background: #ead5ff;
+        }
+
+        /* Alle Haken → Weiß */
+        .project-list tbody tr.status-postcalc {
+            background: white;
+        }
+        .project-list tbody tr.status-postcalc:hover {
+            background: #f8f9fa;
         }
 
         .project-list tbody tr.status-filter-hidden {
             display: none;
         }
 
+        /* Alte Klasse nicht mehr verwendet, bleibt für Kompatibilität */
         .project-list tbody tr.status-needs-postcalc {
             background: #f3e8ff;
         }
-        
         .project-list tbody tr.status-needs-postcalc:hover {
             background: #ead5ff;
-        }
-        
-        .project-list tbody tr.status-postcalc {
-            background: white;
-        }
-        
-        .project-list tbody tr.status-postcalc:hover {
-            background: #f8f9fa;
         }
         
         .project-list td {
@@ -1181,11 +1189,11 @@
                     <label>Status-Filter:</label>
                     <select id="statusFilter" onchange="applyYearFilter()">
                         <option value="all">Alle</option>
-                        <option value="none">Kein AB</option>
-                        <option value="ab">AB gesetzt</option>
-                        <option value="invoice">Rechnung (offen)</option>
-                        <option value="needs-postcalc">Nachkalk. ausstehend</option>
-                        <option value="postcalc">Vollständig</option>
+                        <option value="none">Kein AB (Rot)</option>
+                        <option value="ab">Nur AB (Gelb)</option>
+                        <option value="delivered">AB + Geliefert (Orange)</option>
+                        <option value="invoice">AB + Geliefert + Rechnung (Lila)</option>
+                        <option value="postcalc">Vollständig (Weiß)</option>
                     </select>
                 </div>
             </div>
@@ -3220,8 +3228,8 @@
                                         <th class="number-cell">DB</th>
                                         <th class="number-cell">DB %</th>
                                         <th class="checkbox-cell">AB</th>
-                                        <th class="checkbox-cell">Rechnung</th>
                                         <th class="checkbox-cell">Geliefert</th>
+                                        <th class="checkbox-cell">Rechnung</th>
                                         <th class="checkbox-cell">Nachkalk.</th>
                                         <th class="actions-cell">Aktion</th>
                                     </tr>
@@ -3251,15 +3259,18 @@
                     kwDisplay = `KW ${weekNum}`;
                 }
                 
-                const hasAB = project.hasAB || false;
-                const hasInvoice = project.hasInvoice || false;
+                const hasAB       = project.hasAB       || false;
+                const hasDelivered = project.hasDelivered || false;
+                const hasInvoice  = project.hasInvoice  || false;
                 const hasPostCalc = project.hasPostCalc || false;
-                
+
                 let statusClass = 'status-none';
-                if (hasPostCalc) {
+                if (hasAB && hasDelivered && hasInvoice && hasPostCalc) {
                     statusClass = 'status-postcalc';
-                } else if (hasInvoice) {
-                    statusClass = 'status-needs-postcalc';
+                } else if (hasAB && hasDelivered && hasInvoice) {
+                    statusClass = 'status-invoice';
+                } else if (hasAB && hasDelivered) {
+                    statusClass = 'status-delivered';
                 } else if (hasAB) {
                     statusClass = 'status-ab';
                 }
@@ -3278,10 +3289,10 @@
                             <input type="checkbox" ${hasAB ? 'checked' : ''} onchange="toggleAB('${projectNumber}', this.checked)">
                         </td>
                         <td class="checkbox-cell" onclick="event.stopPropagation()">
-                            <input type="checkbox" ${hasInvoice ? 'checked' : ''} onchange="toggleInvoice('${projectNumber}', this.checked)">
+                            <input type="checkbox" ${project.hasDelivered ? 'checked' : ''} onchange="toggleDelivered('${projectNumber}', this.checked)">
                         </td>
                         <td class="checkbox-cell" onclick="event.stopPropagation()">
-                            <input type="checkbox" ${project.hasDelivered ? 'checked' : ''} onchange="toggleDelivered('${projectNumber}', this.checked)">
+                            <input type="checkbox" ${hasInvoice ? 'checked' : ''} onchange="toggleInvoice('${projectNumber}', this.checked)">
                         </td>
                         <td class="checkbox-cell" onclick="event.stopPropagation()">
                             <input type="checkbox" ${hasPostCalc ? 'checked' : ''} onchange="togglePostCalc('${projectNumber}', this.checked)">
@@ -4548,10 +4559,10 @@
             }
             const cls = row.className;
             let match = false;
-            if (statusFilter === 'none')          match = cls.includes('status-none');
+            if (statusFilter === 'none')       match = cls.includes('status-none');
             else if (statusFilter === 'ab')        match = cls.includes('status-ab');
+            else if (statusFilter === 'delivered') match = cls.includes('status-delivered');
             else if (statusFilter === 'invoice')   match = cls.includes('status-invoice');
-            else if (statusFilter === 'needs-postcalc') match = cls.includes('status-needs-postcalc');
             else if (statusFilter === 'postcalc')  match = cls.includes('status-postcalc');
             row.classList.toggle('status-filter-hidden', !match);
         });
