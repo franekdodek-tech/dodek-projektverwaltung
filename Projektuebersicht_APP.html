@@ -998,100 +998,10 @@
         }
 
         @media print {
-            @page {
-                margin: 15mm;
-            }
-            
-            body {
-                background: white;
-            }
-            
-            .container {
-                max-width: 100%;
-                padding: 0;
-            }
-            
-            header, 
-            .add-position-form, 
-            .export-section, 
-            .action-cell, 
-            button, 
-            .trade-management, 
-            .view-selector, 
-            .project-actions, 
-            .actions-cell, 
-            .checkbox-cell, 
-            .backup-info,
-            .section-header button {
-                display: none !important;
-            }
-            
-            .editable-cell input,
-            .editable-cell select {
-                border: none !important;
-                background: transparent !important;
-                padding: 0 !important;
-            }
-            
-            .card, 
-            .positions-section, 
-            .project-header, 
-            .trade-summary,
-            .project-list {
-                box-shadow: none !important;
-                border: none !important;
-                page-break-inside: avoid;
-                margin-bottom: 10mm;
-            }
-            
-            .section-header {
-                border-bottom: 2pt solid #366092 !important;
-                padding-bottom: 5pt;
-            }
-            
-            table {
-                font-size: 9pt;
-                border: none !important;
-            }
-            
-            th {
-                background: #366092 !important;
-                color: white !important;
-                padding: 8pt 4pt;
-                border: none !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            
-            td {
-                padding: 6pt 4pt;
-                border: none !important;
-                border-bottom: 0.5pt solid #eee !important;
-            }
-            
-            .number-cell {
-                text-align: right;
-            }
-            
-            .project-header h2,
-            .section-header h3 {
-                color: #366092;
-                font-size: 14pt;
-            }
-            
-            .card h3 {
-                font-size: 10pt;
-            }
-            
-            .card .value {
-                font-size: 18pt;
-            }
-            
-            .summary-cards {
-                margin-bottom: 8mm;
-            }
+            /* Hauptseite nicht drucken — bitte den 🖨️ Button verwenden */
+            body > * { display: none !important; }
         }
-    </style>
+</style>
 </head>
 <body>
     <!-- LOGIN OVERLAY -->
@@ -4319,7 +4229,6 @@
                             <th>Lieferant</th>
                             <th>Beschreibung</th>
                             <th>Gewerk</th>
-                            ${p.purchasePositions.some(pos => pos.deliveryDate) ? '<th>Lief.-KW</th>' : ''}
                             <th class="right">Menge</th>
                             <th class="right">Einzelpreis</th>
                             <th class="right">Gesamtpreis</th>
@@ -4331,13 +4240,12 @@
                             <td>${pos.supplier || '—'}</td>
                             <td>${pos.description}</td>
                             <td>${pos.trade || '—'}</td>
-                            ${p.purchasePositions.some(p => p.deliveryDate) ? `<td>${pos.deliveryDate ? 'KW ' + getWeekNumber(new Date(pos.deliveryDate)) : '—'}</td>` : ''}
                             <td class="right">${pos.quantity}</td>
                             <td class="right">${formatCurrency(pos.unitPrice)}</td>
                             <td class="right"><strong>${formatCurrency(pos.totalPrice)}</strong></td>
                         </tr>`).join('')}
                         <tr style="background:#fff0f0;">
-                            <td colspan="${p.purchasePositions.some(pos => pos.deliveryDate) ? 6 : 5}"><strong>Gesamt EK</strong></td>
+                            <td colspan="5"><strong>Gesamt EK</strong></td>
                             <td class="right"><strong>${formatCurrency(totalEK)}</strong></td>
                         </tr>
                     </tbody>
