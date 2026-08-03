@@ -4230,9 +4230,160 @@
             showMessage('Kein Projekt geladen', 'error');
             return;
         }
-        
-        saveProject();
-        window.print();
+
+        const p = currentProject;
+        const totalVK = p.salesPositions.reduce((s, pos) => s + pos.totalPrice, 0);
+        const totalEK = p.purchasePositions.reduce((s, pos) => s + pos.totalPrice, 0);
+        const db = totalVK - totalEK;
+        const dbPct = totalVK > 0 ? (db / totalVK * 100) : 0;
+
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="de">
+            <head>
+                <meta charset="UTF-8">
+                <title>Projekt ${p.projectNumber} — ${p.customer}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; font-size: 11px; margin: 20px; color: #333; }
+                    h1 { font-size: 16px; color: #366092; margin-bottom: 4px; }
+                    h2 { font-size: 13px; color: #366092; margin: 16px 0 6px; border-bottom: 1px solid #366092; padding-bottom: 3px; }
+                    .meta { color: #666; font-size: 10px; margin-bottom: 16px; }
+                    .summary { display: flex; gap: 20px; margin-bottom: 16px; }
+                    .summary-box { border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; min-width: 120px; }
+                    .summary-label { font-size: 9px; color: #888; }
+                    .summary-value { font-size: 14px; font-weight: bold; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10px; }
+                    th { background: #366092; color: white; padding: 5px 6px; text-align: left; }
+                    td { padding: 4px 6px; border-bottom: 1px solid #eee; word-break: break-word; vertical-align: top; }
+                    .right { text-align: right; }
+                    .trade-table td, .trade-table th { padding: 4px 8px; }
+                    @media print { body { margin: 10px; } }
+                </style>
+            </head>
+            <body>
+                <h1>Projekt ${p.projectNumber} — ${p.customer}</h1>
+                <div class="meta">
+                    ${p.projectName ? `Bezeichnung: ${p.projectName} &nbsp;|&nbsp; ` : ''}
+                    ${p.orderNumber ? `Auftrag: ${p.orderNumber} &nbsp;|&nbsp; ` : ''}
+                    ${p.deliveryDate ? `Liefertermin: KW ${getWeekNumber(new Date(p.deliveryDate))} (${p.deliveryDate}) &nbsp;|&nbsp; ` : ''}
+                    Dodek GmbH & Co. KG
+                </div>
+
+                <div class="summary">
+                    <div class="summary-box">
+                        <div class="summary-label">Verkauf gesamt</div>
+                        <div class="summary-value">${formatCurrency(totalVK)}</div>
+                    </div>
+                    <div class="summary-box">
+                        <div class="summary-label">Einkauf gesamt</div>
+                        <div class="summary-value">${formatCurrency(totalEK)}</div>
+                    </div>
+                    <div class="summary-box">
+                        <div class="summary-label">Deckungsbeitrag</div>
+                        <div class="summary-value" style="color:#28a745;">${formatCurrency(db)} (${dbPct.toFixed(1)}%)</div>
+                    </div>
+                </div>
+
+                <h2>Verkaufspositionen</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Beschreibung</th>
+                            <th>Gewerk</th>
+                            <th class="right">Menge</th>
+                            <th class="right">Einzelpreis</th>
+                            <th class="right">Gesamtpreis</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${p.salesPositions.map(pos => `
+                        <tr>
+                            <td>${pos.description}</td>
+                            <td>${pos.trade || '—'}</td>
+                            <td class="right">${pos.quantity}</td>
+                            <td class="right">${formatCurrency(pos.unitPrice)}</td>
+                            <td class="right"><strong>${formatCurrency(pos.totalPrice)}</strong></td>
+                        </tr>`).join('')}
+                        <tr style="background:#f0f4ff;">
+                            <td colspan="4"><strong>Gesamt VK</strong></td>
+                            <td class="right"><strong>${formatCurrency(totalVK)}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Einkaufspositionen</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Lieferant</th>
+                            <th>Beschreibung</th>
+                            <th>Gewerk</th>
+                            ${p.purchasePositions.some(pos => pos.deliveryDate) ? '<th>Lief.-KW</th>' : ''}
+                            <th class="right">Menge</th>
+                            <th class="right">Einzelpreis</th>
+                            <th class="right">Gesamtpreis</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${p.purchasePositions.map(pos => `
+                        <tr>
+                            <td>${pos.supplier || '—'}</td>
+                            <td>${pos.description}</td>
+                            <td>${pos.trade || '—'}</td>
+                            ${p.purchasePositions.some(p => p.deliveryDate) ? `<td>${pos.deliveryDate ? 'KW ' + getWeekNumber(new Date(pos.deliveryDate)) : '—'}</td>` : ''}
+                            <td class="right">${pos.quantity}</td>
+                            <td class="right">${formatCurrency(pos.unitPrice)}</td>
+                            <td class="right"><strong>${formatCurrency(pos.totalPrice)}</strong></td>
+                        </tr>`).join('')}
+                        <tr style="background:#fff0f0;">
+                            <td colspan="${p.purchasePositions.some(pos => pos.deliveryDate) ? 6 : 5}"><strong>Gesamt EK</strong></td>
+                            <td class="right"><strong>${formatCurrency(totalEK)}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                ${p.trades && p.trades.length > 0 ? `
+                <h2>Gewerke-Übersicht</h2>
+                <table class="trade-table">
+                    <thead>
+                        <tr>
+                            <th>Gewerk</th>
+                            <th class="right">VK</th>
+                            <th class="right">EK</th>
+                            <th class="right">DB</th>
+                            <th class="right">DB %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${[...p.trades].sort().map(trade => {
+                            const vk = p.salesPositions.filter(pos => pos.trade === trade).reduce((s, pos) => s + pos.totalPrice, 0);
+                            const ek = p.purchasePositions.filter(pos => pos.trade === trade).reduce((s, pos) => s + pos.totalPrice, 0);
+                            const tdb = vk - ek;
+                            const tdbPct = vk > 0 ? (tdb / vk * 100) : 0;
+                            return `<tr>
+                                <td>${trade}</td>
+                                <td class="right">${formatCurrency(vk)}</td>
+                                <td class="right">${formatCurrency(ek)}</td>
+                                <td class="right">${formatCurrency(tdb)}</td>
+                                <td class="right">${tdbPct.toFixed(1)}%</td>
+                            </tr>`;
+                        }).join('')}
+                        <tr style="background:#f0f4ff;font-weight:bold;">
+                            <td>GESAMT</td>
+                            <td class="right">${formatCurrency(totalVK)}</td>
+                            <td class="right">${formatCurrency(totalEK)}</td>
+                            <td class="right">${formatCurrency(db)}</td>
+                            <td class="right">${dbPct.toFixed(1)}%</td>
+                        </tr>
+                    </tbody>
+                </table>` : ''}
+
+                <script>window.onload = function() { window.print(); }<\/script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
     }
     
     function exportExcel() {
