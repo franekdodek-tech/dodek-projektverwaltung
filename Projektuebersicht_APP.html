@@ -4195,6 +4195,42 @@
                     </div>
                 </div>
 
+                ${p.trades && p.trades.length > 0 ? `
+                <h2>Gewerke-Übersicht</h2>
+                <table class="trade-table">
+                    <thead>
+                        <tr>
+                            <th>Gewerk</th>
+                            <th class="right">VK</th>
+                            <th class="right">EK</th>
+                            <th class="right">DB</th>
+                            <th class="right">DB %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${[...p.trades].sort().map(trade => {
+                            const vk = p.salesPositions.filter(pos => pos.trade === trade).reduce((s, pos) => s + pos.totalPrice, 0);
+                            const ek = p.purchasePositions.filter(pos => pos.trade === trade).reduce((s, pos) => s + pos.totalPrice, 0);
+                            const tdb = vk - ek;
+                            const tdbPct = vk > 0 ? (tdb / vk * 100) : 0;
+                            return `<tr>
+                                <td>${trade}</td>
+                                <td class="right">${formatCurrency(vk)}</td>
+                                <td class="right">${formatCurrency(ek)}</td>
+                                <td class="right">${formatCurrency(tdb)}</td>
+                                <td class="right">${tdbPct.toFixed(1)}%</td>
+                            </tr>`;
+                        }).join('')}
+                        <tr style="background:#f0f4ff;font-weight:bold;">
+                            <td>GESAMT</td>
+                            <td class="right">${formatCurrency(totalVK)}</td>
+                            <td class="right">${formatCurrency(totalEK)}</td>
+                            <td class="right">${formatCurrency(db)}</td>
+                            <td class="right">${dbPct.toFixed(1)}%</td>
+                        </tr>
+                    </tbody>
+                </table>` : ''}
+
                 <h2>Verkaufspositionen</h2>
                 <table>
                     <thead>
@@ -4250,42 +4286,6 @@
                         </tr>
                     </tbody>
                 </table>
-
-                ${p.trades && p.trades.length > 0 ? `
-                <h2>Gewerke-Übersicht</h2>
-                <table class="trade-table">
-                    <thead>
-                        <tr>
-                            <th>Gewerk</th>
-                            <th class="right">VK</th>
-                            <th class="right">EK</th>
-                            <th class="right">DB</th>
-                            <th class="right">DB %</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${[...p.trades].sort().map(trade => {
-                            const vk = p.salesPositions.filter(pos => pos.trade === trade).reduce((s, pos) => s + pos.totalPrice, 0);
-                            const ek = p.purchasePositions.filter(pos => pos.trade === trade).reduce((s, pos) => s + pos.totalPrice, 0);
-                            const tdb = vk - ek;
-                            const tdbPct = vk > 0 ? (tdb / vk * 100) : 0;
-                            return `<tr>
-                                <td>${trade}</td>
-                                <td class="right">${formatCurrency(vk)}</td>
-                                <td class="right">${formatCurrency(ek)}</td>
-                                <td class="right">${formatCurrency(tdb)}</td>
-                                <td class="right">${tdbPct.toFixed(1)}%</td>
-                            </tr>`;
-                        }).join('')}
-                        <tr style="background:#f0f4ff;font-weight:bold;">
-                            <td>GESAMT</td>
-                            <td class="right">${formatCurrency(totalVK)}</td>
-                            <td class="right">${formatCurrency(totalEK)}</td>
-                            <td class="right">${formatCurrency(db)}</td>
-                            <td class="right">${dbPct.toFixed(1)}%</td>
-                        </tr>
-                    </tbody>
-                </table>` : ''}
 
                 <script>window.onload = function() { window.print(); }<\/script>
             </body>
