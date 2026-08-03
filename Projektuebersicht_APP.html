@@ -1632,7 +1632,7 @@
                 <div class="project-actions">
                     <button onclick="saveProject()">💾 Speichern</button>
                     <button onclick="showView('dashboard')" class="btn-secondary">⬅️ Zurück zur Übersicht</button>
-                    <button onclick="closeProject()" class="btn-secondary" title="Alle EK-Positionen auf Abgerechnet / Nicht notwendig setzen">✅ Projekt abschließen</button>
+                    <button onclick="closeProject()" class="btn-secondary" title="Alle EK-Positionen auf Lager/Fakturiert setzen">✅ Projekt abschließen</button>
                     <button onclick="deleteCurrentProject()" class="btn-danger">🗑️ Projekt löschen</button>
                 </div>
             </div>
@@ -1812,7 +1812,8 @@
                                 <th>Gewerk</th>
                                 <th>Typ</th>
                                 <th>Status</th>
-                                <th>Zuständig</th>
+                                <th style="width:90px;">Zuständig</th>
+                                <th style="width:60px;">Lief.-KW</th>
                                 <th class="number-cell">Einzelpreis</th>
                                 <th class="number-cell">Gesamtpreis</th>
                                 <th class="action-cell">Aktion</th>
@@ -2417,12 +2418,11 @@
 
         // Bestellstatus EK-Positionen
         const PURCHASE_STATUS = [
-            { id: 'open',         label: 'Offen',         color: '#dc3545' },
-            { id: 'ordered',      label: 'Bestellt',      color: '#fd7e14' },
-            { id: 'partial',      label: 'Teilgeliefert', color: '#ffc107' },
-            { id: 'delivered',    label: 'Geliefert',     color: '#28a745' },
-            { id: 'fromstock',    label: 'Aus Lager',     color: '#28a745' },
-            { id: 'invoiced',     label: 'Abgerechnet',   color: '#6c757d' }
+            { id: 'open',         label: 'Offen',           color: '#dc3545' },
+            { id: 'ordered',      label: 'Bestellt',        color: '#fd7e14' },
+            { id: 'partial',      label: 'Bestätigt',       color: '#ffc107' },
+            { id: 'delivered',    label: 'Geliefert',       color: '#28a745' },
+            { id: 'invoiced',     label: 'Lager/Fakturiert', color: '#6c757d' }
         ];
 
         // Aufgabenstatus
@@ -2905,7 +2905,8 @@
                             type: article.type || 'material',
                             trade: article.trade || '',
                             status: 'open',
-                            assignedTo: 'unassigned'
+                            assignedTo: 'unassigned',
+                            deliveryDate: ''
                         };
                         
                         currentProject.purchasePositions.push(position);
@@ -3444,6 +3445,8 @@
                 currentProject.purchasePositions.forEach(pos => {
                     if (!pos.status) pos.status = 'open';
                     if (!pos.assignedTo) pos.assignedTo = 'unassigned';
+                    // Migration alter Stati
+                    if (pos.status === 'fromstock') pos.status = 'invoiced';
                 });
             }
 
@@ -3523,7 +3526,7 @@
                 return;
             }
 
-            if (!confirm(`Alle ${count} EK-Position(en) auf "Abgerechnet" und Zuständigkeit auf "Nicht notwendig" setzen?\n\nDieser Schritt kann nicht rückgängig gemacht werden.`)) {
+            if (!confirm(`Alle ${count} EK-Position(en) auf "Lager/Fakturiert" und Zuständigkeit auf "Nicht notwendig" setzen?\n\nDieser Schritt kann nicht rückgängig gemacht werden.`)) {
                 return;
             }
 
@@ -3817,8 +3820,6 @@
             const position = {
                 id: `purchase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 supplier: document.getElementById('newPurchaseSupplier').value.trim(),
-                supplierArticleNumber: document.getElementById('newPurchaseSupplierArticleNumber') ? 
-                    document.getElementById('newPurchaseSupplierArticleNumber').value.trim() : '',
                 description: description,
                 quantity: quantity,
                 unitPrice: unitPrice,
@@ -3826,7 +3827,8 @@
                 type: document.getElementById('newPurchaseType').value,
                 trade: document.getElementById('newPurchaseTrade').value || '',
                 status: 'open',
-                assignedTo: 'unassigned'
+                assignedTo: 'unassigned',
+                deliveryDate: ''
             };
             
             currentProject.purchasePositions.push(position);
@@ -3851,7 +3853,7 @@
             if (currentProject.purchasePositions.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="10" style="text-align: center; padding: 40px; color: #999;">
+                        <td colspan="12" style="text-align: center; padding: 40px; color: #999;">
                             Keine Einkaufspositionen vorhanden. Fügen Sie oben eine Position hinzu.
                         </td>
                     </tr>
@@ -3904,10 +3906,17 @@
                             ${statusOptions}
                         </select>
                     </td>
-                    <td class="editable-cell">
-                        <select onchange="updatePurchasePosition(${index}, 'assignedTo', this.value)">
+                    <td class="editable-cell" style="width:90px;">
+                        <select onchange="updatePurchasePosition(${index}, 'assignedTo', this.value)" style="font-size:12px;">
                             ${memberOptions}
                         </select>
+                    </td>
+                    <td class="editable-cell" style="width:80px;">
+                        <input type="date" value="${pos.deliveryDate || ''}"
+                               onchange="updatePurchasePosition(${index}, 'deliveryDate', this.value)"
+                               style="font-size:11px; padding:4px; width:100%;"
+                               title="${pos.deliveryDate ? 'KW ' + getWeekNumber(new Date(pos.deliveryDate)) : 'Kein Liefertermin'}">
+                        ${pos.deliveryDate ? `<div style="font-size:11px;color:#366092;text-align:center;">KW ${getWeekNumber(new Date(pos.deliveryDate))}</div>` : ''}
                     </td>
                     <td class="number-cell editable-cell">
                         <input type="number" step="0.01" value="${pos.unitPrice}"
@@ -4609,7 +4618,7 @@
             (project.purchasePositions || []).forEach((pos) => {
                 const posStatus     = pos.status     || 'open';
                 const posAssignedTo = pos.assignedTo || 'unassigned';
-                if (hideDone && ['invoiced', 'delivered', 'fromstock'].includes(posStatus)) return;
+                if (hideDone && ['invoiced', 'delivered'].includes(posStatus)) return;
                 if (memberFilter !== 'all' && posAssignedTo !== memberFilter) return;
                 purchaseRows.push({ project, pos });
             });
