@@ -290,6 +290,48 @@
         .positions-section td {
             vertical-align: top;
         }
+
+        /* Klappbare Sektionen */
+        .collapsible-section .section-body {
+            overflow: hidden;
+            transition: max-height 0.25s ease;
+        }
+        .collapsible-section.collapsed .section-body {
+            display: none;
+        }
+        .collapse-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0 6px;
+            line-height: 1;
+            opacity: 0.8;
+        }
+        .collapse-btn:hover { opacity: 1; }
+
+        /* VK — grün */
+        .section-vk .section-header {
+            background: #e8f5e9;
+            border-left: 4px solid #28a745;
+        }
+        .section-vk .section-header h3 { color: #1a7a32; }
+        .section-vk tbody tr:hover { background: #f1faf2; }
+
+        /* EK — rot */
+        .section-ek .section-header {
+            background: #fdecea;
+            border-left: 4px solid #dc3545;
+        }
+        .section-ek .section-header h3 { color: #a71d2a; }
+        .section-ek tbody tr:hover { background: #fdf5f5; }
+
+        /* Aufgaben — blau */
+        .section-tasks .section-header {
+            background: #e8f0fe;
+            border-left: 4px solid #366092;
+        }
+        .section-tasks .section-header h3 { color: #1a3a6b; }
         
         .project-number {
             font-weight: 700;
@@ -1584,10 +1626,15 @@
             </div>
             
             <!-- VERKAUFSPOSITIONEN -->
-            <div class="positions-section">
-                <div class="section-header">
-                    <h3>Verkaufspositionen (Angebot / Auftragsbestätigung)</h3>
+            <div class="positions-section collapsible-section section-vk" id="sectionVK">
+                <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleSection('sectionVK')">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button class="collapse-btn">▼</button>
+                        <h3>Verkaufspositionen (Angebot / Auftragsbestätigung)</h3>
+                    </div>
+                    <span id="vkSectionTotal" style="font-size:13px; font-weight:600; color:#1a7a32;"></span>
                 </div>
+                <div class="section-body">
                 
                 <div class="add-position-form">
                     <h4 style="margin-bottom: 15px; color: #366092;">Neue Verkaufsposition hinzufügen</h4>
@@ -1655,16 +1702,22 @@
                         </tbody>
                     </table>
                 </div>
+                </div> <!-- Ende section-body VK -->
             </div>
             
             <!-- EINKAUFSPOSITIONEN -->
-            <div class="positions-section">
-                <div class="section-header">
-                    <h3>Einkaufspositionen (Ist-Kosten)</h3>
-                    <button onclick="openMultiPositionDialog()" class="btn-success">➕ Mehrere Positionen hinzufügen</button>
+            <div class="positions-section collapsible-section section-ek" id="sectionEK">
+                <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleSection('sectionEK')">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button class="collapse-btn">▼</button>
+                        <h3>Einkaufspositionen (Ist-Kosten)</h3>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span id="ekSectionTotal" style="font-size:13px; font-weight:600; color:#a71d2a;"></span>
+                        <button onclick="event.stopPropagation(); openMultiPositionDialog()" class="btn-success" style="font-size:12px;">➕ Mehrere Positionen</button>
+                    </div>
                 </div>
-                
-                <div class="add-position-form">
+                <div class="section-body">
                     <h4 style="margin-bottom: 15px; color: #366092;">Neue Einkaufsposition hinzufügen</h4>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
@@ -1738,14 +1791,19 @@
                         </tbody>
                     </table>
                 </div>
+                </div> <!-- Ende section-body EK -->
             </div>
             
             <!-- AUFGABEN -->
-            <div class="positions-section">
-                <div class="section-header">
-                    <h3>Aufgaben</h3>
+            <div class="positions-section collapsible-section section-tasks" id="sectionTasks">
+                <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleSection('sectionTasks')">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button class="collapse-btn">▼</button>
+                        <h3>Aufgaben</h3>
+                    </div>
+                    <span id="tasksSectionCount" style="font-size:13px; color:#366092;"></span>
                 </div>
-
+                <div class="section-body">
                 <div class="add-position-form">
                     <h4 style="margin-bottom: 15px; color: #366092;">Neue Aufgabe hinzufügen</h4>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
@@ -1777,6 +1835,7 @@
                         <tbody id="tasksProjectTable"></tbody>
                     </table>
                 </div>
+                </div> <!-- Ende section-body Aufgaben -->
             </div>
 
             <div class="export-section">
@@ -3678,6 +3737,7 @@
             `}).join('');
             initDragAndDrop('salesTable', currentProject.salesPositions, renderSalesPositions);
             autoGrowAll();
+            updateSectionTotals();
         }
         
         function updateSalesPosition(index, field, value) {
@@ -3841,6 +3901,7 @@
             `}).join('');
             initDragAndDrop('purchaseTable', currentProject.purchasePositions, renderPurchasePositions);
             autoGrowAll();
+            updateSectionTotals();
         }
         
         function updatePurchasePosition(index, field, value) {
@@ -5845,6 +5906,35 @@
         window.closeBOMImportDialog = closeBOMImportDialog;
         window.confirmBOMImport = confirmBOMImport;
 
+        // ========== KLAPPBARE SEKTIONEN ==========
+
+        function toggleSection(id) {
+            const section = document.getElementById(id);
+            if (!section) return;
+            section.classList.toggle('collapsed');
+            const btn = section.querySelector('.collapse-btn');
+            if (btn) btn.textContent = section.classList.contains('collapsed') ? '▶' : '▼';
+        }
+
+        function updateSectionTotals() {
+            if (!currentProject) return;
+            const totalVK = (currentProject.salesPositions || []).reduce((s, p) => s + (p.totalPrice || 0), 0);
+            const totalEK = (currentProject.purchasePositions || []).reduce((s, p) => s + (p.totalPrice || 0), 0);
+            const taskCount = (currentProject.tasks || []).length;
+            const openTasks = (currentProject.tasks || []).filter(t => t.status !== 'done').length;
+
+            const vkEl = document.getElementById('vkSectionTotal');
+            const ekEl = document.getElementById('ekSectionTotal');
+            const taskEl = document.getElementById('tasksSectionCount');
+
+            if (vkEl) vkEl.textContent = `VK: ${formatCurrency(totalVK)}`;
+            if (ekEl) ekEl.textContent = `EK: ${formatCurrency(totalEK)}`;
+            if (taskEl && taskCount > 0) taskEl.textContent = `${openTasks} offen / ${taskCount} gesamt`;
+        }
+
+        window.toggleSection = toggleSection;
+        window.updateSectionTotals = updateSectionTotals;
+
         // ========== AUFGABEN ==========
 
         function addTask() {
@@ -5933,6 +6023,7 @@
                 </tr>`;
             }).join('');
             autoGrowAll();
+            updateSectionTotals();
         }
 
         window.addTask = addTask;
