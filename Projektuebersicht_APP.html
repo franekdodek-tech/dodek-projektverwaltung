@@ -1712,9 +1712,13 @@
                         <button class="collapse-btn">▼</button>
                         <h3>Einkaufspositionen (Ist-Kosten)</h3>
                     </div>
-                    <span id="ekSectionStatus" style="font-size:12px; color:#666;"></span>
+                    <div style="text-align:right;">
+                        <div id="ekSectionStatus" style="font-size:12px; color:#666;"></div>
+                        <div id="ekSectionTotal" style="font-size:13px; font-weight:600; color:#a71d2a; margin-top:2px;"></div>
+                    </div>
                 </div>
                 <div class="section-body">
+                <div class="add-position-form">
                     <h4 style="margin-bottom: 15px; color: #366092;">Neue Einkaufsposition hinzufügen</h4>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
@@ -5928,6 +5932,10 @@
 
             if (ekEl) {
                 const positions = currentProject.purchasePositions || [];
+                const totalEK = positions.reduce((s, p) => s + (p.totalPrice || 0), 0);
+                const ekTotalEl = document.getElementById('ekSectionTotal');
+                if (ekTotalEl) ekTotalEl.textContent = positions.length > 0 ? `EK gesamt: ${formatCurrency(totalEK)}` : '';
+
                 if (positions.length === 0) {
                     ekEl.textContent = '';
                 } else {
