@@ -1712,10 +1712,7 @@
                         <button class="collapse-btn">▼</button>
                         <h3>Einkaufspositionen (Ist-Kosten)</h3>
                     </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span id="ekSectionTotal" style="font-size:13px; font-weight:600; color:#a71d2a;"></span>
-                        <button onclick="event.stopPropagation(); openMultiPositionDialog()" class="btn-success" style="font-size:12px;">➕ Mehrere Positionen</button>
-                    </div>
+                    <span id="ekSectionStatus" style="font-size:12px; color:#666;"></span>
                 </div>
                 <div class="section-body">
                     <h4 style="margin-bottom: 15px; color: #366092;">Neue Einkaufsposition hinzufügen</h4>
@@ -1762,6 +1759,7 @@
                         </div>
                     </div>
                     <button onclick="addPurchasePosition()" class="btn-success">Einkaufsposition hinzufügen</button>
+                    <button onclick="openMultiPositionDialog()" class="btn-secondary" style="margin-left:8px;">➕ Mehrere Positionen</button>
                 </div>
                 
                 <div class="positions-table-wrapper">
@@ -5919,16 +5917,56 @@
         function updateSectionTotals() {
             if (!currentProject) return;
             const totalVK = (currentProject.salesPositions || []).reduce((s, p) => s + (p.totalPrice || 0), 0);
-            const totalEK = (currentProject.purchasePositions || []).reduce((s, p) => s + (p.totalPrice || 0), 0);
             const taskCount = (currentProject.tasks || []).length;
             const openTasks = (currentProject.tasks || []).filter(t => t.status !== 'done').length;
 
             const vkEl = document.getElementById('vkSectionTotal');
-            const ekEl = document.getElementById('ekSectionTotal');
+            const ekEl = document.getElementById('ekSectionStatus');
             const taskEl = document.getElementById('tasksSectionCount');
 
             if (vkEl) vkEl.textContent = `VK: ${formatCurrency(totalVK)}`;
-            if (ekEl) ekEl.textContent = `EK: ${formatCurrency(totalEK)}`;
+
+            if (ekEl) {
+                const positions = currentProject.purchasePositions || [];
+                if (positions.length === 0) {
+                    ekEl.textContent = '';
+                } else {
+                    // Zähle pro Status
+                    const counts = {};
+                    positions.forEach(pos => {
+                        const status = pos.status || 'open';
+                        counts[status] = (counts[status] || 0) + 1;
+                    });
+
+                    // Alle auf invoiced → nur eine Meldung
+                    const allDone = Object.keys(counts).every(s => s === 'invoiced');
+                    if (allDone) {
+                        ekEl.innerHTML = `<span style="color:#28a745;font-weight:600;">✅ Lager/Fakturiert: ${positions.length}</span>`;
+                    } else {
+                        const statusLabels = {
+                            open:     'Offen',
+                            ordered:  'Bestellt',
+                            partial:  'Bestätigt',
+                            delivered:'Geliefert',
+                            invoiced: 'Lager/Fakturiert'
+                        };
+                        const statusColors = {
+                            open:     '#dc3545',
+                            ordered:  '#fd7e14',
+                            partial:  '#b8860b',
+                            delivered:'#28a745',
+                            invoiced: '#6c757d'
+                        };
+                        // Reihenfolge: offen zuerst
+                        const order = ['open','ordered','partial','delivered','invoiced'];
+                        const parts = order
+                            .filter(s => counts[s])
+                            .map(s => `<span style="color:${statusColors[s]};margin-left:8px;">${statusLabels[s]}: ${counts[s]}</span>`);
+                        ekEl.innerHTML = parts.join(' ·');
+                    }
+                }
+            }
+
             if (taskEl && taskCount > 0) taskEl.textContent = `${openTasks} offen / ${taskCount} gesamt`;
         }
 
