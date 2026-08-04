@@ -3884,13 +3884,15 @@
                             ${memberOptions}
                         </select>
                     </td>
-                    <td style="width:70px; text-align:center;">
+                    <td style="width:80px; white-space:nowrap;">
                         <input type="date" id="ekDate_${index}" value="${pos.deliveryDate || ''}"
                                onchange="updatePurchasePosition(${index}, 'deliveryDate', this.value)"
                                style="position:absolute; opacity:0; width:0; height:0;">
                         <button onclick="document.getElementById('ekDate_${index}').showPicker ? document.getElementById('ekDate_${index}').showPicker() : document.getElementById('ekDate_${index}').click()"
-                                style="background:none; border:none; cursor:pointer; font-size:16px;" title="Liefertermin wählen">📅</button>
-                        ${pos.deliveryDate ? `<div style="font-size:11px;color:#366092;font-weight:600;">KW ${getWeekNumber(new Date(pos.deliveryDate))}</div>` : '<div style="font-size:10px;color:#ccc;">—</div>'}
+                                style="background:none; border:none; cursor:pointer; font-size:15px; vertical-align:middle;" title="Liefertermin wählen">📅</button>
+                        <span style="font-size:11px;color:${pos.deliveryDate ? '#366092' : '#ccc'};font-weight:${pos.deliveryDate ? '600' : 'normal'};vertical-align:middle;">
+                            ${pos.deliveryDate ? `KW ${getWeekNumber(new Date(pos.deliveryDate))}` : '—'}
+                        </span>
                     </td>
                     <td class="number-cell editable-cell">
                         <input type="number" step="0.01" value="${pos.unitPrice}"
@@ -5966,7 +5968,7 @@
                             done:    '#28a745'
                         };
                         // Reihenfolge: offen zuerst
-                        const order = ['open','ordered','partial','delivered','invoiced'];
+                        const order = ['open','ordered','partial','done'];
                         const parts = order
                             .filter(s => counts[s])
                             .map(s => `<span style="color:${statusColors[s]};margin-left:8px;">${statusLabels[s]}: ${counts[s]}</span>`);
