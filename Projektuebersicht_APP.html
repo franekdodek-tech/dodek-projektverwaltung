@@ -2324,7 +2324,9 @@
 
         // Alle Textareas nach dem Rendern anpassen
         function autoGrowAll() {
-            document.querySelectorAll('textarea.auto-grow').forEach(el => autoGrow(el));
+            requestAnimationFrame(() => {
+                document.querySelectorAll('textarea.auto-grow').forEach(el => autoGrow(el));
+            });
         }
         window.autoGrowAll = autoGrowAll;
 
@@ -3805,19 +3807,19 @@
             };
             
             currentProject.purchasePositions.push(position);
-            
+
+            // Formular sofort leeren und Feedback geben
             document.getElementById('newPurchaseSupplier').value = '';
-            document.getElementById('newPurchaseSupplierArticleNumber').value = '';
             document.getElementById('newPurchaseDescription').value = '';
             document.getElementById('newPurchaseQuantity').value = '1';
             document.getElementById('newPurchaseUnitPrice').value = '0';
             document.getElementById('purchaseArticleSelect').value = '';
             document.getElementById('purchaseArticleInfo').innerHTML = '';
-            
+            showMessage('Einkaufsposition hinzugefügt', 'success');
+
             renderPurchasePositions();
             updateSummary();
             updateTradeTable();
-            showMessage('Einkaufsposition hinzugefügt', 'success');
         }
         
         function renderPurchasePositions() {
