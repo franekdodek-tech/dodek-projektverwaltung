@@ -3031,6 +3031,8 @@
         }
 
         window.migrateAllProjects = migrateAllProjects;
+
+        async function saveAllToSharePoint() {
             showMessage('Speichere alle Projekte in SharePoint...', 'success');
             let count = 0;
             for (const project of Object.values(allProjects)) {
