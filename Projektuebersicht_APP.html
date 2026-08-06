@@ -1084,31 +1084,6 @@
         
         <div id="message" class="message"></div>
         
-        <div class="backup-info">
-            <h3>💾 Backup-Verwaltung</h3>
-                <button onclick="migrateAllProjects()" class="btn-secondary" title="Alte EK-Stati in allen Projekten korrigieren und speichern">🔄 EK-Migration ausführen</button>
-            <div class="backup-actions">
-                <label class="btn-success btn-icon-only" style="cursor: pointer;" title="Projekt-Backup laden">
-                    📥
-                    <input type="file" id="loadBackup" accept=".json" style="display: none;" onchange="loadBackupFile(event)">
-                </label>
-                <button onclick="saveBackupManually()" class="btn-secondary btn-icon-only" title="Projekt-Backup speichern (Gesamt)">💾</button>
-                <select id="backupYearSelect" style="padding: 8px; border: 1px solid #366092; border-radius: 4px; font-size: 13px; height: 36px;">
-                    <option value="all">Alle Jahre</option>
-                </select>
-                <button onclick="clearAllProjects()" class="btn-danger btn-icon-only" title="Alle Projekte löschen">🗑️</button>
-                
-                <div class="backup-separator"></div>
-                
-                <label class="btn-success btn-icon-only" style="cursor: pointer;" title="Artikel-Backup laden">
-                    📦
-                    <input type="file" id="loadArticleBackup" accept=".json" style="display: none;" onchange="loadArticleBackup(event)">
-                </label>
-                <button onclick="saveArticleBackup()" class="btn-secondary btn-icon-only" title="Artikel-Backup speichern">📋</button>
-                <button onclick="clearAllArticles()" class="btn-danger btn-icon-only" title="Alle Artikel löschen">🗑️</button>
-            </div>
-        </div>
-        
         <div class="view-selector">
             <button onclick="showView('dashboard')">📊 Projektübersicht</button>
             <button onclick="showView('statistics')">📈 Statistiken</button>
@@ -1117,6 +1092,7 @@
             <button onclick="showView('quotes')">🧮 Vorkalkulation</button>
             <button onclick="showView('editor')" id="editorButton" style="display: none;">📝 Projekt bearbeiten</button>
             <button onclick="showView('articles')">📦 Artikelstamm</button>
+            <button onclick="showView('settings')" id="settingsBtn" style="display:none;">⚙️ Einstellungen</button>
         </div>
         
         <!-- DASHBOARD VIEW -->
@@ -1525,6 +1501,59 @@
                         </thead>
                         <tbody id="stockTable"></tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS VIEW -->
+        <div id="settingsView" class="view">
+            <h2 style="margin-bottom: 20px;">⚙️ Einstellungen</h2>
+
+            <div class="positions-section" style="margin-bottom: 20px;">
+                <div class="section-header"><h3>💾 Backup & Daten</h3></div>
+                <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+
+                    <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                        <div>
+                            <strong>Gesamtbackup erstellen</strong>
+                            <p style="font-size:13px;color:#666;margin-top:3px;">Projekte, Artikel und Lager in einer Datei (Dodek_Hub_Backup.json)</p>
+                        </div>
+                        <button onclick="saveBackupManually()" class="btn-success">💾 Backup herunterladen</button>
+                    </div>
+
+                    <hr style="border:none;border-top:1px solid #eee;">
+
+                    <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                        <div>
+                            <strong>Backup wiederherstellen</strong>
+                            <p style="font-size:13px;color:#666;margin-top:3px;">Lädt Projekte, Artikel und Lager aus einer Backup-Datei nach SharePoint</p>
+                        </div>
+                        <label class="btn-secondary" style="cursor:pointer;">
+                            📥 Backup laden
+                            <input type="file" id="loadBackup" accept=".json" style="display:none;" onchange="loadBackupFile(event)">
+                        </label>
+                    </div>
+
+                    <hr style="border:none;border-top:1px solid #eee;">
+
+                    <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                        <div>
+                            <strong>EK-Migration ausführen</strong>
+                            <p style="font-size:13px;color:#666;margin-top:3px;">Korrigiert alte EK-Stati (Geliefert, Aus Lager, Abgerechnet) auf Lager/Geliefert</p>
+                        </div>
+                        <button onclick="migrateAllProjects()" class="btn-secondary">🔄 Migration starten</button>
+                    </div>
+
+                    <hr style="border:none;border-top:1px solid #eee;">
+
+                    <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                        <div>
+                            <strong style="color:#dc3545;">Alle Daten löschen</strong>
+                            <p style="font-size:13px;color:#666;margin-top:3px;">Projekte oder Artikel unwiderruflich aus SharePoint entfernen</p>
+                        </div>
+                        <button onclick="clearAllProjects()" class="btn-danger">🗑️ Alle Projekte löschen</button>
+                        <button onclick="clearAllArticles()" class="btn-danger">🗑️ Alle Artikel löschen</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2393,8 +2422,8 @@
 
         // ========== KONSTANTEN ==========
         const APP_VERSION = 'v1.0.0';
-        const BACKUP_FILENAME = 'nachkalkulation_backup.json';
-        const ARTICLE_BACKUP_FILENAME = 'artikel_backup.json';
+        const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
+        const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
         // Team-Mitglieder (für Aufgabenzuweisung EK-Positionen)
         const TEAM_MEMBERS = [
@@ -3049,42 +3078,35 @@
         }
         
         function saveBackupManually() {
-            const selectedYear = document.getElementById('backupYearSelect').value;
-            
-            if (selectedYear === 'all') {
-                // Gesamt-Backup
-                createBackupDownload(allProjects, BACKUP_FILENAME);
-                showMessage('Gesamt-Backup erstellt', 'success');
-            } else {
-                // Jahres-Backup: nur Projekte des gewählten Jahres
-                const yearProjects = {};
-                Object.entries(allProjects).forEach(([key, project]) => {
-                    const year = getYearFromProjectNumber(project.projectNumber);
-                    if (year === parseInt(selectedYear)) {
-                        yearProjects[key] = project;
-                    }
-                });
-                
-                const count = Object.keys(yearProjects).length;
-                
-                if (count === 0) {
-                    showMessage(`Keine Projekte für ${selectedYear} gefunden`, 'error');
-                    return;
-                }
-                
-                const filename = `nachkalkulation_${selectedYear}.json`;
-                createBackupDownload(yearProjects, filename);
-                showMessage(`Backup ${selectedYear} erstellt (${count} Projekte)`, 'success');
-            }
+            const backupData = {
+                version: APP_VERSION,
+                timestamp: new Date().toISOString(),
+                projects: window.allProjects || {},
+                articles: articleDatabase || {},
+                stock: window.stockDatabase || {}
+            };
+
+            const dataStr = JSON.stringify(backupData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = BACKUP_FILENAME;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showMessage('Dodek Hub Backup erstellt (Projekte + Artikel + Lager)', 'success');
         }
-        
+
         function createBackupDownload(projects, filename) {
             const backupData = {
-                version: '1.0',
+                version: APP_VERSION,
                 timestamp: new Date().toISOString(),
-                projects: projects
+                projects: projects,
+                articles: articleDatabase || {},
+                stock: window.stockDatabase || {}
             };
-            
             const dataStr = JSON.stringify(backupData, null, 2);
             const blob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -3111,6 +3133,23 @@
                     }
                     
                     window.allProjects = backupData.projects;
+
+                    // Artikel wiederherstellen falls vorhanden
+                    if (backupData.articles) {
+                        articleDatabase = backupData.articles;
+                        for (const article of Object.values(articleDatabase)) {
+                            await saveArticleToSharePoint(article);
+                        }
+                    }
+
+                    // Lager wiederherstellen falls vorhanden
+                    if (backupData.stock) {
+                        window.stockDatabase = backupData.stock;
+                        for (const item of Object.values(window.stockDatabase)) {
+                            await saveStockItemToSharePoint(item);
+                        }
+                    }
+
                     showMessage('Backup gelesen — Speichere in SharePoint...', 'success');
                     await saveAllToSharePoint();
                     renderDashboard();
@@ -3163,6 +3202,9 @@
                 document.getElementById('editorButton').style.display = 'none';
                 renderQuoteList();
                 updateQuoteArticleSelect();
+            } else if (viewName === 'settings') {
+                document.getElementById('settingsView').classList.add('active');
+                document.getElementById('editorButton').style.display = 'none';
             }
         }
         
@@ -4717,9 +4759,6 @@
         
         // Dashboard-Filter
         document.getElementById('yearFilter').innerHTML = optionsHTML;
-        
-        // Backup-Jahresauswahl ebenfalls aktualisieren
-        document.getElementById('backupYearSelect').innerHTML = optionsHTML;
     }
 
     function applyYearFilter() {
@@ -6230,6 +6269,10 @@
                     disable('button[onclick^="copyProject"]');
                 }
             }
+
+            // Settings-Tab nur für Admin
+            const settingsBtn = document.getElementById('settingsBtn');
+            if (settingsBtn) settingsBtn.style.display = isAdmin ? 'inline-block' : 'none';
 
             // Backup-Verwaltung nur für Admin sichtbar
             const backupSection = document.querySelector('.backup-info');
