@@ -1062,6 +1062,7 @@
                 🔑 Mit Microsoft anmelden
             </button>
             <p id="loginError" style="color: #dc3545; font-size: 13px; margin-top: 15px; display: none;"></p>
+            <p style="color: #ccc; font-size: 11px; margin-top: 20px;">Dodek Hub <span id="loginVersion"></span></p>
         </div>
     </div>
 
@@ -1072,7 +1073,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <h1>Dodek Hub</h1>
-                    <p>Projektsteuerung · Einkauf · Aufgaben · Lager</p>
+                    <p>Projektsteuerung · Einkauf · Aufgaben · Lager <span id="headerVersion" style="font-size:11px; color:#aaa; margin-left:8px;"></span></p>
                 </div>
                 <div style="text-align: right; font-size: 13px;">
                     <div id="userDisplayName" style="margin-bottom: 6px; font-weight: 600;"></div>
@@ -2391,6 +2392,7 @@
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
+        const APP_VERSION = 'v1.0.0';
         const BACKUP_FILENAME = 'nachkalkulation_backup.json';
         const ARTICLE_BACKUP_FILENAME = 'artikel_backup.json';
 
@@ -2437,6 +2439,10 @@
         // Aktuelle Nutzerrolle — wird nach Login gesetzt
         window.currentUserRole = 'reader'; // sicherster Default
         
+        // Versionsnummer anzeigen
+        const vEls = document.querySelectorAll('#loginVersion, #headerVersion');
+        vEls.forEach(el => { if (el) el.textContent = APP_VERSION; });
+
         // Globale Variablen — direkt auf window, keine lokalen Kopien
         window.currentProject = null;
         window.allProjects = {};
