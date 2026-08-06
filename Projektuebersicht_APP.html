@@ -1085,6 +1085,7 @@
         
         <div class="backup-info">
             <h3>💾 Backup-Verwaltung</h3>
+                <button onclick="migrateAllProjects()" class="btn-secondary" title="Alte EK-Stati in allen Projekten korrigieren und speichern">🔄 EK-Migration ausführen</button>
             <div class="backup-actions">
                 <label class="btn-success btn-icon-only" style="cursor: pointer;" title="Projekt-Backup laden">
                     📥
@@ -3004,7 +3005,32 @@
             });
         }
 
-        async function saveAllToSharePoint() {
+        async function migrateAllProjects() {
+            if (!confirm('Alle Projekte auf neue EK-Stati migrieren und in SharePoint speichern?\n\nAlte Stati (Geliefert, Aus Lager, Abgerechnet) werden auf Lager/Geliefert gesetzt.')) return;
+
+            let count = 0;
+            let changed = 0;
+            showMessage('Migration läuft...', 'success');
+
+            for (const project of Object.values(window.allProjects)) {
+                let dirty = false;
+                (project.purchasePositions || []).forEach(pos => {
+                    if (['delivered', 'fromstock', 'invoiced'].includes(pos.status)) {
+                        pos.status = 'done';
+                        dirty = true;
+                    }
+                });
+                if (dirty) {
+                    await saveProjectToSharePoint(project);
+                    changed++;
+                }
+                count++;
+            }
+            showMessage(`Migration abgeschlossen: ${changed} von ${count} Projekten aktualisiert`, 'success');
+            renderTasks();
+        }
+
+        window.migrateAllProjects = migrateAllProjects;
             showMessage('Speichere alle Projekte in SharePoint...', 'success');
             let count = 0;
             for (const project of Object.values(allProjects)) {
