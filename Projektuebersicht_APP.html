@@ -1250,6 +1250,12 @@
                         Erledigte ausblenden
                     </label>
                 </div>
+                <div class="year-filter">
+                    <label>
+                        <input type="checkbox" id="tasksHideCompleted" onchange="renderTasks()" checked>
+                        Abgeschlossene Projekte ausblenden
+                    </label>
+                </div>
                 <span id="tasksCount" style="margin-left: auto; font-size: 13px; color: #666;"></span>
             </div>
 
@@ -2078,6 +2084,14 @@
                         if (item.ProjectData) {
                             const project = JSON.parse(item.ProjectData);
                             project._spId = item.Id;
+                            // Migration alter EK-Stati
+                            if (project.purchasePositions) {
+                                project.purchasePositions.forEach(pos => {
+                                    if (['delivered', 'fromstock', 'invoiced'].includes(pos.status)) {
+                                        pos.status = 'done';
+                                    }
+                                });
+                            }
                             window.allProjects[project.projectNumber] = project;
                         } else {
                             noData++;
@@ -4731,9 +4745,10 @@
             });
         }
 
-        const memberFilter = document.getElementById('tasksMemberFilter').value;
-        const yearFilter   = document.getElementById('tasksYearFilter').value;
-        const hideDone     = document.getElementById('tasksHideDone').checked;
+        const memberFilter  = document.getElementById('tasksMemberFilter').value;
+        const yearFilter    = document.getElementById('tasksYearFilter').value;
+        const hideDone      = document.getElementById('tasksHideDone').checked;
+        const hideCompleted = document.getElementById('tasksHideCompleted')?.checked ?? true;
 
         // ---- GRUPPE 1: EK-Positionen ----
         const purchaseRows = [];
@@ -4742,11 +4757,14 @@
         Object.values(window.allProjects).forEach(project => {
             const year = getYearFromProjectNumber(project.projectNumber);
             if (yearFilter !== 'all' && String(year) !== yearFilter) return;
+            // Abgeschlossene Projekte ausblenden
+            if (hideCompleted && project.hasAB && project.hasDelivered && project.hasInvoice && project.hasPostCalc) return;
 
             (project.purchasePositions || []).forEach((pos) => {
                 const posStatus     = pos.status     || 'open';
                 const posAssignedTo = pos.assignedTo || 'unassigned';
                 if (hideDone && posStatus === 'done') return;
+                if (posAssignedTo === 'not_required') return; // Nicht notwendig → nie in Aufgabenliste
                 if (memberFilter !== 'all' && posAssignedTo !== memberFilter) return;
                 purchaseRows.push({ project, pos });
             });
@@ -4790,6 +4808,7 @@
         Object.values(window.allProjects).forEach(project => {
             const year = getYearFromProjectNumber(project.projectNumber);
             if (yearFilter !== 'all' && String(year) !== yearFilter) return;
+            if (hideCompleted && project.hasAB && project.hasDelivered && project.hasInvoice && project.hasPostCalc) return;
 
             (project.tasks || []).forEach((task) => {
                 const taskStatus     = task.status     || 'open';
