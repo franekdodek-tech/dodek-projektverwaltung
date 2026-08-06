@@ -6223,6 +6223,12 @@
                 }
             }
 
+            // Backup-Verwaltung nur für Admin sichtbar
+            const backupSection = document.querySelector('.backup-info');
+            if (backupSection) {
+                backupSection.style.display = isAdmin ? 'block' : 'none';
+            }
+
             // Editor: Artikelstamm nur lesen, nicht bearbeiten/löschen
             if (!isAdmin) {
                 disable('button[onclick="openArticleModal()"]');
