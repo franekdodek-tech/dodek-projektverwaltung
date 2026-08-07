@@ -1510,10 +1510,62 @@
         <div id="settingsView" class="view">
             <h2 style="margin-bottom: 20px;">⚙️ Einstellungen</h2>
 
+            <!-- Team-Mitglieder -->
+            <div class="positions-section" style="margin-bottom: 20px;">
+                <div class="section-header"><h3>👥 Team-Mitglieder</h3></div>
+                <div style="padding: 20px;">
+                    <div id="settingsTeamList" style="margin-bottom: 15px;"></div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                        <div>
+                            <label>ID (intern)</label>
+                            <input type="text" id="newMemberId" placeholder="z.B. max" style="width:120px;">
+                        </div>
+                        <div>
+                            <label>Name (Anzeige)</label>
+                            <input type="text" id="newMemberName" placeholder="z.B. Max Mustermann" style="width:200px;">
+                        </div>
+                        <button onclick="addSettingsMember()" class="btn-success">+ Hinzufügen</button>
+                    </div>
+                    <button onclick="saveSettingsTeam()" class="btn-secondary" style="margin-top:15px;">💾 Team speichern</button>
+                </div>
+            </div>
+
+            <!-- Standard-Gewerke -->
+            <div class="positions-section" style="margin-bottom: 20px;">
+                <div class="section-header"><h3>🔧 Standard-Gewerke</h3></div>
+                <div style="padding: 20px;">
+                    <div id="settingsTradeList" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px;"></div>
+                    <div style="display:flex; gap:10px; align-items:flex-end;">
+                        <div>
+                            <label>Neues Gewerk</label>
+                            <input type="text" id="newSettingsTrade" placeholder="z.B. Sonderanfertigung" style="width:220px;">
+                        </div>
+                        <button onclick="addSettingsTrade()" class="btn-success">+ Hinzufügen</button>
+                    </div>
+                    <button onclick="saveSettingsTrades()" class="btn-secondary" style="margin-top:15px;">💾 Gewerke speichern</button>
+                </div>
+            </div>
+
+            <!-- Vorkalkulations-Faktoren -->
+            <div class="positions-section" style="margin-bottom: 20px;">
+                <div class="section-header"><h3>🧮 Vorkalkulations-Faktoren (Standard)</h3></div>
+                <div style="padding: 20px; display:flex; gap:20px; flex-wrap:wrap; align-items:flex-end;">
+                    <div>
+                        <label>Faktor Wiederverkauf</label>
+                        <input type="number" id="settingsFactorReseller" step="0.01" value="1.30" min="1" style="width:100px;">
+                    </div>
+                    <div>
+                        <label>Faktor Endkunde</label>
+                        <input type="number" id="settingsFactorEndcustomer" step="0.01" value="1.60" min="1" style="width:100px;">
+                    </div>
+                    <button onclick="saveSettingsFactors()" class="btn-success">💾 Faktoren speichern</button>
+                </div>
+            </div>
+
+            <!-- Backup & Daten -->
             <div class="positions-section" style="margin-bottom: 20px;">
                 <div class="section-header"><h3>💾 Backup & Daten</h3></div>
                 <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px;">
-
                     <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
                         <div>
                             <strong>Gesamtbackup erstellen</strong>
@@ -1521,9 +1573,7 @@
                         </div>
                         <button onclick="saveBackupManually()" class="btn-success">💾 Backup herunterladen</button>
                     </div>
-
                     <hr style="border:none;border-top:1px solid #eee;">
-
                     <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
                         <div>
                             <strong>Backup wiederherstellen</strong>
@@ -1534,23 +1584,19 @@
                             <input type="file" id="loadBackup" accept=".json" style="display:none;" onchange="loadBackupFile(event)">
                         </label>
                     </div>
-
                     <hr style="border:none;border-top:1px solid #eee;">
-
                     <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
                         <div>
                             <strong>EK-Migration ausführen</strong>
-                            <p style="font-size:13px;color:#666;margin-top:3px;">Korrigiert alte EK-Stati (Geliefert, Aus Lager, Abgerechnet) auf Lager/Geliefert</p>
+                            <p style="font-size:13px;color:#666;margin-top:3px;">Korrigiert alte EK-Stati auf Lager/Geliefert in allen Projekten</p>
                         </div>
                         <button onclick="migrateAllProjects()" class="btn-secondary">🔄 Migration starten</button>
                     </div>
-
                     <hr style="border:none;border-top:1px solid #eee;">
-
                     <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
                         <div>
                             <strong style="color:#dc3545;">Alle Daten löschen</strong>
-                            <p style="font-size:13px;color:#666;margin-top:3px;">Projekte oder Artikel unwiderruflich aus SharePoint entfernen</p>
+                            <p style="font-size:13px;color:#666;margin-top:3px;">Unwiderruflich aus SharePoint entfernen</p>
                         </div>
                         <button onclick="clearAllProjects()" class="btn-danger">🗑️ Alle Projekte löschen</button>
                         <button onclick="clearAllArticles()" class="btn-danger">🗑️ Alle Artikel löschen</button>
@@ -2044,7 +2090,8 @@
             guidProjects: '1e1a835c-20b9-41ea-920f-f8b391981c71',
             guidArticles: '26a0bbca-31bf-4a0d-8bd2-abe07d614725',
             guidStock:    'df491bc5-f23b-493a-a8d0-37a15024cf29',
-            guidQuotes:   '39105ce6-473c-4af0-bab0-68659edcbed3'
+            guidQuotes:   '39105ce6-473c-4af0-bab0-68659edcbed3',
+            guidSettings: '89b9fdeb-6907-4cfc-a1f5-2bc8bc0bdbe2'
         };
 
         const msalConfig = {
@@ -2361,7 +2408,74 @@
             });
         }
 
-        // Auto-wachsende Textarea
+        // ========== SHAREPOINT EINSTELLUNGEN ==========
+
+        window.settingsCache = {};
+
+        async function loadSettingsFromSharePoint() {
+            try {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidSettings}')/items?$select=Id,SettingKey,SettingData&$top=100`;
+                const data = await spFetch(url);
+                window.settingsCache = {};
+                (data.value || []).forEach(item => {
+                    try {
+                        window.settingsCache[item.SettingKey] = {
+                            _spId: item.Id,
+                            value: JSON.parse(item.SettingData)
+                        };
+                    } catch(e) {}
+                });
+                applySettings();
+            } catch(e) {
+                console.error('Fehler beim Laden der Einstellungen:', e);
+            }
+        }
+
+        async function saveSetting(key, value) {
+            const payload = {
+                SettingKey:  key,
+                SettingData: JSON.stringify(value)
+            };
+            const existing = window.settingsCache[key];
+            if (existing?._spId) {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidSettings}')/items(${existing._spId})`;
+                await spFetch(url, {
+                    method: 'PATCH',
+                    headers: { 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' },
+                    body: JSON.stringify(payload)
+                });
+                window.settingsCache[key].value = value;
+            } else {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidSettings}')/items`;
+                const result = await spFetch(url, { method: 'POST', body: JSON.stringify(payload) });
+                window.settingsCache[key] = { _spId: result.id, value };
+            }
+        }
+
+        function applySettings() {
+            if (window.settingsCache.team_members?.value) {
+                const members = window.settingsCache.team_members.value;
+                TEAM_MEMBERS.length = 0;
+                members.forEach(m => TEAM_MEMBERS.push(m));
+            }
+            if (window.settingsCache.default_trades?.value) {
+                const trades = window.settingsCache.default_trades.value;
+                DEFAULT_TRADES.length = 0;
+                trades.forEach(t => DEFAULT_TRADES.push(t));
+            }
+            // Faktoren in offene Vorkalkulationsfelder übernehmen
+            const factors = window.settingsCache.quote_factors?.value;
+            if (factors) {
+                const r = document.getElementById('quoteFactorReseller');
+                const e = document.getElementById('quoteFactorEndcustomer');
+                if (r && !r.dataset.userSet) r.value = factors.reseller;
+                if (e && !e.dataset.userSet) e.value = factors.endcustomer;
+            }
+        }
+
+        window.loadSettingsFromSharePoint = loadSettingsFromSharePoint;
+        window.saveSetting = saveSetting;
+        window.applySettings = applySettings;        // Auto-wachsende Textarea
         function autoGrow(el) {
             el.style.height = '30px';
             el.style.height = el.scrollHeight + 'px';
@@ -2412,6 +2526,7 @@
             await loadArticlesFromSharePoint();
             await loadStockFromSharePoint();
             await loadQuotesFromSharePoint();
+            await loadSettingsFromSharePoint();
 
             applyPermissions();
         }
@@ -2422,7 +2537,7 @@
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.2.0';
+        const APP_VERSION = 'v1.3.0';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -2735,16 +2850,30 @@
             const list = document.getElementById('bomList');
             
             if (currentBOM.length === 0) {
-                list.innerHTML = '<p style="color: #999; font-size: 13px;">Keine Komponenten. Fügen Sie Komponenten mit Lieferanten hinzu.</p>';
+                list.innerHTML = '<p style="color: #999; font-size: 13px;">Keine Komponenten. Fügen Sie Komponenten hinzu oder wählen Sie einen Artikel aus dem Stamm.</p>';
                 return;
             }
             
             const total = currentBOM.reduce((sum, item) => {
                 return sum + ((parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0));
             }, 0);
+
+            // Artikel-Optionen für Dropdown (ohne den aktuell bearbeiteten Artikel — Zirkelschutz)
+            const currentArticleId = document.getElementById('articleId')?.value || '';
+            const articleOptions = Object.values(articleDatabase)
+                .filter(a => a.id !== currentArticleId)
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(a => `<option value="${a.id}">${a.id} — ${a.name}</option>`)
+                .join('');
             
             list.innerHTML = currentBOM.map((item, index) => `
                 <div class="bom-item">
+                    <div style="grid-column: 1 / -1; margin-bottom:4px;">
+                        <select onchange="fillBOMFromArticle(${index}, this.value)" style="width:100%;font-size:12px;">
+                            <option value="">— Manuell eingeben oder Artikel wählen —</option>
+                            ${articleOptions}
+                        </select>
+                    </div>
                     <input type="text" placeholder="Lieferant" value="${item.supplier || ''}" 
                         onchange="window.currentBOM[${index}].supplier = this.value; renderBOM();" style="width: 100%;">
                     <input type="text" placeholder="Lieferanten-Artikelnr." value="${item.supplierArticleNumber || ''}" 
@@ -2761,6 +2890,22 @@
                 <div class="bom-total">Gesamt Einkaufspreis: ${formatCurrency(total)}</div>
             `;
         }
+
+        function fillBOMFromArticle(bomIndex, articleId) {
+            if (!articleId || !articleDatabase[articleId]) return;
+            const article = articleDatabase[articleId];
+            window.currentBOM[bomIndex].name               = article.name;
+            window.currentBOM[bomIndex].price              = article.purchasePrice || 0;
+            window.currentBOM[bomIndex].supplierArticleNumber = article.id;
+            // Lieferant aus erster BOM-Komponente des Artikels wenn vorhanden
+            if (article.bom && article.bom.length > 0 && article.bom[0].supplier) {
+                window.currentBOM[bomIndex].supplier = article.bom[0].supplier;
+            }
+            calculatePurchaseFromBOM();
+            renderBOM();
+        }
+
+        window.fillBOMFromArticle = fillBOMFromArticle;
         
         async function saveArticle() {
             const articleId = document.getElementById('articleId').value.trim();
@@ -3206,6 +3351,7 @@
             } else if (viewName === 'settings') {
                 document.getElementById('settingsView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
+                renderSettingsView();
             }
         }
         
@@ -5487,13 +5633,14 @@
         }
 
         function createNewQuote() {
+            const factors = window.settingsCache?.quote_factors?.value;
             window.currentQuote = {
                 id: `quote_${Date.now()}`,
                 title: '',
                 customer: '',
                 date: new Date().toISOString().split('T')[0],
-                factorReseller: 1.30,
-                factorEndcustomer: 1.60,
+                factorReseller: factors?.reseller || 1.30,
+                factorEndcustomer: factors?.endcustomer || 1.60,
                 positions: []
             };
             openQuoteEditor();
@@ -6099,6 +6246,110 @@
         window.removeQuoteBOMItem = removeQuoteBOMItem;
         window.updateQuoteBOMItem = updateQuoteBOMItem;
         window.importBOMFromArticle = importBOMFromArticle;
+
+        // ========== EINSTELLUNGEN UI ==========
+
+        function renderSettingsView() {
+            // Team-Mitglieder rendern
+            const teamList = document.getElementById('settingsTeamList');
+            if (teamList) {
+                const editable = TEAM_MEMBERS.filter(m => m.id !== 'unassigned' && m.id !== 'not_required');
+                teamList.innerHTML = editable.length === 0
+                    ? '<p style="color:#999;font-size:13px;">Keine Mitglieder definiert.</p>'
+                    : `<table style="width:100%;font-size:13px;border-collapse:collapse;">
+                        <thead><tr>
+                            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee;">ID</th>
+                            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee;">Name</th>
+                            <th style="width:80px;"></th>
+                        </tr></thead>
+                        <tbody>
+                        ${editable.map((m, i) => `
+                            <tr>
+                                <td style="padding:4px 8px;">${m.id}</td>
+                                <td style="padding:4px 8px;">${m.name}</td>
+                                <td style="padding:4px 8px;">
+                                    <button onclick="removeSettingsMember('${m.id}')" class="btn-danger btn-small">×</button>
+                                </td>
+                            </tr>`).join('')}
+                        </tbody></table>`;
+            }
+
+            // Gewerke rendern
+            const tradeList = document.getElementById('settingsTradeList');
+            if (tradeList) {
+                tradeList.innerHTML = DEFAULT_TRADES.map((t, i) => `
+                    <div style="display:flex;align-items:center;gap:4px;background:#f0f4ff;padding:4px 10px;border-radius:15px;font-size:12px;">
+                        <span>${t}</span>
+                        <button onclick="removeSettingsTrade(${i})" style="background:none;border:none;cursor:pointer;color:#dc3545;font-size:14px;line-height:1;">×</button>
+                    </div>`).join('');
+            }
+
+            // Faktoren befüllen
+            const cache = window.settingsCache?.quote_factors?.value;
+            if (cache) {
+                const r = document.getElementById('settingsFactorReseller');
+                const e = document.getElementById('settingsFactorEndcustomer');
+                if (r) r.value = cache.reseller || 1.30;
+                if (e) e.value = cache.endcustomer || 1.60;
+            }
+        }
+
+        function addSettingsMember() {
+            const id   = document.getElementById('newMemberId').value.trim().toLowerCase().replace(/\s/g, '_');
+            const name = document.getElementById('newMemberName').value.trim();
+            if (!id || !name) { showMessage('ID und Name erforderlich', 'error'); return; }
+            if (TEAM_MEMBERS.find(m => m.id === id)) { showMessage('ID bereits vorhanden', 'error'); return; }
+            TEAM_MEMBERS.push({ id, name });
+            document.getElementById('newMemberId').value = '';
+            document.getElementById('newMemberName').value = '';
+            renderSettingsView();
+        }
+
+        function removeSettingsMember(id) {
+            const idx = TEAM_MEMBERS.findIndex(m => m.id === id);
+            if (idx !== -1) TEAM_MEMBERS.splice(idx, 1);
+            renderSettingsView();
+        }
+
+        async function saveSettingsTeam() {
+            await saveSetting('team_members', TEAM_MEMBERS);
+            showMessage('Team-Mitglieder gespeichert', 'success');
+        }
+
+        function addSettingsTrade() {
+            const val = document.getElementById('newSettingsTrade').value.trim();
+            if (!val) return;
+            if (DEFAULT_TRADES.includes(val)) { showMessage('Gewerk bereits vorhanden', 'error'); return; }
+            DEFAULT_TRADES.push(val);
+            document.getElementById('newSettingsTrade').value = '';
+            renderSettingsView();
+        }
+
+        function removeSettingsTrade(index) {
+            DEFAULT_TRADES.splice(index, 1);
+            renderSettingsView();
+        }
+
+        async function saveSettingsTrades() {
+            await saveSetting('default_trades', [...DEFAULT_TRADES]);
+            showMessage('Gewerke gespeichert', 'success');
+        }
+
+        async function saveSettingsFactors() {
+            const reseller    = parseFloat(document.getElementById('settingsFactorReseller').value) || 1.30;
+            const endcustomer = parseFloat(document.getElementById('settingsFactorEndcustomer').value) || 1.60;
+            await saveSetting('quote_factors', { reseller, endcustomer });
+            showMessage('Faktoren gespeichert', 'success');
+        }
+
+        window.addSettingsMember    = addSettingsMember;
+        window.removeSettingsMember = removeSettingsMember;
+        window.saveSettingsTeam     = saveSettingsTeam;
+        window.addSettingsTrade     = addSettingsTrade;
+        window.removeSettingsTrade  = removeSettingsTrade;
+        window.saveSettingsTrades   = saveSettingsTrades;
+        window.saveSettingsFactors  = saveSettingsFactors;
+        window.renderSettingsView   = renderSettingsView;
 
         // ========== BOM IMPORT DIALOG ==========
 
