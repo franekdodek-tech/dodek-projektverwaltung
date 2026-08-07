@@ -1510,6 +1510,31 @@
         <div id="settingsView" class="view">
             <h2 style="margin-bottom: 20px;">⚙️ Einstellungen</h2>
 
+            <!-- Rechteverwaltung -->
+            <div class="positions-section" style="margin-bottom: 20px;">
+                <div class="section-header"><h3>🔐 Rechteverwaltung</h3></div>
+                <div style="padding: 20px;">
+                    <div id="settingsPermissionsList" style="margin-bottom: 15px;"></div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                        <div>
+                            <label>E-Mail *</label>
+                            <input type="text" id="newPermissionEmail" placeholder="name@dodek.de" style="width:220px;">
+                        </div>
+                        <div>
+                            <label>Rolle</label>
+                            <select id="newPermissionRole">
+                                <option value="admin">👑 Admin</option>
+                                <option value="editor" selected>✏️ Editor</option>
+                                <option value="reader">👁️ Leser</option>
+                            </select>
+                        </div>
+                        <button onclick="addSettingsPermission()" class="btn-success">+ Hinzufügen</button>
+                    </div>
+                    <button onclick="saveSettingsPermissions()" class="btn-secondary" style="margin-top:15px;">💾 Rechte speichern</button>
+                    <p style="font-size:12px;color:#888;margin-top:8px;">Unbekannte E-Mail-Adressen erhalten automatisch keinen Zugriff.</p>
+                </div>
+            </div>
+
             <!-- Team-Mitglieder -->
             <div class="positions-section" style="margin-bottom: 20px;">
                 <div class="section-header"><h3>👥 Team-Mitglieder</h3></div>
@@ -2453,6 +2478,11 @@
         }
 
         function applySettings() {
+            if (window.settingsCache.permissions?.value) {
+                const perms = window.settingsCache.permissions.value;
+                Object.keys(PERMISSIONS).forEach(k => delete PERMISSIONS[k]);
+                Object.assign(PERMISSIONS, perms);
+            }
             if (window.settingsCache.team_members?.value) {
                 const members = window.settingsCache.team_members.value;
                 TEAM_MEMBERS.length = 0;
@@ -2515,7 +2545,16 @@
 
             // Rolle ermitteln
             const email = (account.username || '').toLowerCase().trim();
-            window.currentUserRole = PERMISSIONS[email] || 'reader';
+            window.currentUserRole = PERMISSIONS[email] || null;
+
+            // Unbekannter Nutzer → Zugang verweigern
+            if (!window.currentUserRole) {
+                document.getElementById('loginOverlay').style.display = 'flex';
+                document.getElementById('mainApp').style.display = 'none';
+                document.getElementById('loginError').style.display = 'block';
+                document.getElementById('loginError').textContent = `Kein Zugriff für ${email}. Bitte wenden Sie sich an den Administrator (Franek).`;
+                return;
+            }
 
             // Rolle anzeigen
             const roleLabels = { admin: '👑 Admin', editor: '✏️ Editor', reader: '👁️ Leser' };
@@ -2537,7 +2576,7 @@
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.3.0';
+        const APP_VERSION = 'v1.3.1';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -2573,8 +2612,8 @@
             'Schallschutz', 'Erfassungselemente', 'Ersatzteile'
         ];
 
-        // Nutzerrechte
-        const PERMISSIONS = {
+        // Nutzerrechte (werden aus DodekEinstellungen überschrieben)
+        let PERMISSIONS = {
             'franek.dodek@dodek.de':  'admin',
             'hagen.dodek@dodek.de':   'editor',
             'nicole.merk@dodek.de':   'editor',
@@ -6136,18 +6175,30 @@
                             </tr>
                         </thead>
                         <tbody>
-                            ${positions.map(pos => `
+                            ${positions.map(pos => {
+                                const hasBOM = pos.bom && pos.bom.length > 0;
+                                const bomRows = hasBOM ? pos.bom.map(comp => `
+                                <tr style="background:#f9f9f9;font-size:10px;">
+                                    <td style="padding-left:20px;color:#666;">↳ ${comp.description}${comp.supplier ? ` <em>(${comp.supplier})</em>` : ''}</td>
+                                    <td style="color:#666;">—</td>
+                                    <td class="number" style="color:#666;">${comp.quantity}</td>
+                                    <td class="number" style="color:#666;">${comp.unitPrice.toFixed(2)} €</td>
+                                    <td class="number" style="color:#666;">${(comp.quantity * comp.unitPrice).toFixed(2)} €</td>
+                                    <td colspan="3"></td>
+                                </tr>`).join('') : '';
+                                return `
                                 <tr>
-                                    <td>${pos.description}</td>
+                                    <td><strong>${pos.description}</strong></td>
                                     <td>${pos.trade || '—'}</td>
                                     <td class="number">${pos.quantity}</td>
-                                    <td class="number">${pos.unitPrice.toFixed(2)} €</td>
+                                    <td class="number">${hasBOM ? '<em>aus Stückliste</em>' : pos.unitPrice.toFixed(2) + ' €'}</td>
                                     <td class="number">${pos.totalEK.toFixed(2)} €</td>
                                     <td class="number">${(pos.totalEK * reseller).toFixed(2)} € (DB: ${(pos.totalEK * reseller - pos.totalEK).toFixed(2)} €)</td>
                                     <td class="number">${(pos.totalEK * endcustomer).toFixed(2)} € (DB: ${(pos.totalEK * endcustomer - pos.totalEK).toFixed(2)} €)</td>
                                     <td class="number">${pos.vkHand !== undefined && pos.vkHand !== 0 ? pos.vkHand.toFixed(2) + ' €' : '—'}</td>
                                 </tr>
-                            `).join('')}
+                                ${bomRows}`;
+                            }).join('')}
                         </tbody>
                     </table>
                     <div class="summary">
@@ -6165,6 +6216,17 @@
                             <div class="summary-value" style="color:#28a745;">${totalVKE.toFixed(2)} €</div>
                             <div class="summary-label">DB: ${dbE.toFixed(2)} € (${(dbE/totalVKE*100).toFixed(1)}%)</div>
                         </div>
+                        ${(() => {
+                            const totalVKHand = positions.filter(p => p.vkHand).reduce((s, p) => s + (parseFloat(p.vkHand) || 0), 0);
+                            if (totalVKHand <= 0) return '';
+                            const dbHand = totalVKHand - totalEK;
+                            const dbPctHand = totalEK > 0 ? (dbHand / totalVKHand * 100) : 0;
+                            return `<div class="summary-box" style="border:2px solid #fd7e14;">
+                                <div class="summary-label">VK Hand (manuell)</div>
+                                <div class="summary-value" style="color:#fd7e14;">${totalVKHand.toFixed(2)} €</div>
+                                <div class="summary-label">DB: ${dbHand.toFixed(2)} € (${dbPctHand.toFixed(1)}%)</div>
+                            </div>`;
+                        })()}
                     </div>
                     <script>window.onload = function() { window.print(); }<\/script>
                 </body>
@@ -6250,6 +6312,35 @@
         // ========== EINSTELLUNGEN UI ==========
 
         function renderSettingsView() {
+            // Rechteverwaltung rendern
+            const permList = document.getElementById('settingsPermissionsList');
+            if (permList) {
+                const perms = window.settingsCache?.permissions?.value || PERMISSIONS;
+                const roleLabels = { admin: '👑 Admin', editor: '✏️ Editor', reader: '👁️ Leser' };
+                permList.innerHTML = Object.keys(perms).length === 0
+                    ? '<p style="color:#999;font-size:13px;">Keine Einträge.</p>'
+                    : `<table style="width:100%;font-size:13px;border-collapse:collapse;">
+                        <thead><tr>
+                            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee;">E-Mail</th>
+                            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee;">Rolle</th>
+                            <th style="width:120px;"></th>
+                        </tr></thead>
+                        <tbody>
+                        ${Object.entries(perms).map(([email, role]) => `
+                            <tr>
+                                <td style="padding:6px 8px;">${email}</td>
+                                <td style="padding:6px 8px;">${roleLabels[role] || role}</td>
+                                <td style="padding:6px 8px;display:flex;gap:6px;">
+                                    <select onchange="changePermissionRole('${email}', this.value)" style="font-size:12px;">
+                                        <option value="admin" ${role==='admin'?'selected':''}>👑 Admin</option>
+                                        <option value="editor" ${role==='editor'?'selected':''}>✏️ Editor</option>
+                                        <option value="reader" ${role==='reader'?'selected':''}>👁️ Leser</option>
+                                    </select>
+                                    <button onclick="removeSettingsPermission('${email}')" class="btn-danger btn-small">×</button>
+                                </td>
+                            </tr>`).join('')}
+                        </tbody></table>`;
+            }
             // Team-Mitglieder rendern
             const teamList = document.getElementById('settingsTeamList');
             if (teamList) {
@@ -6293,6 +6384,42 @@
                 if (e) e.value = cache.endcustomer || 1.60;
             }
         }
+
+        function addSettingsPermission() {
+            const email = document.getElementById('newPermissionEmail').value.trim().toLowerCase();
+            const role  = document.getElementById('newPermissionRole').value;
+            if (!email) { showMessage('E-Mail erforderlich', 'error'); return; }
+            if (!window.settingsCache.permissions) window.settingsCache.permissions = { value: {...PERMISSIONS} };
+            window.settingsCache.permissions.value[email] = role;
+            // PERMISSIONS direkt aktualisieren
+            PERMISSIONS[email] = role;
+            document.getElementById('newPermissionEmail').value = '';
+            renderSettingsView();
+        }
+
+        function removeSettingsPermission(email) {
+            if (!window.settingsCache.permissions?.value) return;
+            delete window.settingsCache.permissions.value[email];
+            delete PERMISSIONS[email];
+            renderSettingsView();
+        }
+
+        function changePermissionRole(email, role) {
+            if (!window.settingsCache.permissions) window.settingsCache.permissions = { value: {...PERMISSIONS} };
+            window.settingsCache.permissions.value[email] = role;
+            PERMISSIONS[email] = role;
+        }
+
+        async function saveSettingsPermissions() {
+            const perms = window.settingsCache?.permissions?.value || PERMISSIONS;
+            await saveSetting('permissions', perms);
+            showMessage('Rechte gespeichert', 'success');
+        }
+
+        window.addSettingsPermission    = addSettingsPermission;
+        window.removeSettingsPermission = removeSettingsPermission;
+        window.changePermissionRole     = changePermissionRole;
+        window.saveSettingsPermissions  = saveSettingsPermissions;
 
         function addSettingsMember() {
             const id   = document.getElementById('newMemberId').value.trim().toLowerCase().replace(/\s/g, '_');
