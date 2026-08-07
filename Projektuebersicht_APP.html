@@ -1514,6 +1514,28 @@
             <div class="positions-section" style="margin-bottom: 20px;">
                 <div class="section-header"><h3>🔐 Rechteverwaltung</h3></div>
                 <div style="padding: 20px;">
+
+                    <!-- Rollenrechte -->
+                    <h4 style="margin-bottom: 10px; color: #366092;">Rollenrechte</h4>
+                    <div style="overflow-x:auto; margin-bottom: 20px;">
+                        <table style="width:100%;font-size:13px;border-collapse:collapse;">
+                            <thead>
+                                <tr style="background:#f0f4ff;">
+                                    <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #366092;">Recht</th>
+                                    <th style="text-align:center;padding:8px 10px;border-bottom:2px solid #366092;">👑 Admin</th>
+                                    <th style="text-align:center;padding:8px 10px;border-bottom:2px solid #366092;">✏️ Editor</th>
+                                    <th style="text-align:center;padding:8px 10px;border-bottom:2px solid #366092;">👁️ Leser</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rolePermissionsTable"></tbody>
+                        </table>
+                    </div>
+                    <button onclick="saveRolePermissions()" class="btn-success" style="margin-bottom:20px;">💾 Rollenrechte speichern</button>
+
+                    <hr style="border:none;border-top:1px solid #eee;margin-bottom:20px;">
+
+                    <!-- Nutzerzuweisung -->
+                    <h4 style="margin-bottom: 10px; color: #366092;">Nutzerzuweisung</h4>
                     <div id="settingsPermissionsList" style="margin-bottom: 15px;"></div>
                     <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
                         <div>
@@ -1530,8 +1552,8 @@
                         </div>
                         <button onclick="addSettingsPermission()" class="btn-success">+ Hinzufügen</button>
                     </div>
-                    <button onclick="saveSettingsPermissions()" class="btn-secondary" style="margin-top:15px;">💾 Rechte speichern</button>
-                    <p style="font-size:12px;color:#888;margin-top:8px;">Unbekannte E-Mail-Adressen erhalten automatisch keinen Zugriff.</p>
+                    <button onclick="saveSettingsPermissions()" class="btn-secondary" style="margin-top:15px;">💾 Nutzerzuweisung speichern</button>
+                    <p style="font-size:12px;color:#888;margin-top:8px;">Unbekannte E-Mail-Adressen erhalten keinen Zugriff.</p>
                 </div>
             </div>
 
@@ -2482,6 +2504,9 @@
                 const perms = window.settingsCache.permissions.value;
                 Object.keys(PERMISSIONS).forEach(k => delete PERMISSIONS[k]);
                 Object.assign(PERMISSIONS, perms);
+            }
+            if (window.settingsCache.role_permissions?.value) {
+                Object.assign(window.ROLE_PERMISSIONS, window.settingsCache.role_permissions.value);
             }
             if (window.settingsCache.team_members?.value) {
                 const members = window.settingsCache.team_members.value;
@@ -6312,6 +6337,7 @@
         // ========== EINSTELLUNGEN UI ==========
 
         function renderSettingsView() {
+            renderRolePermissionsTable();
             // Rechteverwaltung rendern
             const permList = document.getElementById('settingsPermissionsList');
             if (permList) {
@@ -6384,6 +6410,51 @@
                 if (e) e.value = cache.endcustomer || 1.60;
             }
         }
+
+        // Standard-Rollenrechte — können in Settings überschrieben werden
+        window.ROLE_PERMISSIONS = {
+            'Projekte lesen':              { admin: true,  editor: true,  reader: true  },
+            'Projekte anlegen/bearbeiten': { admin: true,  editor: true,  reader: false },
+            'Projekte löschen':            { admin: true,  editor: false, reader: false },
+            'Projekt kopieren':            { admin: true,  editor: true,  reader: false },
+            'EK/VK Positionen bearbeiten': { admin: true,  editor: true,  reader: false },
+            'Aufgaben bearbeiten':         { admin: true,  editor: true,  reader: false },
+            'Lager bearbeiten':            { admin: true,  editor: true,  reader: false },
+            'Vorkalkulation bearbeiten':   { admin: true,  editor: true,  reader: false },
+            'Artikelstamm nutzen':         { admin: true,  editor: true,  reader: true  },
+            'Artikelstamm bearbeiten':     { admin: true,  editor: false, reader: false },
+            'Alles löschen':               { admin: true,  editor: false, reader: false },
+            'Einstellungen':               { admin: true,  editor: false, reader: false }
+        };
+
+        function renderRolePermissionsTable() {
+            const tbody = document.getElementById('rolePermissionsTable');
+            if (!tbody) return;
+            const perms = window.ROLE_PERMISSIONS;
+            tbody.innerHTML = Object.entries(perms).map(([right, roles]) => `
+                <tr style="border-bottom:1px solid #f0f0f0;">
+                    <td style="padding:7px 10px;">${right}</td>
+                    <td style="text-align:center;padding:7px 10px;">
+                        <input type="checkbox" ${roles.admin ? 'checked' : ''} disabled title="Admin hat immer alle Rechte">
+                    </td>
+                    <td style="text-align:center;padding:7px 10px;">
+                        <input type="checkbox" ${roles.editor ? 'checked' : ''}
+                               onchange="window.ROLE_PERMISSIONS['${right}'].editor = this.checked">
+                    </td>
+                    <td style="text-align:center;padding:7px 10px;">
+                        <input type="checkbox" ${roles.reader ? 'checked' : ''}
+                               onchange="window.ROLE_PERMISSIONS['${right}'].reader = this.checked">
+                    </td>
+                </tr>`).join('');
+        }
+
+        async function saveRolePermissions() {
+            await saveSetting('role_permissions', window.ROLE_PERMISSIONS);
+            showMessage('Rollenrechte gespeichert', 'success');
+        }
+
+        window.renderRolePermissionsTable = renderRolePermissionsTable;
+        window.saveRolePermissions = saveRolePermissions;
 
         function addSettingsPermission() {
             const email = document.getElementById('newPermissionEmail').value.trim().toLowerCase();
@@ -6825,5 +6896,5 @@
 
         window.applyPermissions = applyPermissions;
 
-        } // Ende initApp
+        } // Ende initApp (geschlossen durch applySettings/applyPermissions Block)
     </script>
