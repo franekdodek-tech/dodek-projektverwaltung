@@ -1422,6 +1422,7 @@
                                 <tr>
                                     <th>Beschreibung</th>
                                     <th>Gewerk</th>
+                                    <th>Stückliste</th>
                                     <th class="number-cell">Menge</th>
                                     <th class="number-cell">EK-Preis</th>
                                     <th class="number-cell">EK gesamt</th>
@@ -2421,7 +2422,7 @@
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.0.0';
+        const APP_VERSION = 'v1.2.0';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5481,6 +5482,8 @@
             const article = articleDatabase[articleId];
             document.getElementById('newQuoteDescription').value = article.name;
             document.getElementById('newQuoteUnitPrice').value = article.purchasePrice || 0;
+            // Merken für BOM-Import beim Hinzufügen
+            document.getElementById('quoteArticleSelect').dataset.selectedId = articleId;
         }
 
         function createNewQuote() {
@@ -5516,6 +5519,18 @@
             renderQuoteList();
         }
 
+        function recalcQuotePosition(pos) {
+            if (pos.bom && pos.bom.length > 0) {
+                // EK = Summe der Komponenten × Positionsmenge
+                const bomEK = pos.bom.reduce((s, c) => s + (c.quantity * c.unitPrice), 0);
+                pos.unitPrice = bomEK;
+                pos.totalEK = bomEK * (pos.quantity || 1);
+            } else {
+                pos.totalEK = (pos.quantity || 1) * (pos.unitPrice || 0);
+            }
+        }
+        window.recalcQuotePosition = recalcQuotePosition;
+
         function addQuotePosition() {
             const description = document.getElementById('newQuoteDescription').value.trim();
             if (!description) { showMessage('Beschreibung erforderlich', 'error'); return; }
@@ -5524,19 +5539,40 @@
             const unitPrice = parseFloat(document.getElementById('newQuoteUnitPrice').value) || 0;
             const trade     = document.getElementById('newQuoteTrade').value || '';
 
+            // BOM aus Artikelstamm übernehmen falls vorhanden
+            const selectedArticleId = document.getElementById('quoteArticleSelect').dataset.selectedId;
+            let bom = [];
+            if (selectedArticleId && articleDatabase[selectedArticleId]) {
+                const article = articleDatabase[selectedArticleId];
+                if (article.bom && article.bom.length > 0) {
+                    bom = article.bom.map(item => ({
+                        description: item.name || '',
+                        supplier: item.supplier || '',
+                        quantity: item.quantity || 1,
+                        unitPrice: item.price || 0
+                    }));
+                }
+            }
+
             window.currentQuote.positions.push({
                 id: `qpos_${Date.now()}`,
                 description,
                 quantity,
-                unitPrice,
-                totalEK: quantity * unitPrice,
-                trade
+                unitPrice: bom.length > 0 ? 0 : unitPrice, // wird aus BOM berechnet
+                totalEK: 0,
+                trade,
+                bom
             });
+
+            // totalEK berechnen
+            const newPos = window.currentQuote.positions[window.currentQuote.positions.length - 1];
+            recalcQuotePosition(newPos);
 
             document.getElementById('newQuoteDescription').value = '';
             document.getElementById('newQuoteQuantity').value = '1';
             document.getElementById('newQuoteUnitPrice').value = '0';
             document.getElementById('quoteArticleSelect').value = '';
+            document.getElementById('quoteArticleSelect').dataset.selectedId = '';
             renderQuotePositions();
         }
 
@@ -5553,9 +5589,7 @@
             } else {
                 pos[field] = parseFloat(value) || 0;
             }
-            if (field === 'quantity' || field === 'unitPrice') {
-                pos.totalEK = pos.quantity * pos.unitPrice;
-            }
+            recalcQuotePosition(pos);
             renderQuotePositions();
         }
 
@@ -5580,11 +5614,44 @@
             }
 
             tbody.innerHTML = positions.map((pos, index) => {
+                if (!pos.bom) pos.bom = [];
+                const hasBOM = pos.bom.length > 0;
                 const vkReseller    = pos.totalEK * reseller;
                 const vkEndcustomer = pos.totalEK * endcustomer;
                 const dbR = vkReseller - pos.totalEK;
                 const dbE = vkEndcustomer - pos.totalEK;
                 const vkHand = pos.vkHand !== undefined ? pos.vkHand : '';
+
+                // BOM-Zeilen
+                const bomRows = hasBOM ? pos.bom.map((comp, bi) => `
+                <tr style="background:#f8f9fa;">
+                    <td colspan="2" style="padding-left:30px;">
+                        <input type="text" value="${comp.description}"
+                               onchange="updateQuoteBOMItem(${index}, ${bi}, 'description', this.value)"
+                               placeholder="Komponente" style="width:100%;font-size:12px;">
+                    </td>
+                    <td>
+                        <input type="text" value="${comp.supplier || ''}"
+                               onchange="updateQuoteBOMItem(${index}, ${bi}, 'supplier', this.value)"
+                               placeholder="Lieferant" style="width:100%;font-size:12px;">
+                    </td>
+                    <td class="number-cell">
+                        <input type="number" step="0.01" value="${comp.quantity}"
+                               onchange="updateQuoteBOMItem(${index}, ${bi}, 'quantity', this.value)"
+                               style="width:60px;font-size:12px;">
+                    </td>
+                    <td class="number-cell">
+                        <input type="number" step="0.01" value="${comp.unitPrice}"
+                               onchange="updateQuoteBOMItem(${index}, ${bi}, 'unitPrice', this.value)"
+                               style="width:80px;font-size:12px;">
+                    </td>
+                    <td class="number-cell" style="font-size:12px;">${formatCurrency(comp.quantity * comp.unitPrice)}</td>
+                    <td colspan="3"></td>
+                    <td class="action-cell">
+                        <button onclick="removeQuoteBOMItem(${index}, ${bi})" class="btn-danger btn-small" style="font-size:11px;">×</button>
+                    </td>
+                </tr>`).join('') : '';
+
                 return `
                 <tr>
                     <td class="editable-cell">
@@ -5598,15 +5665,20 @@
                             ${DEFAULT_TRADES.map(t => `<option value="${t}" ${pos.trade === t ? 'selected' : ''}>${t}</option>`).join('')}
                         </select>
                     </td>
+                    <td class="editable-cell" style="white-space:nowrap;">
+                        <button onclick="importBOMFromArticle(${index})" class="btn-secondary btn-small" title="Stückliste aus Artikelstamm importieren" style="font-size:11px;">📋</button>
+                        <button onclick="addQuoteBOMItem(${index})" class="btn-secondary btn-small" title="Komponente hinzufügen" style="font-size:11px;">+</button>
+                        ${hasBOM ? `<span style="font-size:11px;color:#366092;">${pos.bom.length} Komp.</span>` : ''}
+                    </td>
                     <td class="number-cell editable-cell">
                         <input type="number" step="0.01" value="${pos.quantity}"
                                onchange="updateQuotePosition(${index}, 'quantity', this.value)"
                                style="width:70px;text-align:right;">
                     </td>
-                    <td class="number-cell editable-cell">
-                        <input type="number" step="0.01" value="${pos.unitPrice}"
+                    <td class="number-cell" style="color:#666;font-size:12px;">
+                        ${hasBOM ? `<em>aus BOM</em>` : `<input type="number" step="0.01" value="${pos.unitPrice}"
                                onchange="updateQuotePosition(${index}, 'unitPrice', this.value)"
-                               style="width:90px;text-align:right;">
+                               style="width:90px;text-align:right;">`}
                     </td>
                     <td class="number-cell">${formatCurrency(pos.totalEK)}</td>
                     <td class="number-cell" style="color:#366092;">
@@ -5626,7 +5698,11 @@
                     <td class="action-cell">
                         <button onclick="deleteQuotePosition(${index})" class="btn-danger btn-small">Löschen</button>
                     </td>
-                </tr>`;
+                </tr>
+                ${bomRows}
+                ${hasBOM ? `<tr style="background:#f0f4ff;"><td colspan="9" style="padding:4px 6px 8px 30px;font-size:11px;color:#366092;">
+                    EK gesamt (BOM × ${pos.quantity}×): <strong>${formatCurrency(pos.totalEK)}</strong>
+                </td></tr>` : ''}`;
             }).join('');
 
             renderQuoteSummary();
@@ -5770,31 +5846,52 @@
 
             const { reseller, endcustomer } = getQuoteFactors();
 
-            // VK-Positionen aus Vorkalkulation
+            // VK-Positionen — immer eine pro Vorkalkulations-Position
             const salesPositions = q.positions.map(pos => ({
                 id: `sales_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 description: pos.description,
                 quantity: pos.quantity,
-                unitPrice: pos.totalEK * endcustomer / pos.quantity,
+                unitPrice: pos.totalEK * endcustomer / (pos.quantity || 1),
                 totalPrice: pos.totalEK * endcustomer,
                 trade: pos.trade || '',
                 type: 'material'
             }));
 
-            // EK-Positionen aus Vorkalkulation
-            const purchasePositions = q.positions.map(pos => ({
-                id: `purchase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                supplier: '',
-                supplierArticleNumber: '',
-                description: pos.description,
-                quantity: pos.quantity,
-                unitPrice: pos.unitPrice,
-                totalPrice: pos.totalEK,
-                trade: pos.trade || '',
-                type: 'material',
-                status: 'open',
-                assignedTo: 'unassigned'
-            }));
+            // EK-Positionen — aus Stückliste wenn vorhanden, sonst identisch zur VK
+            const purchasePositions = [];
+            q.positions.forEach(pos => {
+                if (pos.bom && pos.bom.length > 0) {
+                    pos.bom.forEach(comp => {
+                        purchasePositions.push({
+                            id: `purchase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                            supplier: comp.supplier || '',
+                            description: comp.description,
+                            quantity: comp.quantity * (pos.quantity || 1),
+                            unitPrice: comp.unitPrice,
+                            totalPrice: comp.quantity * (pos.quantity || 1) * comp.unitPrice,
+                            trade: pos.trade || '',
+                            type: 'material',
+                            status: 'open',
+                            assignedTo: 'unassigned',
+                            deliveryDate: ''
+                        });
+                    });
+                } else {
+                    purchasePositions.push({
+                        id: `purchase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                        supplier: '',
+                        description: pos.description,
+                        quantity: pos.quantity,
+                        unitPrice: pos.unitPrice,
+                        totalPrice: pos.totalEK,
+                        trade: pos.trade || '',
+                        type: 'material',
+                        status: 'open',
+                        assignedTo: 'unassigned',
+                        deliveryDate: ''
+                    });
+                }
+            });
 
             // Gewerke aus Positionen ableiten
             const trades = [...new Set(q.positions.map(p => p.trade).filter(t => t))];
@@ -5944,6 +6041,64 @@
         window.fillQuoteFromArticle = fillQuoteFromArticle;
         window.updateQuoteArticleSelect = updateQuoteArticleSelect;
         window.renderQuotePositions = renderQuotePositions;
+
+        function addQuoteBOMItem(posIndex) {
+            const pos = window.currentQuote.positions[posIndex];
+            if (!pos) return;
+            if (!pos.bom) pos.bom = [];
+            pos.bom.push({ description: '', supplier: '', quantity: 1, unitPrice: 0 });
+            recalcQuotePosition(pos);
+            renderQuotePositions();
+        }
+
+        function removeQuoteBOMItem(posIndex, bomIndex) {
+            const pos = window.currentQuote.positions[posIndex];
+            if (!pos || !pos.bom) return;
+            pos.bom.splice(bomIndex, 1);
+            recalcQuotePosition(pos);
+            renderQuotePositions();
+        }
+
+        function updateQuoteBOMItem(posIndex, bomIndex, field, value) {
+            const pos = window.currentQuote.positions[posIndex];
+            if (!pos || !pos.bom) return;
+            if (field === 'description' || field === 'supplier') {
+                pos.bom[bomIndex][field] = value;
+            } else {
+                pos.bom[bomIndex][field] = parseFloat(value) || 0;
+            }
+            recalcQuotePosition(pos);
+            renderQuotePositions();
+        }
+
+        function importBOMFromArticle(posIndex) {
+            const articleId = prompt('Artikel-ID eingeben:');
+            if (!articleId || !articleDatabase[articleId]) {
+                showMessage('Artikel nicht gefunden', 'error');
+                return;
+            }
+            const article = articleDatabase[articleId];
+            if (!article.bom || article.bom.length === 0) {
+                showMessage('Dieser Artikel hat keine Stückliste', 'error');
+                return;
+            }
+            const pos = window.currentQuote.positions[posIndex];
+            if (!pos) return;
+            pos.bom = article.bom.map(item => ({
+                description: item.name || '',
+                supplier: item.supplier || '',
+                quantity: item.quantity || 1,
+                unitPrice: item.price || 0
+            }));
+            recalcQuotePosition(pos);
+            renderQuotePositions();
+            showMessage(`${article.bom.length} Komponenten aus "${article.name}" importiert`, 'success');
+        }
+
+        window.addQuoteBOMItem = addQuoteBOMItem;
+        window.removeQuoteBOMItem = removeQuoteBOMItem;
+        window.updateQuoteBOMItem = updateQuoteBOMItem;
+        window.importBOMFromArticle = importBOMFromArticle;
 
         // ========== BOM IMPORT DIALOG ==========
 
