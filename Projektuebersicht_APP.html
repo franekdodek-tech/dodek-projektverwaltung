@@ -2101,6 +2101,85 @@
 
     <!-- App Initialisierung -->
     <script>
+function applyPermissions() {
+            const role = window.currentUserRole || 'reader';
+            const isAdmin  = role === 'admin';
+            const isEditor = role === 'editor' || isAdmin;
+
+            // Hilfsfunktion: Element deaktivieren/ausblenden
+            function disable(selector) {
+                document.querySelectorAll(selector).forEach(el => {
+                    if (el.tagName === 'BUTTON' || el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+                        el.disabled = true;
+                        el.title = 'Keine Berechtigung';
+                        el.style.opacity = '0.4';
+                        el.style.cursor = 'not-allowed';
+                    } else {
+                        el.style.display = 'none';
+                    }
+                });
+            }
+
+            // Reader: alles readonly
+            if (!isEditor) {
+                // Alle Speichern/Anlegen/Bearbeiten Buttons
+                disable('button[onclick="saveProject()"]');
+                disable('button[onclick="createNewProject()"]');
+                disable('button[onclick="addSalesPosition()"]');
+                disable('button[onclick="addPurchasePosition()"]');
+                disable('button[onclick="addTrade()"]');
+                disable('button[onclick="addTask()"]');
+                disable('button[onclick="addStockItem()"]');
+                disable('button[onclick="saveArticle()"]');
+                disable('button[onclick="openArticleModal()"]');
+                disable('button[onclick="closeProject()"]');
+                disable('button[onclick="saveMultiPositions()"]');
+                disable('button[onclick="openMultiPositionDialog()"]');
+                disable('button[onclick="confirmBOMImport()"]');
+                // Alle Inputs und Selects in editierbaren Zellen
+                document.querySelectorAll('.editable-cell input, .editable-cell select').forEach(el => {
+                    el.disabled = true;
+                    el.style.background = '#f0f0f0';
+                });
+            }
+
+            // Editor und Reader: kein Löschen
+            if (!isAdmin) {
+                disable('button[onclick^="deleteProject"]');
+                disable('button[onclick^="deleteCurrentProject"]');
+                disable('button[onclick^="deleteSalesPosition"]');
+                disable('button[onclick^="deletePurchasePosition"]');
+                disable('button[onclick^="deleteArticle"]');
+                disable('button[onclick^="deleteStockItem"]');
+                disable('button[onclick^="deleteTask"]');
+                disable('button[onclick^="clearAllProjects"]');
+                disable('button[onclick^="clearAllArticles"]');
+                // Kopieren-Button auch weg bei nicht-Admin und nicht-Editor
+                if (!isEditor) {
+                    disable('button[onclick^="copyProject"]');
+                }
+            }
+
+            // Settings-Tab nur für Admin
+            const settingsBtn = document.getElementById('settingsBtn');
+            if (settingsBtn) settingsBtn.style.display = isAdmin ? 'inline-block' : 'none';
+
+            // Backup-Verwaltung nur für Admin sichtbar
+            const backupSection = document.querySelector('.backup-info');
+            if (backupSection) {
+                backupSection.style.display = isAdmin ? 'block' : 'none';
+            }
+
+            // Editor: Artikelstamm nur lesen, nicht bearbeiten/löschen
+            if (!isAdmin) {
+                disable('button[onclick="openArticleModal()"]');
+                disable('button[onclick^="editArticle"]');
+                disable('button[onclick^="deleteArticle"]');
+                disable('button[onclick^="removeBOMItem"]');
+                disable('button[onclick^="addBOMItem"]');
+            }
+        }
+
         function loadScript(src, callback) {
             const script = document.createElement('script');
             script.src = src;
@@ -6815,86 +6894,7 @@
 
         window.initDragAndDrop = initDragAndDrop;
 
-        function applyPermissions() {
-            const role = window.currentUserRole || 'reader';
-            const isAdmin  = role === 'admin';
-            const isEditor = role === 'editor' || isAdmin;
-
-            // Hilfsfunktion: Element deaktivieren/ausblenden
-            function disable(selector) {
-                document.querySelectorAll(selector).forEach(el => {
-                    if (el.tagName === 'BUTTON' || el.tagName === 'INPUT' || el.tagName === 'SELECT') {
-                        el.disabled = true;
-                        el.title = 'Keine Berechtigung';
-                        el.style.opacity = '0.4';
-                        el.style.cursor = 'not-allowed';
-                    } else {
-                        el.style.display = 'none';
-                    }
-                });
-            }
-
-            // Reader: alles readonly
-            if (!isEditor) {
-                // Alle Speichern/Anlegen/Bearbeiten Buttons
-                disable('button[onclick="saveProject()"]');
-                disable('button[onclick="createNewProject()"]');
-                disable('button[onclick="addSalesPosition()"]');
-                disable('button[onclick="addPurchasePosition()"]');
-                disable('button[onclick="addTrade()"]');
-                disable('button[onclick="addTask()"]');
-                disable('button[onclick="addStockItem()"]');
-                disable('button[onclick="saveArticle()"]');
-                disable('button[onclick="openArticleModal()"]');
-                disable('button[onclick="closeProject()"]');
-                disable('button[onclick="saveMultiPositions()"]');
-                disable('button[onclick="openMultiPositionDialog()"]');
-                disable('button[onclick="confirmBOMImport()"]');
-                // Alle Inputs und Selects in editierbaren Zellen
-                document.querySelectorAll('.editable-cell input, .editable-cell select').forEach(el => {
-                    el.disabled = true;
-                    el.style.background = '#f0f0f0';
-                });
-            }
-
-            // Editor und Reader: kein Löschen
-            if (!isAdmin) {
-                disable('button[onclick^="deleteProject"]');
-                disable('button[onclick^="deleteCurrentProject"]');
-                disable('button[onclick^="deleteSalesPosition"]');
-                disable('button[onclick^="deletePurchasePosition"]');
-                disable('button[onclick^="deleteArticle"]');
-                disable('button[onclick^="deleteStockItem"]');
-                disable('button[onclick^="deleteTask"]');
-                disable('button[onclick^="clearAllProjects"]');
-                disable('button[onclick^="clearAllArticles"]');
-                // Kopieren-Button auch weg bei nicht-Admin und nicht-Editor
-                if (!isEditor) {
-                    disable('button[onclick^="copyProject"]');
-                }
-            }
-
-            // Settings-Tab nur für Admin
-            const settingsBtn = document.getElementById('settingsBtn');
-            if (settingsBtn) settingsBtn.style.display = isAdmin ? 'inline-block' : 'none';
-
-            // Backup-Verwaltung nur für Admin sichtbar
-            const backupSection = document.querySelector('.backup-info');
-            if (backupSection) {
-                backupSection.style.display = isAdmin ? 'block' : 'none';
-            }
-
-            // Editor: Artikelstamm nur lesen, nicht bearbeiten/löschen
-            if (!isAdmin) {
-                disable('button[onclick="openArticleModal()"]');
-                disable('button[onclick^="editArticle"]');
-                disable('button[onclick^="deleteArticle"]');
-                disable('button[onclick^="removeBOMItem"]');
-                disable('button[onclick^="addBOMItem"]');
-            }
-        }
-
         window.applyPermissions = applyPermissions;
 
-        } // Ende initApp (geschlossen durch applySettings/applyPermissions Block)
+        } // Ende initApp
     </script>
