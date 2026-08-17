@@ -1361,6 +1361,11 @@
                             <label>Faktor Endkunde</label>
                             <input type="number" id="quoteFactorEndcustomer" step="0.01" value="1.60" min="1">
                         </div>
+                        <div class="form-group">
+                            <label>Projektrabatt (%)</label>
+                            <input type="number" id="quoteDiscount" step="0.1" value="0" min="0" max="100"
+                                   onchange="renderQuotePositions()" placeholder="0">
+                        </div>
                     </div>
                     <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
                         <button onclick="saveQuote()" class="btn-success">💾 Speichern</button>
@@ -1381,36 +1386,36 @@
                     </div>
 
                     <div class="add-position-form">
-                        <!-- Zeile 1: Artikel und Beschreibung -->
-                        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px;">
-                            <div style="flex:1; min-width:200px;">
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+                            <div style="flex:1; min-width:150px;">
                                 <label>Aus Artikelstamm</label>
                                 <select id="quoteArticleSelect" onchange="fillQuoteFromArticle()">
-                                    <option value="">-- Artikel wählen (optional) --</option>
+                                    <option value="">-- optional --</option>
                                 </select>
                             </div>
-                            <div style="flex:2; min-width:250px;">
+                            <div style="flex:2; min-width:160px;">
                                 <label>Beschreibung *</label>
                                 <input type="text" id="newQuoteDescription" placeholder="Positionsbeschreibung">
                             </div>
-                        </div>
-                        <!-- Zeile 2: Menge, Preis, Gewerk, Button -->
-                        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-                            <div style="min-width:80px;">
+                            <div style="flex:1; min-width:120px;">
+                                <label>Lieferant</label>
+                                <input type="text" id="newQuoteSupplier" placeholder="Lieferant">
+                            </div>
+                            <div style="min-width:70px;">
                                 <label>Menge</label>
                                 <input type="number" id="newQuoteQuantity" value="1" step="0.01" min="0">
                             </div>
-                            <div style="min-width:110px;">
+                            <div style="min-width:100px;">
                                 <label>EK-Preis (€)</label>
                                 <input type="number" id="newQuoteUnitPrice" value="0" step="0.01" min="0">
                             </div>
-                            <div style="min-width:120px;">
+                            <div style="min-width:110px;">
                                 <label>Gewerk</label>
                                 <select id="newQuoteTrade">
                                     <option value="">-- Kein Gewerk --</option>
                                 </select>
                             </div>
-                            <div>
+                            <div style="padding-bottom:1px;">
                                 <button onclick="addQuotePosition()" class="btn-success">+ Hinzufügen</button>
                             </div>
                         </div>
@@ -2680,7 +2685,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.3.1';
+        const APP_VERSION = 'v1.4.0';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5771,6 +5776,10 @@ function applyPermissions() {
             const article = articleDatabase[articleId];
             document.getElementById('newQuoteDescription').value = article.name;
             document.getElementById('newQuoteUnitPrice').value = article.purchasePrice || 0;
+            // Lieferant aus erster BOM-Komponente
+            if (article.bom && article.bom.length > 0 && article.bom[0].supplier) {
+                document.getElementById('newQuoteSupplier').value = article.bom[0].supplier;
+            }
             // Merken für BOM-Import beim Hinzufügen
             document.getElementById('quoteArticleSelect').dataset.selectedId = articleId;
         }
@@ -5828,6 +5837,7 @@ function applyPermissions() {
             const quantity  = parseFloat(document.getElementById('newQuoteQuantity').value) || 1;
             const unitPrice = parseFloat(document.getElementById('newQuoteUnitPrice').value) || 0;
             const trade     = document.getElementById('newQuoteTrade').value || '';
+            const supplier  = document.getElementById('newQuoteSupplier').value.trim();
 
             // BOM aus Artikelstamm übernehmen falls vorhanden
             const selectedArticleId = document.getElementById('quoteArticleSelect').dataset.selectedId;
@@ -5856,9 +5866,11 @@ function applyPermissions() {
 
             // totalEK berechnen
             const newPos = window.currentQuote.positions[window.currentQuote.positions.length - 1];
+            newPos.supplier = supplier;
             recalcQuotePosition(newPos);
 
             document.getElementById('newQuoteDescription').value = '';
+            document.getElementById('newQuoteSupplier').value = '';
             document.getElementById('newQuoteQuantity').value = '1';
             document.getElementById('newQuoteUnitPrice').value = '0';
             document.getElementById('quoteArticleSelect').value = '';
@@ -5886,7 +5898,8 @@ function applyPermissions() {
         function getQuoteFactors() {
             return {
                 reseller:    parseFloat(document.getElementById('quoteFactorReseller')?.value) || 1.30,
-                endcustomer: parseFloat(document.getElementById('quoteFactorEndcustomer')?.value) || 1.60
+                endcustomer: parseFloat(document.getElementById('quoteFactorEndcustomer')?.value) || 1.60,
+                discount:    parseFloat(document.getElementById('quoteDiscount')?.value) || 0
             };
         }
 
@@ -5894,7 +5907,8 @@ function applyPermissions() {
             const tbody = document.getElementById('quotePositionsTable');
             if (!tbody || !window.currentQuote) return;
 
-            const { reseller, endcustomer } = getQuoteFactors();
+            const { reseller, endcustomer, discount } = getQuoteFactors();
+            const discountFactor = 1 - (discount / 100);
             const positions = window.currentQuote.positions;
 
             if (positions.length === 0) {
@@ -5906,8 +5920,8 @@ function applyPermissions() {
             tbody.innerHTML = positions.map((pos, index) => {
                 if (!pos.bom) pos.bom = [];
                 const hasBOM = pos.bom.length > 0;
-                const vkReseller    = pos.totalEK * reseller;
-                const vkEndcustomer = pos.totalEK * endcustomer;
+                const vkReseller    = pos.totalEK * reseller * discountFactor;
+                const vkEndcustomer = pos.totalEK * endcustomer * discountFactor;
                 const dbR = vkReseller - pos.totalEK;
                 const dbE = vkEndcustomer - pos.totalEK;
                 const vkHand = pos.vkHand !== undefined ? pos.vkHand : '';
@@ -6003,18 +6017,19 @@ function applyPermissions() {
             const el = document.getElementById('quoteSummary');
             if (!el || !window.currentQuote) return;
 
-            const { reseller, endcustomer } = getQuoteFactors();
+            const { reseller, endcustomer, discount } = getQuoteFactors();
+            const discountFactor = 1 - (discount / 100);
             const positions = window.currentQuote.positions;
 
             const totalEK          = positions.reduce((s, p) => s + p.totalEK, 0);
-            const totalVKReseller   = totalEK * reseller;
-            const totalVKEndcust    = totalEK * endcustomer;
+            const totalVKReseller   = totalEK * reseller * discountFactor;
+            const totalVKEndcust    = totalEK * endcustomer * discountFactor;
             const dbReseller        = totalVKReseller - totalEK;
             const dbEndcust         = totalVKEndcust - totalEK;
             const dbPctReseller     = totalEK > 0 ? (dbReseller / totalVKReseller * 100) : 0;
             const dbPctEndcust      = totalEK > 0 ? (dbEndcust / totalVKEndcust * 100) : 0;
 
-            const totalVKHand = positions.filter(p => p.vkHand).reduce((s, p) => s + (parseFloat(p.vkHand) || 0), 0);
+            const totalVKHand = positions.filter(p => p.vkHand).reduce((s, p) => s + (parseFloat(p.vkHand) || 0), 0) * discountFactor;
             const dbHand = totalVKHand - totalEK;
             const dbPctHand = totalEK > 0 ? (dbHand / totalVKHand * 100) : 0;
 
@@ -6023,6 +6038,10 @@ function applyPermissions() {
                     <div style="font-size:12px;color:#666;margin-bottom:4px;">EK gesamt</div>
                     <div style="font-size:20px;font-weight:700;">${formatCurrency(totalEK)}</div>
                 </div>
+                ${discount > 0 ? `<div class="summary-card" style="background:#fff8e1;border-radius:8px;padding:15px 20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);min-width:150px;text-align:right;border:1px solid #ffc107;">
+                    <div style="font-size:12px;color:#666;margin-bottom:4px;">Projektrabatt</div>
+                    <div style="font-size:20px;font-weight:700;color:#fd7e14;">${discount.toFixed(1)} %</div>
+                </div>` : ''}
                 <div class="summary-card" style="background:white;border-radius:8px;padding:15px 20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);min-width:180px;text-align:right;">
                     <div style="font-size:12px;color:#666;margin-bottom:4px;">VK Wiederverkauf</div>
                     <div style="font-size:20px;font-weight:700;color:#366092;">${formatCurrency(totalVKReseller)}</div>
@@ -6134,7 +6153,8 @@ function applyPermissions() {
 
             if (!confirm(`Vorkalkulation "${q.title}" in ein neues Projekt umwandeln?\n\nVK- und EK-Positionen werden übernommen.`)) return;
 
-            const { reseller, endcustomer } = getQuoteFactors();
+            const { reseller, endcustomer, discount } = getQuoteFactors();
+            const discountFactor = 1 - (discount / 100);
 
             // VK-Positionen — immer eine pro Vorkalkulations-Position
             const salesPositions = q.positions.map(pos => ({
@@ -6226,7 +6246,8 @@ function applyPermissions() {
             const q = window.currentQuote;
             if (!q) return;
 
-            const { reseller, endcustomer } = getQuoteFactors();
+            const { reseller, endcustomer, discount } = getQuoteFactors();
+            const discountFactor = 1 - (discount / 100);
             const positions = q.positions || [];
             const totalEK = positions.reduce((s, p) => s + p.totalEK, 0);
             const totalVKR = totalEK * reseller;
