@@ -1386,13 +1386,17 @@
                     </div>
 
                     <div class="add-position-form">
-                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
-                            <div style="flex:1; min-width:150px;">
+                        <!-- Zeile 1: Artikelstamm -->
+                        <div style="display:flex; gap:8px; align-items:flex-end; margin-bottom:10px;">
+                            <div style="flex:1; max-width:400px;">
                                 <label>Aus Artikelstamm</label>
                                 <select id="quoteArticleSelect" onchange="fillQuoteFromArticle()">
                                     <option value="">-- optional --</option>
                                 </select>
                             </div>
+                        </div>
+                        <!-- Zeile 2: Manuelle Felder -->
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
                             <div style="flex:2; min-width:160px;">
                                 <label>Beschreibung *</label>
                                 <input type="text" id="newQuoteDescription" placeholder="Positionsbeschreibung">
