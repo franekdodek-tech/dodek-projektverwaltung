@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bestellformular – Filter & Ventilator | Dodek Technik</title>
+<style>
+  :root {
+    --rot: #CC0000;
+    --schwarz: #1a1a1a;
+    --grau-hell: #f5f5f5;
+    --grau-mittel: #ddd;
+    --grau-dunkel: #888;
+    --linie: #ccc;
+    --font: 'Arial Narrow', Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    font-size: 11px;
+    color: var(--schwarz);
+    background: #d8d8d8;
+    min-height: 100vh;
+  }
+
+  /* ── TABS ── */
+  .tab-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    padding: 18px 20px 0;
+    background: #d8d8d8;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .tab-btn {
+    padding: 8px 22px 7px;
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    border: 2px solid #bbb;
+    border-bottom: none;
+    background: #c8c8c8;
+    color: #666;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .tab-btn:hover { background: #e0e0e0; color: var(--schwarz); }
+  .tab-btn.aktiv {
+    background: white;
+    color: var(--rot);
+    border-color: var(--grau-mittel);
+    border-bottom-color: white;
+    position: relative;
+    bottom: -2px;
+    z-index: 2;
+  }
+  .tab-aktionen {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+    padding-bottom: 4px;
+  }
+  .btn-dateiname {
+    padding: 6px 14px;
+    background: white;
+    color: var(--schwarz);
+    border: 1px solid #bbb;
+    font-family: var(--font);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.15s;
+  }
+  .btn-dateiname:hover { background: var(--grau-hell); }
+  .btn-druck {
+    padding: 6px 18px;
+    background: var(--rot);
+    color: white;
+    border: none;
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.15s;
+  }
+  .btn-druck:hover { background: #a00; }
+
+  /* Dateiname-Anzeige */
+  .dateiname-bar {
+    background: white;
+    border-bottom: 2px solid var(--rot);
+    padding: 4px 20px;
+    font-size: 10px;
+    color: var(--grau-dunkel);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dateiname-bar strong { color: var(--schwarz); font-size: 11px; }
+  .dateiname-bar.hidden { display: none; }
+
+  .tab-content { display: none; padding: 16px 20px 30px; }
+  .tab-content.aktiv { display: block; }
+
+  /* ── SEITE ── */
+  .seite {
+    background: white;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 12mm 14mm 12mm;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.2);
+    border-top: 3px solid var(--grau-mittel);
+  }
+
+  /* ── KOPF ── */
+  .kopf {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 7px;
+    border-bottom: 3px solid var(--rot);
+  }
+  .kopf h1 { font-size: 21px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; line-height: 1.1; }
+  .kopf h1 span { color: var(--rot); }
+  .kopf-sub { font-size: 9px; color: var(--grau-dunkel); letter-spacing: 1.2px; text-transform: uppercase; margin-top: 2px; }
+  .kopf-firma { text-align: right; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; line-height: 1.5; }
+  .kopf-firma span { color: var(--rot); }
+
+  /* ── META-GRID ── */
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+    margin-bottom: 8px;
+    background: var(--grau-hell);
+    border: 1px solid var(--grau-mittel);
+    padding: 7px 8px;
+  }
+  .span2 { grid-column: span 2; }
+  .span3 { grid-column: span 3; }
+  .span4 { grid-column: span 4; }
+
+  /* ── SEKTIONEN ── */
+  .section { margin-bottom: 7px; border: 1px solid var(--linie); }
+  .section-header {
+    background: var(--schwarz);
+    color: white;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .section-header small { font-size: 9px; font-weight: 400; letter-spacing: 0; opacity: 0.8; text-transform: none; }
+  .section-body { padding: 7px 8px; }
+
+  /* ── FELDER ── */
+  .fg { display: grid; gap: 5px; margin-bottom: 5px; }
+  .fg.c2 { grid-template-columns: 1fr 1fr; }
+  .fg.c3 { grid-template-columns: 1fr 1fr 1fr; }
+  .fg.c4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .fg.c5 { grid-template-columns: 0.5fr 1fr 1fr 1fr 1fr; }
+
+  .lbl { display: flex; flex-direction: column; font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--grau-dunkel); gap: 2px; }
+  .lbl input[type="text"], .lbl input[type="date"], .lbl select, .lbl textarea {
+    font-family: var(--font); font-size: 11px; padding: 3px 5px;
+    border: 1px solid var(--grau-mittel); background: white; color: var(--schwarz);
+    outline: none; transition: border-color 0.12s;
+  }
+  .lbl input:focus, .lbl select:focus, .lbl textarea:focus { border-color: var(--rot); }
+  .lbl textarea { resize: vertical; min-height: 38px; }
+  input[type="date"] {
+  height: 20px;
+  padding: 2px 5px;
+  }
+
+  /* ── CHECKBOXEN / RADIO ── */
+  .cb { display: flex; align-items: center; gap: 5px; font-size: 10.5px; cursor: pointer; padding: 2px 3px; }
+  .cb:hover { background: var(--grau-hell); }
+  .cb input { accent-color: var(--rot); width: 12px; height: 12px; flex-shrink: 0; cursor: pointer; }
+  .cbg { display: grid; gap: 2px 8px; }
+  .cbg.c2 { grid-template-columns: 1fr 1fr; }
+  .cbg.c3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  /* ── JA/NEIN TABELLE ── */
+  .jnt { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  .jnt thead th { padding: 3px 6px; text-align: center; font-size: 8.5px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; background: var(--grau-hell); border-bottom: 2px solid var(--rot); }
+  .jnt thead th:first-child { text-align: left; }
+  .jnt tbody tr:nth-child(even) td { background: #fafafa; }
+  .jnt tbody td { padding: 3px 6px; border-bottom: 1px solid #eee; vertical-align: middle; }
+  .jnt tbody td:nth-child(2), .jnt tbody td:nth-child(3) { text-align: center; width: 38px; }
+  .jnt input[type="checkbox"] { accent-color: var(--rot); width: 12px; height: 12px; cursor: pointer; }
+
+  /* ── INLINE-INPUT ── */
+  .ii { border: none; border-bottom: 1px solid #bbb; outline: none; font-size: 10.5px; font-family: var(--font); background: transparent; }
+
+  hr.div { border: none; border-top: 1px solid var(--grau-mittel); margin: 5px 0; }
+
+  /* ── INDEX ── */
+  .idx { font-size: 8.5px; color: var(--grau-dunkel); text-align: right; margin-top: 8px; }
+
+  /* ── PRINT ── */
+  @media print {
+    body { background: white; font-size: 9.5px; }
+    .tab-bar, .dateiname-bar { display: none !important; }
+    .tab-content { padding: 0 !important; }
+    .seite { box-shadow: none; width: 100%; border-top: none; }
+    .section { margin-bottom: 4px; page-break-inside: avoid; }
+    .section-body { padding: 4px 6px; }
+    .meta-grid { padding: 5px 6px; margin-bottom: 5px; }
+    .jnt tbody td { padding: 2px 5px; }
+    .lbl input, .lbl select, .lbl textarea, .ii {
+      border: none !important; border-bottom: 1px solid #999 !important;
+    }
+    .cb:hover { background: none; }
+    @page { size: A4; margin: 0; }
+  }
+  @media print {
+    /* Nur aktiven Tab drucken */
+    .tab-content { display: none !important; }
+    .tab-content.aktiv { display: block !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TAB-LEISTE -->
+<div class="tab-bar">
+  <button class="tab-btn aktiv" id="btn-filter" onclick="zeigTab('filter')">Filter-Bestellblatt</button>
+  <button class="tab-btn" id="btn-ventilator" onclick="zeigTab('ventilator')">Ventilator-Bestellung</button>
+  <div class="tab-aktionen">
+    <button class="btn-dateiname" onclick="zeigDateiname()">📋 Dateiname generieren</button>
+    <button class="btn-dateiname" onclick="exportiereJSON()">💾 JSON Export</button>
+    <button class="btn-dateiname" onclick="document.getElementById('json-datei-input').click()">📂 JSON Import</button>
+    <input type="file" id="json-datei-input" accept="application/json" style="display:none" onchange="importiereJSON(event)">
+    <button class="btn-druck" onclick="drucken()">🖨 Drucken / PDF</button>
+  </div>
+</div>
+
+<!-- DATEINAME-BAR -->
+<div class="dateiname-bar hidden" id="dateiname-bar">
+  Vorgeschlagener Dateiname: <strong id="dateiname-text">–</strong>
+  <span style="color:var(--grau-dunkel);font-size:9px">(zum Kopieren markieren)</span>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     TAB 1: FILTER
+══════════════════════════════════════════════════════ -->
+<div class="tab-content aktiv" id="tab-filter">
+<div class="seite">
+
+  <div class="kopf">
+    <div>
+      <h1>Filter-<span>Bestellblatt</span></h1>
+      <div class="kopf-sub">Dodek Technik · Auftragsformular</div>
+    </div>
+    <div class="kopf-firma">
+      Dodek<span> Technik</span><br>
+      <span style="font-size:9px;font-weight:400;letter-spacing:0.5px;color:var(--grau-dunkel)">GmbH &amp; Co. KG · Bad Wurzach</span>
+    </div>
+  </div>
+
+    <!-- META -->
+    <div class="meta-grid" style="grid-template-columns: 0.25fr 2fr 1fr 0.5fr 0.5fr;">
+      <label class="lbl">Projekt-Nr.<input type="text" id="f-com-nr" placeholder="z.B. 25031" oninput="aktualisierDateiname()"></label>
+      <label class="lbl span2">Kommission<input type="text" id="f-com-name" placeholder="z.B. ERL HBT" oninput="aktualisierDateiname()"></label>
+      <label class="lbl">Bestelldatum<input type="date" id="f-datum" oninput="aktualisierDateiname()"></label>
+      <label class="lbl">Liefertermin<input type="text" id="f-liefert" placeholder="Ende KW 15 ab Werk"></label>
+      
+      <label class="lbl span2">Aufstellungsplan-Nr.<input type="text" id="f-aufstell" placeholder="z.B. DT ZG"></label>
+    </div>
+
+  <!-- FILTER GRUNDDATEN -->
+  <div class="section">
+    <div class="section-header">Allgemein</div>
+    <div class="section-body">
+      <div class="fg c5">
+        <label class="lbl">Menge (ST)<input type="text" id="f-menge" placeholder="1"></label>
+        <label class="lbl">Filtertyp<input type="text" id="f-typ" placeholder="z.B. DTZ 16" oninput="aktualisierDateiname()"></label>
+        <label class="lbl">Steuerung Typ<input type="text" id="f-steuerung" placeholder="z.B. ESA"></label>
+        <label class="lbl">Anbringung<input type="text" id="f-anbringung" placeholder=""></label>
+        <label class="lbl">Aufkleber
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:nowrap;margin-top:3px">
+            <label class="cb"><input type="checkbox" name="f-aufkl" value="dodek"> Dodek</label>
+            <label class="cb"><input type="checkbox" name="f-aufkl" value="ohne"> ohne</label>
+            <input class="ii" type="text" id="f-aufkl-sonst" placeholder="Sonstige" style="width:60px;flex-shrink:1;min-width:0">
+          </div>
+        </label>
+      </div>
+      <div class="fg c4">
+        <label class="lbl">Zyklon
+          <div style="display:flex;gap:10px;margin-top:3px">
+            <label class="cb"><input type="radio" name="f-zyklon" value="mit"> mit</label>
+            <label class="cb"><input type="radio" name="f-zyklon" value="ohne"> ohne</label>
+          </div>
+        </label>
+        <label class="lbl">Zyklon DN<input type="text" id="f-zyklon-dn" placeholder="z.B. 450"></label>
+        <label class="lbl">Nachlaufreinigung
+          <div style="display:flex;gap:10px;margin-top:3px">
+            <label class="cb"><input type="radio" name="f-nachlauf" value="ja"> ja</label>
+            <label class="cb"><input type="radio" name="f-nachlauf" value="nein"> nein</label>
+          </div>
+        </label>
+        <div class="fg c2" style="margin:0">
+          <label class="lbl">Anzahl<input type="text" id="f-nachlauf-anz" placeholder=""></label>
+          <label class="lbl">Durchläufe<input type="text" id="f-nachlauf-dl" placeholder=""></label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LACKIERUNG -->
+  <div class="section">
+    <div class="section-header">Lackierung</div>
+    <div class="section-body">
+      <div class="fg c4">
+        <label class="lbl">RAL-Nr.<input type="text" id="f-ral" placeholder="z.B. 7016"></label>
+        <label class="lbl span3">Farbton<input type="text" id="f-farbton" placeholder="z.B. Anthrazitgrau"></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUSSTATTUNG -->
+  <div class="section">
+    <div class="section-header">Ausstattung</div>
+    <div class="section-body">
+      <table class="jnt">
+        <thead><tr><th>Option</th><th>Ja</th><th>Nein</th></tr></thead>
+        <tbody>
+          <tr><td>Komplettmontage mit Trichter und Füße im Haus</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr><td>Außenaufstellung</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr><td>Schalldämmung Reingasseite</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr><td>Magnehelic</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr><td>Maschinenverriegelung (Beck-Schalter)</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr><td>Absperrklappe DN 200</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr><td>60 l-Staubeimer, geschweißte Ausf.</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr><td>120 l-Staubeimer, runde Ausf.</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr><td>200 l-Staubfaß</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr>
+            <td>Zellenradschleuse Typ &nbsp;<input class="ii" type="text" placeholder="" style="width:100px"></td>
+            <td><input type="checkbox"></td><td><input type="checkbox"></td>
+          </tr>
+          <tr><td>Druckausgleichset</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr><td>Druckluft-Verrohrung</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr><td>Erdung (nur bei Ex-Anlagen)</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr><td>Magnetventil (nur bei Ex-Anlagen)</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr>
+            <td>Schaltschrank Lieferant &nbsp;<input class="ii" type="text" id="f-sk-typ" placeholder="" style="width:100px"></td>
+            <td><input type="checkbox"></td><td><input type="checkbox"></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <hr class="div">
+
+      <!-- FILTERREGLER + SAMMLER -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:4px">
+
+        <!-- Filterregler -->
+        <div>
+          <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--grau-dunkel);margin-bottom:3px">Filterregler</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+            <label class="cb"><input type="checkbox"> lose beigelegt</label>
+            <label class="cb"><input type="checkbox"> fest montiert</label>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <label class="cb"><input type="radio" name="f-fregler"> 1" mit red 3/4"</label>
+            <label class="cb"><input type="radio" name="f-fregler"> 1/2"</label>
+          </div>
+        </div>
+
+        <!-- Rohgassammler -->
+        <div>
+          <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--grau-dunkel);margin-bottom:3px">Rohgassammler</div>
+          <label class="cb"><input type="radio" name="f-rohgas" value="ohne"> ohne</label>
+          <label class="cb" style="align-items:center;gap:4px">
+            <input type="radio" name="f-rohgas" value="vorne"> vorne &nbsp;Flansch DN&nbsp;<input class="ii" type="text" style="width:42px" placeholder="">
+          </label>
+          <label class="cb" style="align-items:center;gap:4px">
+            <input type="radio" name="f-rohgas" value="seitlich"> seitlich &nbsp;Flansch DN&nbsp;<input class="ii" type="text" style="width:42px" placeholder="">
+          </label>
+        </div>
+
+        <!-- Reingassammler -->
+        <div>
+          <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--grau-dunkel);margin-bottom:3px">Reingassammler</div>
+          <label class="cb"><input type="radio" name="f-reingas" value="ohne"> ohne</label>
+          <label class="cb" style="align-items:center;gap:4px">
+            <input type="radio" name="f-reingas" value="unten"> unten &nbsp;600 × 315 &nbsp;
+            <input class="ii" type="text" style="width:45px" placeholder="lg.">
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PATRONEN -->
+  <div class="section">
+    <div class="section-header">Filterpatronen</div>
+    <div class="section-body">
+      <div class="fg c4" style="margin-bottom:6px">
+      <label class="lbl span2">Art.-Nr. 
+          <input type="text" id="f-patron-artnr" placeholder="z.B. 262-5023">
+        </label>
+        <label class="lbl span2">Bemerkung / Sonderausführung
+          <input type="text" id="f-patron-bem" placeholder="z.B. conduktiv, antistatisch …">
+        </label>
+      </div>
+      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--grau-dunkel);margin-bottom:4px">Lieferung durch</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+        <label class="cb"><input type="radio" name="f-lief"> Donaldson-Torit</label>
+        <label class="cb"><input type="radio" name="f-lief"> Lager</label>
+        <label class="cb" style="align-items:center;gap:5px">
+          <input type="radio" name="f-lief">
+          <input class="ii" type="text" placeholder="Sonstige …" style="width:120px">
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- VENTILATOR (Filter-Seite) -->
+    <div class="section">
+      <div class="section-header">Ventilator</div>
+      <div class="section-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+
+          <!-- Links: Ausführung -->
+          <div>
+            <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--grau-dunkel);margin-bottom:3px">Ausführung</div>
+            <label class="cb"><input type="radio" name="f-venti"> ohne</label>
+            <label class="cb"><input type="radio" name="f-venti"> oben liegend – extra Bestellung</label>
+            <label class="cb"><input type="radio" name="f-venti"> oben liegend – keine Bestellung</label>
+            <label class="cb"><input type="radio" name="f-venti"> stehende Ausf. – extra Bestellung</label>
+            <label class="cb"><input type="radio" name="f-venti"> stehende Ausf. – keine Bestellung</label>
+          </div>
+
+          <!-- Rechts: Typ + Anschluss -->
+          <div>
+            <div style="margin-bottom:6px">
+              <label class="lbl">Venti-Typ<input type="text" id="f-venti-typ" placeholder=""></label>
+            </div>
+            <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--grau-dunkel);margin-bottom:3px">Venti-Anschluß von unten</div>
+            <label class="cb" style="align-items:center;gap:4px">
+              <input type="radio" name="f-vanschluss"> mit Anschluß in Bodenplatte 315 ×&nbsp;<input class="ii" type="text" style="width:45px" placeholder="">
+            </label>
+            <label class="cb"><input type="radio" name="f-vanschluss"> ohne</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <!-- BEMERKUNGEN -->
+  <div class="section">
+    <div class="section-header">Bemerkungen</div>
+    <div class="section-body">
+      <textarea style="width:100%;min-height:45px;font-family:var(--font);font-size:11px;padding:5px;border:1px solid var(--grau-mittel);resize:vertical;outline:none" id="f-bem" placeholder="Freitext…"></textarea>
+    </div>
+  </div>
+
+<!--  <div class="idx">Index: 08 · 17.02.2015 · H:\12 Dodek\Formulare\[Filter-Bestellblatt.xls]Dodek bei Sigg</div> -->
+
+</div><!-- /seite filter -->
+</div><!-- /tab-filter -->
+
+
+<!-- ══════════════════════════════════════════════════════
+     TAB 2: VENTILATOR
+══════════════════════════════════════════════════════ -->
+<div class="tab-content" id="tab-ventilator">
+<div class="seite">
+
+  <div class="kopf">
+    <div>
+      <h1>Ventilator-<span>Bestellung</span></h1>
+      <div class="kopf-sub">Dodek Technik · Auftragsformular</div>
+    </div>
+    <div class="kopf-firma">
+      Dodek<span> Technik</span><br>
+      <span style="font-size:9px;font-weight:400;letter-spacing:0.5px;color:var(--grau-dunkel)">GmbH &amp; Co. KG · Bad Wurzach</span>
+    </div>
+  </div>
+
+  <!-- META -->
+  <div class="meta-grid" style="grid-template-columns: 0.25fr 2fr 1fr 0.5fr 0.5fr;">
+    <label class="lbl">Projekt-Nr.<input type="text" id="v-com-nr" placeholder="z.B. 25031" oninput="aktualisierDateiname()"></label>
+    <label class="lbl span2">Kommission<input type="text" id="v-com-name" placeholder="z.B. ERL HBT" oninput="aktualisierDateiname()"></label>
+    <label class="lbl">Bestelldatum<input type="date" id="v-datum" oninput="aktualisierDateiname()"></label>
+    <label class="lbl">Liefertermin<input type="text" id="v-liefert" placeholder="z.B. KW 15"></label>
+    <label class="lbl span2">Aufstellungsplan-Nr.<input type="text" id="v-sigg-a" placeholder=""></label>
+  </div>
+
+  <!-- ALLGEMEIN -->
+  <div class="section">
+    <div class="section-header">Allgemein</div>
+    <div class="section-body">
+      <div class="fg c4">
+        <label class="lbl">Menge (ST)<input type="text" id="v-menge" placeholder="1"></label>
+        <label class="lbl span2">Typ<input type="text" id="v-typ" placeholder="z.B. GR 630/2R" oninput="aktualisierDateiname()"></label>
+        <label class="lbl">Ausführung
+          <div style="display:flex;gap:10px;margin-top:3px">
+            <label class="cb"><input type="radio" name="v-ausf"> LG</label>
+            <label class="cb"><input type="radio" name="v-ausf"> RD</label>
+          </div>
+        </label>
+      </div>
+      <div class="fg c3">
+        <label class="lbl">Lackierung RAL<input type="text" id="v-ral" placeholder="z.B. 7016"></label>
+        <label class="lbl span2">Farbton<input type="text" id="v-farbton" placeholder="z.B. Anthrazit"></label>
+      </div>
+      <hr class="div">
+      <div class="cbg c2" style="margin-bottom:5px">
+        <label class="cb"><input type="radio" name="v-fertigung" value="eigen"> Eigenfertigung</label>
+        <label class="cb"><input type="checkbox" id="v-vmontage"> mit Ventilatormontage und Probelauf</label>
+        <label class="cb" style="align-items:center;gap:5px">
+          <input type="radio" name="v-fertigung" value="mz">
+          Gehäuse bestellt bei MZ&nbsp;(LT:&nbsp;<input class="ii" type="text" id="v-mz-lt" placeholder="" style="width:45px">)
+        </label>
+        <label class="cb"><input type="checkbox" id="v-motortragpl"> mit Motortragplatte</label>
+      </div>
+      <hr class="div">
+      <div class="fg c4">
+        <label class="lbl">Motor kW<input type="text" id="v-motor-kw" placeholder=""></label>
+        <label class="lbl">Polig<input type="text" id="v-motor-polig" placeholder=""></label>
+        <label class="lbl span2">Motor-Status
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:3px;align-items:center">
+            <label class="cb"><input type="checkbox"> am Lager</label>
+            <label class="cb" style="align-items:center;gap:4px">
+              <input type="checkbox"> bestellt bei&nbsp;<input class="ii" type="text" id="v-motor-bei" placeholder="" style="width:90px">
+            </label>
+          </div>
+        </label>
+      </div>
+      <div class="fg c2" style="margin-top:4px">
+          <div style="display:flex;gap:8px;align-items:center;margin-top:3px">
+            <label class="cb"><input type="checkbox"> mit Luftregulier-Schieber DN</label>
+            <input type="text" id="v-luftreg-dn" style="width:80px;font-family:var(--font);font-size:11px;padding:2px 4px;border:1px solid var(--grau-mittel);outline:none" placeholder="">
+            <label class="cb"><input type="checkbox"> ohne</label>
+          </div>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEHENDE AUSFÜHRUNG -->
+  <div class="section">
+    <div class="section-header">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" style="accent-color:#fff;width:13px;height:13px"> Stehende Ausführung
+      </label>
+    </div>
+    <div class="section-body">
+      <table class="jnt">
+        <thead><tr><th>Option</th><th>Ja</th><th>Nein</th></tr></thead>
+        <tbody>
+          <tr><td>mit Isolierung</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr>
+            <td>mit Ausblas-Anschlußplatte (Verlaufplatte)</td>
+            <td><input type="checkbox"></td><td><input type="checkbox"></td>
+          </tr>
+          <tr>
+            <td>Rohranschluß NW&nbsp;<input class="ii" type="text" placeholder="" style="width:45px">&nbsp;(DIN 24154 Reihe 4)</td>
+            <td><input type="checkbox"></td><td><input type="checkbox"></td>
+          </tr>
+          <tr><td>mit Standardflanschlöcher (MZ-Katalog)</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr><td>mit Schwingfußset (Querprofil, Gummipuffer m. Platte, Fixanker)</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+          <tr>
+            <td>mit Kompensator saugseitig DN&nbsp;<input class="ii" type="text" placeholder="" style="width:40px"></td>
+            <td><input type="checkbox"></td><td><input type="checkbox"></td>
+          </tr>
+          <tr><td>mit Kompensator druckseitig Rechteckform</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LIEGENDE AUSFÜHRUNG -->
+  <div class="section">
+    <div class="section-header">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" style="accent-color:#fff;width:13px;height:13px"> Liegende Ausführung auf Filter
+      </label>
+    </div>
+    <div class="section-body">
+      <div class="fg c2" style="margin-bottom:5px">
+        <label class="lbl">Auf Filter (Typ)<input type="text" placeholder="Filterbezeichnung"></label>
+      </div>
+      <table class="jnt">
+        <thead><tr><th>Option</th><th>Ja</th><th>Nein</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>mit Ausblas-Anschlußplatte (Verlaufplatte)</td>
+            <td><input type="checkbox"></td><td><input type="checkbox"></td>
+          </tr>
+          <tr>
+            <td>Rohranschluß NW&nbsp;<input class="ii" type="text" placeholder="" style="width:45px">&nbsp;(DIN 24154 Reihe 4)</td>
+            <td><input type="checkbox"></td><td><input type="checkbox"></td>
+          </tr>
+          <tr><td>mit Standardflanschlöcher (Katalog)</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LIEGENDE KASTENFORM -->
+  <div class="section">
+    <div class="section-header">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" style="accent-color:#fff;width:13px;height:13px"> Liegende Ausführung (Kastenform) auf Filter
+      </label>
+    </div>
+    <div class="section-body">
+      <div class="fg c2">
+        <label class="lbl">Auf Filter (Typ)<input type="text" placeholder="Filterbezeichnung"></label>
+        <label class="lbl">Schieber
+          <div style="display:flex;gap:12px;margin-top:3px">
+            <label class="cb"><input type="radio" name="v-schieber"> mit Schieber</label>
+            <label class="cb"><input type="radio" name="v-schieber"> ohne Schieber</label>
+          </div>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- MZ KOMPLETTIERUNG -->
+  <div class="section">
+    <div class="section-header">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" style="accent-color:#fff;width:13px;height:13px"> MZ-Ventilator Komplettierung
+      </label>
+    </div>
+    <div class="section-body">
+      <div class="cbg c2">
+        <label class="cb"><input type="checkbox"> Sockelblech anfertigen + montieren</label>
+        <label class="cb"><input type="checkbox"> Gummipuffer montieren</label>
+        <label class="cb"><input type="checkbox"> Sockel verlängern mit Winkel</label>
+        <label class="cb"><input type="checkbox"> Flansch einseitig abschneiden / Motorplattenschrauben (??-Ausf.)</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- BEMERKUNGEN -->
+  <div class="section">
+    <div class="section-header">Bemerkungen</div>
+    <div class="section-body">
+      <textarea style="width:100%;min-height:55px;font-family:var(--font);font-size:11px;padding:5px;border:1px solid var(--grau-mittel);resize:vertical;outline:none" id="v-bem" placeholder="Freitext … (z.B. Wetterschutz, Blinddeckel ×1, …)"></textarea>
+    </div>
+  </div>
+
+  <div class="idx">Geändert 02.06.2004 kompl. überarbeitet</div>
+
+</div><!-- /seite ventilator -->
+</div><!-- /tab-ventilator -->
+
+<script>
+  var aktiverTab = 'filter';
+
+  function zeigTab(id) {
+    aktiverTab = id;
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('aktiv'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('aktiv'));
+    document.getElementById('tab-' + id).classList.add('aktiv');
+    document.getElementById('btn-' + id).classList.add('aktiv');
+    // Dateiname neu berechnen für aktiven Tab
+    aktualisierDateiname();
+  }
+
+  function dateinameDatum(dateStr) {
+    if (!dateStr) return '';
+    // dateStr = YYYY-MM-DD → YY-MM-DD
+    var parts = dateStr.split('-');
+    if (parts.length !== 3) return '';
+    return parts[0].slice(2) + '-' + parts[1] + '-' + parts[2];
+  }
+
+  function aktualisierDateiname() {
+    var bar = document.getElementById('dateiname-bar');
+    if (bar.classList.contains('hidden')) return; // nur wenn sichtbar
+    generiereUndZeig();
+  }
+
+  function generiereUndZeig() {
+    var bar = document.getElementById('dateiname-bar');
+    var txt = document.getElementById('dateiname-text');
+    var name = '';
+
+    if (aktiverTab === 'filter') {
+      var datum   = dateinameDatum(document.getElementById('f-datum').value);
+      var comNr   = (document.getElementById('f-com-nr').value || '').trim();
+      var lief    = 'BiKu Lasertechnik'; // erstes Wort
+      var typ     = (document.getElementById('f-typ').value || '').trim();
+      name = ['BE DT', datum, comNr, lief, typ, 'Beiblatt'].filter(Boolean).join(' ');
+    } else {
+      var datum   = dateinameDatum(document.getElementById('v-datum').value);
+      var comNr   = (document.getElementById('v-com-nr').value || '').trim();
+      var lief    = 'BiKu Lasertechnik';
+      var typ     = (document.getElementById('v-typ').value || '').trim();
+      name = ['BE DT', datum, comNr, lief, typ, 'Beiblatt'].filter(Boolean).join(' ');
+    }
+
+    txt.textContent = name || '– (Felder ausfüllen)';
+    bar.classList.remove('hidden');
+  }
+
+  function zeigDateiname() {
+      generiereUndZeig();
+    }
+
+    function drucken() {
+      generiereUndZeig();
+      var name = document.getElementById('dateiname-text').textContent;
+      if (name && name !== '– (Felder ausfüllen)') {
+        document.title = name;
+      }
+      window.print();
+      document.title = 'Bestellformular – Filter & Ventilator | Dodek Technik';
+    }
+
+  /* ── JSON EXPORT / IMPORT ── */
+
+  // Alle relevanten Formularfelder in beiden Tabs (Reihenfolge ist stabil,
+  // solange sich die HTML-Struktur nicht ändert)
+  function alleFormFelder() {
+    return Array.from(document.querySelectorAll(
+      '#tab-filter input, #tab-filter select, #tab-filter textarea, ' +
+      '#tab-ventilator input, #tab-ventilator select, #tab-ventilator textarea'
+    ));
+  }
+
+  // Jedem Feld einen stabilen Schlüssel geben: vorhandene ID nutzen,
+  // sonst automatisch einen Positions-Schlüssel vergeben (auto_0, auto_1, ...)
+  function initFormKeys() {
+    alleFormFelder().forEach(function(el, i) {
+      if (!el.dataset.fkey) {
+        el.dataset.fkey = el.id ? el.id : 'auto_' + i;
+      }
+    });
+  }
+
+  function exportiereJSON() {
+    var daten = {};
+    alleFormFelder().forEach(function(el) {
+      var key = el.dataset.fkey;
+      if (el.type === 'checkbox' || el.type === 'radio') {
+        daten[key] = el.checked;
+      } else {
+        daten[key] = el.value;
+      }
+    });
+
+    generiereUndZeig();
+    var vorschlag = document.getElementById('dateiname-text').textContent;
+    var dateiname = (vorschlag && vorschlag !== '– (Felder ausfüllen)') ? vorschlag : 'Bestellung';
+
+    var blob = new Blob([JSON.stringify(daten, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = dateiname + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function importiereJSON(event) {
+    var datei = event.target.files[0];
+    if (!datei) return;
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var daten = JSON.parse(e.target.result);
+        alleFormFelder().forEach(function(el) {
+          var key = el.dataset.fkey;
+          if (!(key in daten)) return;
+          if (el.type === 'checkbox' || el.type === 'radio') {
+            el.checked = !!daten[key];
+          } else {
+            el.value = daten[key];
+          }
+        });
+        aktualisierDateiname();
+      } catch (err) {
+        alert('Fehler beim Einlesen der JSON-Datei: ' + err.message);
+      }
+    };
+    reader.readAsText(datei);
+    event.target.value = ''; // damit dieselbe Datei erneut wählbar ist
+  }
+
+  // Feld-Schlüssel VOR allen anderen Aktionen initialisieren
+  initFormKeys();
+
+  // Heute als Standard
+  var heute = new Date().toISOString().split('T')[0];
+  document.getElementById('f-datum').value = heute;
+  document.getElementById('v-datum').value = heute;
+</script>
+</body>
+</html>

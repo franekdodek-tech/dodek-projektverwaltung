@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Speditionsauftrag</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  :root{
+    --border:#333; --bg:#f4f5f7; --panel:#fff; --accent:#b3121a; --accent-d:#7d0c11;
+    --accent-light:#fbe3e2; --danger:#a3312a; --muted:#666;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:Arial,Helvetica,sans-serif; background:var(--bg); margin:0; color:#1a1a1a; font-size:13px;}
+  header{background:var(--accent); color:#fff; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; position:sticky; top:0; z-index:50;}
+  header h1{font-size:17px; margin:0; font-weight:600;}
+  header .sub{font-size:11px; opacity:.85;}
+  .toolbar{display:flex; gap:6px; flex-wrap:wrap;}
+  .toolbar button, .toolbar label.filebtn{background:#fff; color:var(--accent-d); border:1px solid #fff; border-radius:4px; padding:7px 11px; font-size:12px; font-weight:600; cursor:pointer;}
+  .toolbar button:hover, .toolbar label.filebtn:hover{background:var(--accent-light);}
+  .toolbar button.primary{background:var(--accent-d); color:#fff; border-color:var(--accent-d);}
+  .toolbar button.primary:hover{background:#5c0a0e;}
+  .toolbar input[type=file]{display:none;}
+  main{max-width:980px; margin:16px auto 60px; padding:0 12px;}
+  .notice{background:#fff8e1; border:1px solid #e6c766; color:#6b5300; padding:8px 12px; border-radius:4px; font-size:12px; margin-bottom:14px;}
+  .card{background:var(--panel); border:1px solid #ccc; border-radius:4px; margin-bottom:14px; overflow:hidden;}
+  .card h2{background:var(--accent-light); margin:0; padding:8px 12px; font-size:13px; text-transform:uppercase; letter-spacing:.03em; color:var(--accent-d); border-bottom:1px solid #ccc; display:flex; justify-content:space-between; align-items:center;}
+  .card .body{padding:12px;}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:8px 14px;}
+  .grid.g3{grid-template-columns:1fr 1fr 1fr;}
+  .grid.stacked{grid-template-columns:1fr;}
+  .field{display:flex; flex-direction:column; gap:2px;}
+  .field.wide{grid-column:1 / -1;}
+  label{font-size:11px; color:var(--muted); font-weight:600;}
+  input[type=text], input[type=date], input[type=number], textarea, select{
+    border:1px solid #b9bec7; border-radius:3px; padding:6px 7px; font-size:13px; font-family:inherit; width:100%;
+  }
+  textarea{resize:vertical; min-height:48px;}
+  .checks{display:flex; gap:16px; flex-wrap:wrap; padding:4px 0;}
+  .chk-item{display:flex; align-items:center; gap:6px; font-size:12.5px;}
+  .chk-item input{width:16px; height:16px;}
+  .abrow{display:flex; gap:6px; align-items:center; margin-bottom:8px;}
+  .abrow input[type=text]{flex:1;}
+  .abrow button{white-space:nowrap; border:1px solid #b9bec7; background:#f6f7f9; border-radius:3px; padding:6px 9px; font-size:11.5px; cursor:pointer;}
+  .abrow button:hover{background:#eceff3;}
+  table.send{width:100%; border-collapse:collapse; margin-top:6px;}
+  table.send th{background:var(--accent-light); color:var(--accent-d); font-size:11px; text-align:left; padding:5px 6px; border:1px solid #ccc;}
+  table.send td{border:1px solid #ccc; padding:3px;}
+  table.send td input{border:none; padding:5px 4px; font-size:12.5px;}
+  table.send td.rm{text-align:center; width:30px;}
+  table.send td.rm button{border:none; background:none; color:var(--danger); cursor:pointer; font-size:14px;}
+  .addrow{margin-top:6px; font-size:12px; border:1px dashed #9aa3b0; background:#fff; padding:5px 10px; border-radius:3px; cursor:pointer; color:var(--accent-d);}
+  .addrow:hover{background:#eef1f5;}
+  .note{font-size:11px; color:var(--muted); margin-top:6px; font-style:italic;}
+  .beta{display:inline-block; background:#fce8e6; color:#8a2c22; font-size:10px; font-weight:700; border-radius:3px; padding:1px 6px; margin-left:8px; letter-spacing:.03em;}
+  #printArea{display:none; width:194mm; margin:0 auto; background:#fff; color:#111; font-family:Arial,Helvetica,sans-serif; font-size:10pt;}
+  body.printing > header, body.printing > main, body.printing > footer{display:none !important;}
+  body.printing #printArea{display:block !important;}
+  @media print{
+    *{-webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important;}
+    @page{size:A4 portrait; margin:8mm;}
+    body{background:#fff;}
+  }
+  .pt-header{background:var(--accent); color:#fff; padding:6px 10px; margin-bottom:4px; border-radius:3px;}
+  .pt-title{font-size:14pt; font-weight:bold;}
+  .pt-meta{font-size:9pt; margin-top:1px;}
+  .pt-card{border:1px solid #ccc; border-radius:3px; margin-bottom:3px; page-break-inside:avoid;}
+  .pt-card h3{background:var(--accent-light); color:var(--accent-d); margin:0; padding:2px 8px; font-size:9.5pt; text-transform:uppercase; letter-spacing:.02em; border-bottom:1px solid #ccc;}
+  .pt-card .pt-body{padding:3px 8px; font-size:10pt; line-height:1.2;}
+  .pt-row{margin-bottom:0.5px;}
+  .pt-fl{color:var(--accent-d); font-weight:bold; display:inline-block; min-width:30mm;}
+  .pt-flex{display:flex;}
+  .pt-flex .pt-fl{flex:0 0 30mm;}
+  .pt-flex-val{flex:1;}
+  .pt-note{font-size:7.5pt; font-style:italic; color:#555; margin-top:2px;}
+  .chk{display:inline-block; width:7pt; height:7pt; border:1px solid #333; text-align:center; line-height:7pt; font-size:6pt; margin-right:2px; font-weight:bold;}
+  table.pt-send{width:100%; border-collapse:collapse; margin-top:1px;}
+  table.pt-send th{background:var(--accent-light); color:var(--accent-d); font-size:8.5pt; text-align:left; padding:2px 5px; border:1px solid #ccc;}
+  table.pt-send td{border:1px solid #ccc; padding:2px 5px; font-size:9pt;}
+  footer{max-width:980px; margin:0 auto 40px; padding:0 12px; font-size:11px; color:var(--muted); text-align:center;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Speditionsauftrag</h1>
+    <div class="sub">lokale App · Daten bleiben auf diesem Rechner</div>
+  </div>
+  <div class="toolbar">
+    <button type="button" onclick="newOrder()">Neu</button>
+    <label class="filebtn">JSON importieren<input type="file" accept=".json,application/json" onchange="handleJsonImport(this)"></label>
+    <button type="button" class="primary" onclick="exportJson()">JSON exportieren</button>
+    <label class="filebtn">XLS importieren (Beta)<input type="file" accept=".xls,.xlsx" onchange="handleXlsImport(this)"></label>
+    <button type="button" class="primary" onclick="printPdf()">PDF erzeugen (Drucken)</button>
+    <button type="button" onclick="downloadPdfDirect()">PDF direkt speichern</button>
+  </div>
+</header>
+
+<main>
+  <div class="notice">
+    Diese App läuft vollständig lokal im Browser. Das Adressbuch wird im Browser gespeichert (localStorage). Für Excel-Import und den Direkt-PDF-Download werden beim ersten Laden zwei externe Skripte (SheetJS, html2pdf.js) von einem CDN nachgeladen &ndash; dafür ist einmalig Internetzugang nötig. "PDF erzeugen (Drucken)" funktioniert ohne CDN, exakt über den Browser-Druckdialog ("Als PDF speichern"). Falls die roten Farbakzente im gedruckten PDF fehlen: im Druckdialog "Hintergrundgrafiken"/"Background graphics" aktivieren.
+  </div>
+
+  <div class="card">
+    <h2>Kopfdaten</h2>
+    <div class="body">
+      <div class="grid g3">
+        <div class="field"><label>Datum</label><input type="date" data-field="datum"></div>
+        <div class="field"><label>Spediteur</label><input type="text" data-field="spediteurName" list="spediteure-list" placeholder="z.B. Grieshaber"></div>
+        <div class="field"><label>Spediteur E-Mail</label><input type="text" data-field="spediteurEmail" placeholder="name@spedition.de"></div>
+      </div>
+      <div style="margin-top:8px;"><button type="button" onclick="saveSpediteur()">💾 Spediteur speichern</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Auftraggeber</h2>
+    <div class="body">
+      <div class="abrow">
+        <button type="button" onclick="copyFirmaFromFrachtzahler()">📋 Firma aus Frachtzahler übernehmen</button>
+      </div>
+      <div class="grid stacked">
+        <div class="field"><label>Firmenname</label><input type="text" data-field="auftraggeber.firma"></div>
+        <div class="field"><label>Ansprechpartner</label><input type="text" data-field="auftraggeber.ansprechpartner"></div>
+        <div class="field"><label>Telefon</label><input type="text" data-field="auftraggeber.telefon"></div>
+        <div class="field"><label>Telefax</label><input type="text" data-field="auftraggeber.telefax"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Transportart &amp; Termine</h2>
+    <div class="body">
+      <div class="checks">
+        <label class="chk-item"><input type="checkbox" data-field="transportart.stueckgut"> Stückgut (wird umgeladen)</label>
+        <label class="chk-item"><input type="checkbox" data-field="transportart.ladungTeilladung"> Ladung/Teilladung (ohne Umladung)</label>
+        <label class="chk-item"><input type="checkbox" data-field="transportart.abholungNeutralisieren"> Abholung neutralisieren</label>
+      </div>
+      <div class="grid" style="margin-top:8px;">
+        <div class="field"><label>Abholung möglich ab – Datum</label><input type="date" data-field="abholDatum"></div>
+        <div class="field"><label>Abholung möglich ab – Uhrzeit</label><input type="text" data-field="abholUhrzeit" placeholder="z.B. 8.30 Uhr"></div>
+        <div class="field"><label>Anlieferung bis spätestens – Datum</label><input type="date" data-field="anlieferDatum"></div>
+        <div class="field"><label>Anlieferung bis spätestens – Uhrzeit</label><input type="text" data-field="anlieferUhrzeit"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Abholadresse</h2>
+    <div class="body">
+      <div class="abrow">
+        <input type="text" class="ab-search" data-target="abholadresse" list="adressbuch-list" placeholder="Gespeicherte Adresse suchen…">
+        <button type="button" onclick="saveAddress('abholadresse')">💾 Adresse speichern</button>
+      </div>
+      <div class="grid stacked">
+        <div class="field"><label>Firmenname</label><input type="text" data-field="abholadresse.firma"></div>
+        <div class="field"><label>Ansprechpartner</label><input type="text" data-field="abholadresse.ansprechpartner"></div>
+        <div class="field"><label>Telefon</label><input type="text" data-field="abholadresse.telefon"></div>
+        <div class="field"><label>Bemerkung</label><input type="text" data-field="abholadresse.bemerkung"></div>
+        <div class="field"><label>Öffnungszeiten</label><input type="text" data-field="abholadresse.oeffnungszeiten"></div>
+        <div class="field"><label>Straße/Hausnr.</label><input type="text" data-field="abholadresse.strasse"></div>
+        <div class="field"><label>Ladestelle/Tor</label><input type="text" data-field="abholadresse.ladestelle"></div>
+        <div class="field"><label>PLZ/Ort/Ortsteil</label><input type="text" data-field="abholadresse.plzOrt"></div>
+      </div>
+      <div class="checks" style="margin-top:10px;">
+        <label style="font-size:11px; color:var(--muted); font-weight:600; align-self:center;">Beladeart:</label>
+        <label class="chk-item"><input type="checkbox" data-field="beladeart.rampe"> über Rampe</label>
+        <label class="chk-item"><input type="checkbox" data-field="beladeart.stapler"> seitlich mit Stapler</label>
+        <label class="chk-item"><input type="checkbox" data-field="beladeart.kran"> Kran</label>
+        <label class="chk-item"><input type="checkbox" data-field="beladeart.hebebuehne"> Hebebühne erforderl.</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Empfängeradresse</h2>
+    <div class="body">
+      <div class="abrow">
+        <input type="text" class="ab-search" data-target="empfaenger" list="adressbuch-list" placeholder="Gespeicherte Adresse suchen…">
+        <button type="button" onclick="saveAddress('empfaenger')">💾 Adresse speichern</button>
+      </div>
+      <div class="grid stacked">
+        <div class="field"><label>Firmenname</label><input type="text" data-field="empfaenger.firma"></div>
+        <div class="field"><label>Ansprechpartner</label><input type="text" data-field="empfaenger.ansprechpartner"></div>
+        <div class="field"><label>Telefon</label><input type="text" data-field="empfaenger.telefon"></div>
+        <div class="field"><label>Bestellnr.</label><input type="text" data-field="empfaenger.bestellnr"></div>
+        <div class="field"><label>Öffnungszeiten</label><input type="text" data-field="empfaenger.oeffnungszeiten"></div>
+        <div class="field"><label>Straße/Hausnr.</label><input type="text" data-field="empfaenger.strasse"></div>
+        <div class="field"><label>Ladestelle/Tor</label><input type="text" data-field="empfaenger.ladestelle"></div>
+        <div class="field"><label>PLZ/Ort/Ortsteil</label><input type="text" data-field="empfaenger.plzOrt"></div>
+      </div>
+      <div class="checks" style="margin-top:10px;">
+        <label style="font-size:11px; color:var(--muted); font-weight:600; align-self:center;">Entladeart:</label>
+        <label class="chk-item"><input type="checkbox" data-field="entladeart.rampe"> über Rampe</label>
+        <label class="chk-item"><input type="checkbox" data-field="entladeart.stapler"> seitlich mit Stapler</label>
+        <label class="chk-item"><input type="checkbox" data-field="entladeart.kran"> Kran</label>
+        <label class="chk-item"><input type="checkbox" data-field="entladeart.hebebuehne"> Hebebühne erforderl.</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Sendungsdaten (Packliste)</h2>
+    <div class="body">
+      <table class="send">
+        <thead>
+          <tr>
+            <th style="width:8%;">Anzahl Packstücke</th>
+            <th style="width:19%;">Verpackungsart</th>
+            <th style="width:37%;">Inhalt</th>
+            <th style="width:14%;">Gewicht (brutto)</th>
+            <th style="width:19%;">max. Maße L x B x H (cm)</th>
+            <th class="rm"></th>
+          </tr>
+        </thead>
+        <tbody id="sendungenBody"></tbody>
+      </table>
+      <button type="button" class="addrow" onclick="addSendungRow()">+ Zeile hinzufügen</button>
+      <div class="note">Bei der Sendung ist für die entsprechende Frachtsicherung zu sorgen.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Versicherung</h2>
+    <div class="body grid g3">
+      <div class="field"><label>Warenwert in €</label><input type="text" data-field="warenwert"></div>
+      <div class="field" style="justify-content:flex-end;"><label class="chk-item" style="margin-top:16px;"><input type="checkbox" data-field="transportversicherung"> Transportversicherung</label></div>
+      <div class="field" style="justify-content:flex-end;"><label class="chk-item" style="margin-top:16px;"><input type="checkbox" data-field="svsVerbotskunde"> SVS Verbotskunde</label></div>
+    </div>
+    <div class="body" style="padding-top:0;"><div class="note">innerhalb Deutschlands 1 o/oo vom Warenwert</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Frachtzahler</h2>
+    <div class="body">
+      <div class="abrow">
+        <input type="text" class="ab-search" data-target="frachtzahler" list="adressbuch-list" placeholder="Gespeicherte Adresse suchen…">
+        <button type="button" onclick="saveAddress('frachtzahler')">💾 Adresse speichern</button>
+      </div>
+      <div class="grid">
+        <div class="field wide"><label>Firma / Adresse (mehrzeilig)</label><textarea data-field="frachtzahler.adresse" rows="3"></textarea></div>
+        <div class="field"><label>Bitte Kom.-Nr.</label><input type="text" data-field="frachtzahler.komNr"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>Speditionsauftrag-App &middot; einzelne Aufträge werden als JSON gesichert &middot; PDF ersetzt den bisherigen Excel-Ausdruck</footer>
+
+<datalist id="adressbuch-list"></datalist>
+<datalist id="spediteure-list"></datalist>
+
+<div id="printArea"></div>
+
+<script>
+/* ---------- Datenmodell ---------- */
+function emptyState(){
+  return {
+    datum: new Date().toISOString().slice(0,10),
+    spediteurName: '', spediteurEmail: '',
+    auftraggeber: {firma:'Dodek GmbH & Co. KG', ansprechpartner:'Franek Dodek', telefon:'07564 / 94895-0', telefax:'07564 / 94895-50'},
+    transportart: {stueckgut:false, ladungTeilladung:false, abholungNeutralisieren:false},
+    abholDatum:'', abholUhrzeit:'', anlieferDatum:'', anlieferUhrzeit:'',
+    abholadresse: {firma:'', ansprechpartner:'', telefon:'', bemerkung:'', oeffnungszeiten:'', strasse:'', ladestelle:'', plzOrt:''},
+    beladeart: {rampe:false, stapler:false, kran:false, hebebuehne:false},
+    empfaenger: {firma:'', ansprechpartner:'', telefon:'', bestellnr:'', oeffnungszeiten:'', strasse:'', ladestelle:'', plzOrt:''},
+    entladeart: {rampe:false, stapler:false, kran:false, hebebuehne:false},
+    sendungen: [ {anzahl:'',verpackungsart:'',inhalt:'',gewicht:'',masse:''}, {anzahl:'',verpackungsart:'',inhalt:'',gewicht:'',masse:''}, {anzahl:'',verpackungsart:'',inhalt:'',gewicht:'',masse:''} ],
+    warenwert:'', transportversicherung:false, svsVerbotskunde:false,
+    frachtzahler: {adresse:'Dodek GmbH & Co. KG\nStocket 3\n88410 Bad Wurzach', komNr:''}
+  };
+}
+
+function setByPath(obj, path, value){
+  const parts = path.split('.'); let cur = obj;
+  for(let i=0;i<parts.length-1;i++){ if(!(parts[i] in cur) || typeof cur[parts[i]] !== 'object') cur[parts[i]] = {}; cur = cur[parts[i]]; }
+  cur[parts[parts.length-1]] = value;
+}
+function getByPath(obj, path){
+  return path.split('.').reduce((o,k)=> (o!==undefined && o!==null) ? o[k] : undefined, obj);
+}
+
+function collectState(){
+  const s = {};
+  document.querySelectorAll('[data-field]').forEach(el=>{
+    const path = el.dataset.field;
+    const val = (el.type === 'checkbox') ? el.checked : el.value;
+    setByPath(s, path, val);
+  });
+  s.sendungen = collectSendungen();
+  return s;
+}
+
+function loadFromState(s){
+  const base = emptyState();
+  const src = s || {};
+  const merged = {};
+  Object.keys(base).forEach(k=>{
+    if(k === 'sendungen'){ merged[k] = base[k]; return; }
+    if(base[k] && typeof base[k] === 'object'){
+      merged[k] = Object.assign({}, base[k], src[k] || {});
+    } else {
+      merged[k] = (src[k] !== undefined) ? src[k] : base[k];
+    }
+  });
+  merged.sendungen = (src.sendungen && src.sendungen.length) ? src.sendungen : base.sendungen;
+  document.querySelectorAll('[data-field]').forEach(el=>{
+    const path = el.dataset.field;
+    const val = getByPath(merged, path);
+    if(val === undefined) return;
+    if(el.type === 'checkbox') el.checked = !!val; else el.value = val;
+  });
+  renderSendungen(merged.sendungen && merged.sendungen.length ? merged.sendungen : emptyState().sendungen);
+}
+
+/* ---------- Sendungsdaten-Tabelle ---------- */
+function sendungRowHtml(row){
+  row = row || {};
+  return `<tr>
+    <td><input type="text" data-col="anzahl" value="${escapeAttr(row.anzahl)}"></td>
+    <td><input type="text" data-col="verpackungsart" value="${escapeAttr(row.verpackungsart)}"></td>
+    <td><input type="text" data-col="inhalt" value="${escapeAttr(row.inhalt)}"></td>
+    <td><input type="text" data-col="gewicht" value="${escapeAttr(row.gewicht)}"></td>
+    <td><input type="text" data-col="masse" value="${escapeAttr(row.masse)}"></td>
+    <td class="rm"><button type="button" title="Zeile löschen" onclick="this.closest('tr').remove()">🗑</button></td>
+  </tr>`;
+}
+function renderSendungen(rows){
+  const body = document.getElementById('sendungenBody');
+  body.innerHTML = rows.map(sendungRowHtml).join('');
+}
+function addSendungRow(){
+  document.getElementById('sendungenBody').insertAdjacentHTML('beforeend', sendungRowHtml());
+}
+function collectSendungen(){
+  const rows = [];
+  document.querySelectorAll('#sendungenBody tr').forEach(tr=>{
+    const row = {};
+    tr.querySelectorAll('[data-col]').forEach(inp=> row[inp.dataset.col] = inp.value);
+    if(Object.values(row).some(v=>String(v).trim() !== '')) rows.push(row);
+  });
+  return rows;
+}
+
+/* ---------- Adressbuch (localStorage) ---------- */
+const AB_KEY = 'spedauftrag_adressbuch_v1';
+const ADDR_FIELDS = ['firma','ansprechpartner','telefon','telefax','bemerkung','oeffnungszeiten','strasse','ladestelle','plzOrt','bestellnr'];
+
+function getAddressBook(){ try{ return JSON.parse(localStorage.getItem(AB_KEY)) || []; }catch(e){ return []; } }
+function setAddressBook(list){ localStorage.setItem(AB_KEY, JSON.stringify(list)); }
+
+function refreshAddressList(){
+  const book = getAddressBook();
+  const dl = document.getElementById('adressbuch-list');
+  dl.innerHTML = book.map(e=>`<option value="${escapeAttr(e.bezeichnung)}">`).join('');
+}
+
+function applyAddress(blockPrefix, entry){
+  if(blockPrefix === 'frachtzahler'){
+    const lines = [entry.firma, entry.strasse, entry.plzOrt].filter(Boolean);
+    const el = document.querySelector('[data-field="frachtzahler.adresse"]');
+    if(el) el.value = lines.join('\n');
+    return;
+  }
+  ADDR_FIELDS.forEach(f=>{
+    const el = document.querySelector(`[data-field="${blockPrefix}.${f}"]`);
+    if(el && entry[f] !== undefined) el.value = entry[f];
+  });
+}
+
+function saveAddress(blockPrefix){
+  const bez = prompt('Bezeichnung für diese Adresse (z.B. "BEKA Parksysteme, Höheischweiler"):');
+  if(!bez) return;
+  const entry = {id:'a'+Date.now(), bezeichnung: bez};
+  if(blockPrefix === 'frachtzahler'){
+    const raw = (document.querySelector('[data-field="frachtzahler.adresse"]').value || '').split('\n').map(s=>s.trim()).filter(Boolean);
+    entry.firma = raw[0] || ''; entry.strasse = raw[1] || ''; entry.plzOrt = raw.slice(2).join(' ') || '';
+  } else {
+    ADDR_FIELDS.forEach(f=>{
+      const el = document.querySelector(`[data-field="${blockPrefix}.${f}"]`);
+      entry[f] = el ? el.value : '';
+    });
+  }
+  const book = getAddressBook();
+  book.push(entry);
+  setAddressBook(book);
+  refreshAddressList();
+}
+
+document.addEventListener('change', function(e){
+  if(e.target.classList && e.target.classList.contains('ab-search')){
+    const target = e.target.dataset.target;
+    const book = getAddressBook();
+    const entry = book.find(x=>x.bezeichnung === e.target.value);
+    if(entry){ applyAddress(target, entry); e.target.value = ''; }
+  }
+});
+
+function copyFirmaFromFrachtzahler(){
+  const raw = (document.querySelector('[data-field="frachtzahler.adresse"]').value || '').split('\n')[0].trim();
+  const el = document.querySelector('[data-field="auftraggeber.firma"]');
+  if(el) el.value = raw || 'Dodek GmbH & Co. KG';
+}
+
+/* ---------- Spediteur-Speicher ---------- */
+const SPED_KEY = 'spedauftrag_spediteure_v1';
+function getSpediteure(){ try{ return JSON.parse(localStorage.getItem(SPED_KEY)) || []; }catch(e){ return []; } }
+function setSpediteure(list){ localStorage.setItem(SPED_KEY, JSON.stringify(list)); }
+function refreshSpediteureList(){
+  const list = getSpediteure();
+  document.getElementById('spediteure-list').innerHTML = list.map(e=>`<option value="${escapeAttr(e.name)}">`).join('');
+}
+function saveSpediteur(){
+  const name = (document.querySelector('[data-field="spediteurName"]').value || '').trim();
+  const email = (document.querySelector('[data-field="spediteurEmail"]').value || '').trim();
+  if(!name){ alert('Bitte zuerst einen Spediteur-Namen eingeben.'); return; }
+  const list = getSpediteure().filter(e=>e.name !== name);
+  list.push({name, email});
+  setSpediteure(list);
+  refreshSpediteureList();
+}
+document.addEventListener('input', function(e){
+  if(e.target.matches && e.target.matches('[data-field="spediteurName"]')){
+    const match = getSpediteure().find(x=>x.name === e.target.value);
+    if(match){ document.querySelector('[data-field="spediteurEmail"]').value = match.email || ''; }
+  }
+});
+
+/* ---------- Dateiname-Konvention ---------- */
+function sanitizeFilename(name){ return name.replace(/[\\/:*?"<>|]/g, '-'); }
+function suggestFilename(ext){
+  const s = collectState();
+  const [y,m,d] = (s.datum || '').split('-');
+  const dateStr = (y && m && d) ? `${y.slice(2)}-${m}-${d}` : (s.datum || 'datum');
+  const kom = s.frachtzahler.komNr || 'KomNr';
+  const sped = (s.spediteurName || 'Spediteur').trim();
+  const anzahl = s.sendungen.reduce((sum,r)=> sum + (parseInt(r.anzahl) || 0), 0) || s.sendungen.length || 0;
+  const plzOrt = (s.empfaenger.plzOrt || '').replace(/^D\s*-\s*/,'').trim() || 'Zielort';
+  const name = `FA DT ${dateStr} ${kom} ${sped} - ${anzahl} Colli nach ${plzOrt}`;
+  return sanitizeFilename(name) + '.' + ext;
+}
+
+/* ---------- JSON Import/Export ---------- */
+function downloadBlob(content, filename, mime){
+  const blob = new Blob([content], {type:mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+function exportJson(){
+  const s = collectState();
+  downloadBlob(JSON.stringify(s, null, 2), suggestFilename('json'), 'application/json');
+}
+function handleJsonImport(input){
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      loadFromState(data);
+      alert('JSON-Auftrag importiert.');
+    }catch(err){ alert('Konnte JSON-Datei nicht lesen: ' + err.message); }
+    input.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+/* ---------- XLS-Import (Beta) ---------- */
+function isLabelLike(v){ return /:\s*$/.test(String(v).trim()); }
+function parseDatumToISO(str){
+  const m = String(str).match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+  if(!m) return null;
+  let [,d,mo,y] = m; if(y.length===2) y = '20'+y;
+  return `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
+}
+function handleXlsImport(input){
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:false, defval:''});
+      const cells = [];
+      rows.forEach((row, r)=> (row||[]).forEach((val, c)=>{
+        const v = (val===undefined||val===null) ? '' : String(val).trim();
+        if(v) cells.push({r, c, v});
+      }));
+      function findLabelValues(labelSubstr){
+        const out = [];
+        cells.forEach(cell=>{
+          if(cell.v.toLowerCase().includes(labelSubstr.toLowerCase())){
+            let val = '';
+            const right = cells.filter(cc=>cc.r===cell.r && cc.c>cell.c).sort((a,b)=>a.c-b.c)[0];
+            if(right && !isLabelLike(right.v)) val = right.v;
+            else{
+              const below = cells.filter(cc=>cc.c===cell.c && cc.r>cell.r).sort((a,b)=>a.r-b.r)[0];
+              if(below && !isLabelLike(below.v)) val = below.v;
+            }
+            out.push(val);
+          }
+        });
+        return out;
+      }
+      const firmen = findLabelValues('Firmenname:');
+      const ansprech = findLabelValues('Ansprechpartner:');
+      const telefone = findLabelValues('Telefon:');
+      const telefax = findLabelValues('Telefax:');
+      const plzOrte = findLabelValues('PLZ/Ort');
+      const strassen = findLabelValues('Straße/Hausnr');
+      const ladestellen = findLabelValues('Ladestelle/Tor');
+      const oeffnungszeiten = findLabelValues('Öffnungszeiten');
+      const datumMatch = findLabelValues('Datum:');
+      const komNrMatch = findLabelValues('Kom.-Nr.');
+      const warenwertMatch = findLabelValues('Warenwert in');
+      const bestellnrMatch = findLabelValues('Bestellnr.');
+      const bemerkungMatch = findLabelValues('Bemerkung:');
+
+      const s = collectState();
+      if(firmen[0]) s.auftraggeber.firma = firmen[0];
+      if(ansprech[0]) s.auftraggeber.ansprechpartner = ansprech[0];
+      if(telefone[0]) s.auftraggeber.telefon = telefone[0];
+      if(telefax[0]) s.auftraggeber.telefax = telefax[0];
+
+      if(firmen[1]) s.abholadresse.firma = firmen[1];
+      if(ansprech[1]) s.abholadresse.ansprechpartner = ansprech[1];
+      if(telefone[1]) s.abholadresse.telefon = telefone[1];
+      if(bemerkungMatch[0]) s.abholadresse.bemerkung = bemerkungMatch[0];
+      if(oeffnungszeiten[0]) s.abholadresse.oeffnungszeiten = oeffnungszeiten[0];
+      if(strassen[0]) s.abholadresse.strasse = strassen[0];
+      if(ladestellen[0]) s.abholadresse.ladestelle = ladestellen[0];
+      if(plzOrte[0]) s.abholadresse.plzOrt = plzOrte[0];
+
+      if(firmen[2]) s.empfaenger.firma = firmen[2];
+      if(ansprech[2]) s.empfaenger.ansprechpartner = ansprech[2];
+      if(telefone[2]) s.empfaenger.telefon = telefone[2];
+      if(bestellnrMatch[0]) s.empfaenger.bestellnr = bestellnrMatch[0];
+      if(oeffnungszeiten[1]) s.empfaenger.oeffnungszeiten = oeffnungszeiten[1];
+      if(strassen[1]) s.empfaenger.strasse = strassen[1];
+      if(ladestellen[1]) s.empfaenger.ladestelle = ladestellen[1];
+      if(plzOrte[1]) s.empfaenger.plzOrt = plzOrte[1];
+
+      if(firmen[3]) s.frachtzahler.adresse = firmen[3];
+      if(komNrMatch[0]) s.frachtzahler.komNr = komNrMatch[0];
+      if(warenwertMatch[0]) s.warenwert = warenwertMatch[0].replace(/[^0-9.,]/g,'');
+      const isoDatum = datumMatch[0] ? parseDatumToISO(datumMatch[0]) : null;
+      if(isoDatum) s.datum = isoDatum;
+
+      // Sendungsdaten: Zeilen zwischen Tabellenkopf und Hinweistext, spaltenbasiert
+      try{
+        const headerCell = cells.find(c=>c.v.includes('Packstücke') || c.v.includes('Anzahl'));
+        const endCell = cells.find(c=>c.v.includes('Bei der Sendung'));
+        if(headerCell && endCell && endCell.r > headerCell.r){
+          const dataRows = [];
+          for(let r = headerCell.r+1; r < endCell.r; r++){
+            const rowCells = cells.filter(c=>c.r===r).sort((a,b)=>a.c-b.c);
+            if(rowCells.length){
+              dataRows.push({
+                anzahl: rowCells[0] ? rowCells[0].v : '',
+                verpackungsart: rowCells[1] ? rowCells[1].v : '',
+                inhalt: rowCells[2] ? rowCells[2].v : '',
+                gewicht: rowCells[3] ? rowCells[3].v : '',
+                masse: rowCells[4] ? rowCells[4].v : ''
+              });
+            }
+          }
+          if(dataRows.length) s.sendungen = dataRows;
+        }
+      }catch(errRows){ /* Sendungsdaten konnten nicht zugeordnet werden – bitte manuell prüfen */ }
+
+      loadFromState(s);
+      alert('XLS-Import (Beta) abgeschlossen. Bitte alle Felder, insbesondere Checkboxen und Sendungsdaten, vor Verwendung prüfen.');
+    }catch(err){
+      alert('XLS-Import fehlgeschlagen: ' + err.message + '\nBitte Daten manuell übertragen oder JSON verwenden.');
+    }
+    input.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ---------- PDF-Erzeugung ---------- */
+function escapeHtml(str){
+  return String(str ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(str){ return escapeHtml(str ?? ''); }
+function chk(bool, label){ return `<span class="chk">${bool ? 'X' : ''}</span>${escapeHtml(label)}`; }
+
+function chkline(items){ return items.map(it=>chk(it[0], it[1])).join('&nbsp;&nbsp;&nbsp;'); }
+
+function pdfCard(title, innerHtml){
+  return `<div class="pt-card"><h3>${escapeHtml(title)}</h3><div class="pt-body">${innerHtml}</div></div>`;
+}
+
+function renderPrintHTML(s){
+  const sendRows = (s.sendungen || []).filter(r=>Object.values(r).some(v=>String(v).trim()!==''));
+  const sendRowsHtml = (sendRows.length ? sendRows : [{}]).map(r=>`
+    <tr>
+      <td>${escapeHtml(r.anzahl)}</td>
+      <td>${escapeHtml(r.verpackungsart)}</td>
+      <td>${escapeHtml(r.inhalt)}</td>
+      <td>${escapeHtml(r.gewicht)}</td>
+      <td>${escapeHtml(r.masse)}</td>
+    </tr>`).join('');
+
+  let html = `<div class="pt-header">
+      <div class="pt-title">Speditionsauftrag</div>
+      <div class="pt-meta">Datum: ${escapeHtml(formatDateDE(s.datum))} &nbsp;&middot;&nbsp; Spediteur: ${escapeHtml(s.spediteurName)}${s.spediteurEmail ? ' ('+escapeHtml(s.spediteurEmail)+')' : ''}</div>
+    </div>`;
+
+  function field(label, value, bold){
+    const v = escapeHtml(value);
+    return `<div class="pt-row"><span class="pt-fl">${escapeHtml(label)}:</span> ${bold ? '<b>'+v+'</b>' : v}</div>`;
+  }
+
+  html += pdfCard('Auftraggeber', `
+      ${field('Firmenname', s.auftraggeber.firma, true)}
+      ${field('Ansprechpartner', s.auftraggeber.ansprechpartner)}
+      ${field('Telefon', s.auftraggeber.telefon)}
+      ${field('Telefax', s.auftraggeber.telefax)}`);
+
+  html += pdfCard('Transportart & Termine', `
+      <div class="pt-row"><span class="pt-fl">Transportart:</span> ${chkline([[s.transportart.stueckgut,'Stückgut (wird umgeladen)'],[s.transportart.ladungTeilladung,'Ladung/Teilladung (ohne Umladung)'],[s.transportart.abholungNeutralisieren,'Abholung neutralisieren']])}</div>
+      ${field('Abholung möglich ab', [formatDateDE(s.abholDatum), s.abholUhrzeit].filter(Boolean).join(' '))}
+      ${field('Anlieferung bis spätestens', [formatDateDE(s.anlieferDatum), s.anlieferUhrzeit].filter(Boolean).join(' '))}`);
+
+  html += pdfCard('Abholadresse', `
+      ${field('Firmenname', s.abholadresse.firma, true)}
+      ${field('Ansprechpartner', s.abholadresse.ansprechpartner)}
+      ${field('Telefon', s.abholadresse.telefon)}
+      ${field('Bemerkung', s.abholadresse.bemerkung)}
+      ${field('Öffnungszeiten', s.abholadresse.oeffnungszeiten)}
+      ${field('Straße/Hausnr.', s.abholadresse.strasse)}
+      ${field('Ladestelle/Tor', s.abholadresse.ladestelle)}
+      ${field('PLZ/Ort/Ortsteil', s.abholadresse.plzOrt)}
+      <div class="pt-row"><span class="pt-fl">Beladeart:</span> ${chkline([[s.beladeart.rampe,'über Rampe'],[s.beladeart.stapler,'seitlich mit Stapler'],[s.beladeart.kran,'Kran'],[s.beladeart.hebebuehne,'Hebebühne erforderl.']])}</div>`);
+
+  html += pdfCard('Empfängeradresse', `
+      ${field('Firmenname', s.empfaenger.firma, true)}
+      ${field('Ansprechpartner', s.empfaenger.ansprechpartner)}
+      ${field('Telefon', s.empfaenger.telefon)}
+      ${field('Bestellnr.', s.empfaenger.bestellnr)}
+      ${field('Öffnungszeiten', s.empfaenger.oeffnungszeiten)}
+      ${field('Straße/Hausnr.', s.empfaenger.strasse)}
+      ${field('Ladestelle/Tor', s.empfaenger.ladestelle)}
+      ${field('PLZ/Ort/Ortsteil', s.empfaenger.plzOrt)}
+      <div class="pt-row"><span class="pt-fl">Entladeart:</span> ${chkline([[s.entladeart.rampe,'über Rampe'],[s.entladeart.stapler,'seitlich mit Stapler'],[s.entladeart.kran,'Kran'],[s.entladeart.hebebuehne,'Hebebühne erforderl.']])}</div>`);
+
+  html += pdfCard('Sendungsdaten', `
+      <table class="pt-send">
+        <thead><tr><th style="width:8%;">Anzahl Packstücke</th><th style="width:19%;">Verpackungsart</th><th style="width:37%;">Inhalt</th><th style="width:14%;">Gewicht (brutto)</th><th style="width:19%;">max. Maße L x B x H (cm)</th></tr></thead>
+        <tbody>${sendRowsHtml}</tbody>
+      </table>
+      <div class="pt-note">Bei der Sendung ist für die entsprechende Frachtsicherung zu sorgen.</div>`);
+
+  html += pdfCard('Versicherung', `
+      ${field('Warenwert in €', s.warenwert)}
+      <div class="pt-row">${chkline([[s.transportversicherung,'Transportversicherung'],[s.svsVerbotskunde,'SVS Verbotskunde']])}</div>
+      <div class="pt-note">innerhalb Deutschlands 1 o/oo vom Warenwert</div>`);
+
+  html += pdfCard('Frachtzahler', `
+      <div class="pt-row pt-flex"><span class="pt-fl">Firma/Adresse:</span><span class="pt-flex-val">${escapeHtml(s.frachtzahler.adresse).replace(/\n/g,'<br>')}</span></div>
+      ${field('Bitte Kom.-Nr.', s.frachtzahler.komNr, true)}`);
+
+  return html;
+}
+
+function formatDateDE(iso){
+  if(!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return (y&&m&&d) ? `${d}.${m}.${y}` : iso;
+}
+
+function preparePrintArea(){
+  const s = collectState();
+  document.getElementById('printArea').innerHTML = renderPrintHTML(s);
+}
+function printPdf(){
+  preparePrintArea();
+  document.body.classList.add('printing');
+  setTimeout(()=> window.print(), 80);
+}
+window.addEventListener('afterprint', function(){ document.body.classList.remove('printing'); });
+
+function downloadPdfDirect(){
+  preparePrintArea();
+  const area = document.getElementById('printArea');
+  area.style.display = 'block';
+  const filename = suggestFilename('pdf');
+  html2pdf().set({
+    margin: 8,
+    filename: filename,
+    html2canvas: {scale:2, backgroundColor:'#ffffff'},
+    jsPDF: {unit:'mm', format:'a4', orientation:'portrait'}
+  }).from(area).save().then(()=>{
+    area.style.display = 'none';
+  });
+}
+
+/* ---------- Neu / Init ---------- */
+function newOrder(){
+  if(!confirm('Aktuellen Auftrag verwerfen und neuen leeren Auftrag beginnen?')) return;
+  loadFromState(emptyState());
+}
+
+window.addEventListener('DOMContentLoaded', function(){
+  loadFromState(emptyState());
+  refreshAddressList();
+  refreshSpediteureList();
+});
+</script>
+</body>
+</html>
