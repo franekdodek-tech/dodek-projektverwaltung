@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bestellformular – Filter & Ventilator | Dodek Technik · v0.3.0</title>
+<title>Bestellformular – Filter & Ventilator | Dodek Technik · v0.4.0</title>
 <style>
   :root {
     --rot: #CC0000;
@@ -256,7 +256,7 @@
     <button class="btn-dateiname" onclick="exportiereJSONSP()">📤 JSON exportieren</button>
     <label class="btn-dateiname" style="cursor:pointer;">📥 JSON importieren<input type="file" accept="application/json" style="display:none" onchange="importiereJSONSP(event)"></label>
     <button class="btn-druck" onclick="drucken()">🖨 Drucken / PDF</button>
-    <span style="font-size:10px;color:#999;margin-left:8px;align-self:center;">v0.3.0</span>
+    <span style="font-size:10px;color:#999;margin-left:8px;align-self:center;">v0.4.0</span>
   </div>
 </div>
 
@@ -286,12 +286,12 @@
 
     <!-- META -->
     <div class="meta-grid" style="grid-template-columns: 0.25fr 2fr 1fr 0.5fr 0.5fr;">
-      <label class="lbl">Projekt-Nr.<input type="text" id="f-com-nr" placeholder="z.B. 25031" oninput="aktualisierDateiname()"></label>
-      <label class="lbl span2">Kommission<input type="text" id="f-com-name" placeholder="z.B. ERL HBT" oninput="aktualisierDateiname()"></label>
+      <label class="lbl">Projekt-Nr.<input type="text" id="f-com-nr" oninput="aktualisierDateiname()"></label>
+      <label class="lbl span2">Kommission<input type="text" id="f-com-name" oninput="aktualisierDateiname()"></label>
       <label class="lbl">Bestelldatum<input type="date" id="f-datum" oninput="aktualisierDateiname()"></label>
-      <label class="lbl">Liefertermin<input type="text" id="f-liefert" placeholder="Ende KW 15 ab Werk"></label>
+      <label class="lbl">Liefertermin<input type="text" id="f-liefert"></label>
       
-      <label class="lbl span2">Aufstellungsplan-Nr.<input type="text" id="f-aufstell" placeholder="z.B. DT ZG"></label>
+      <label class="lbl span2">Aufstellungsplan-Nr.<input type="text" id="f-aufstell"></label>
     </div>
 
   <!-- FILTER GRUNDDATEN -->
@@ -299,15 +299,15 @@
     <div class="section-header">Allgemein</div>
     <div class="section-body">
       <div class="fg c5">
-        <label class="lbl">Menge (ST)<input type="text" id="f-menge" placeholder="1"></label>
-        <label class="lbl">Filtertyp<input type="text" id="f-typ" placeholder="z.B. DTZ 16" oninput="aktualisierDateiname()"></label>
-        <label class="lbl">Steuerung Typ<input type="text" id="f-steuerung" placeholder="z.B. ESA"></label>
-        <label class="lbl">Anbringung<input type="text" id="f-anbringung" placeholder=""></label>
+        <label class="lbl">Menge (ST)<input type="text" id="f-menge"></label>
+        <label class="lbl">Filtertyp<input type="text" id="f-typ" oninput="aktualisierDateiname()"></label>
+        <label class="lbl">Steuerung Typ<input type="text" id="f-steuerung"></label>
+        <label class="lbl">Anbringung<input type="text" id="f-anbringung"></label>
         <label class="lbl">Aufkleber
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:nowrap;margin-top:3px">
             <label class="cb"><input type="checkbox" name="f-aufkl" value="dodek"> Dodek</label>
             <label class="cb"><input type="checkbox" name="f-aufkl" value="ohne"> ohne</label>
-            <input class="ii" type="text" id="f-aufkl-sonst" placeholder="Sonstige" style="width:60px;flex-shrink:1;min-width:0">
+            <input class="ii" type="text" id="f-aufkl-sonst" style="width:60px;flex-shrink:1;min-width:0">
           </div>
         </label>
       </div>
@@ -318,7 +318,7 @@
             <label class="cb"><input type="radio" name="f-zyklon" value="ohne"> ohne</label>
           </div>
         </label>
-        <label class="lbl">Zyklon DN<input type="text" id="f-zyklon-dn" placeholder="z.B. 450"></label>
+        <label class="lbl">Zyklon DN<input type="text" id="f-zyklon-dn"></label>
         <label class="lbl">Nachlaufreinigung
           <div style="display:flex;gap:10px;margin-top:3px">
             <label class="cb"><input type="radio" name="f-nachlauf" value="ja"> ja</label>
@@ -326,8 +326,8 @@
           </div>
         </label>
         <div class="fg c2" style="margin:0">
-          <label class="lbl">Anzahl<input type="text" id="f-nachlauf-anz" placeholder=""></label>
-          <label class="lbl">Durchläufe<input type="text" id="f-nachlauf-dl" placeholder=""></label>
+          <label class="lbl">Anzahl<input type="text" id="f-nachlauf-anz"></label>
+          <label class="lbl">Durchläufe<input type="text" id="f-nachlauf-dl"></label>
         </div>
       </div>
     </div>
@@ -338,8 +338,8 @@
     <div class="section-header">Lackierung</div>
     <div class="section-body">
       <div class="fg c4">
-        <label class="lbl">RAL-Nr.<input type="text" id="f-ral" placeholder="z.B. 7016"></label>
-        <label class="lbl span3">Farbton<input type="text" id="f-farbton" placeholder="z.B. Anthrazitgrau"></label>
+        <label class="lbl">RAL-Nr.<input type="text" id="f-ral"></label>
+        <label class="lbl span3">Farbton<input type="text" id="f-farbton"></label>
       </div>
     </div>
   </div>
@@ -361,7 +361,7 @@
           <tr><td>120 l-Staubeimer, runde Ausf.</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
           <tr><td>200 l-Staubfaß</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
           <tr>
-            <td>Zellenradschleuse Typ &nbsp;<input class="ii" type="text" placeholder="" style="width:100px"></td>
+            <td>Zellenradschleuse Typ &nbsp;<input class="ii" type="text" style="width:100px"></td>
             <td><input type="checkbox"></td><td><input type="checkbox"></td>
           </tr>
           <tr><td>Druckausgleichset</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
@@ -369,7 +369,7 @@
           <tr><td>Erdung (nur bei Ex-Anlagen)</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
           <tr><td>Magnetventil (nur bei Ex-Anlagen)</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
           <tr>
-            <td>Schaltschrank Lieferant &nbsp;<input class="ii" type="text" id="f-sk-typ" placeholder="" style="width:100px"></td>
+            <td>Schaltschrank Lieferant &nbsp;<input class="ii" type="text" id="f-sk-typ" style="width:100px"></td>
             <td><input type="checkbox"></td><td><input type="checkbox"></td>
           </tr>
         </tbody>
@@ -398,10 +398,10 @@
           <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--grau-dunkel);margin-bottom:3px">Rohgassammler</div>
           <label class="cb"><input type="radio" name="f-rohgas" value="ohne"> ohne</label>
           <label class="cb" style="align-items:center;gap:4px">
-            <input type="radio" name="f-rohgas" value="vorne"> vorne &nbsp;Flansch DN&nbsp;<input class="ii" type="text" style="width:42px" placeholder="">
+            <input type="radio" name="f-rohgas" value="vorne"> vorne &nbsp;Flansch DN&nbsp;<input class="ii" type="text" style="width:42px">
           </label>
           <label class="cb" style="align-items:center;gap:4px">
-            <input type="radio" name="f-rohgas" value="seitlich"> seitlich &nbsp;Flansch DN&nbsp;<input class="ii" type="text" style="width:42px" placeholder="">
+            <input type="radio" name="f-rohgas" value="seitlich"> seitlich &nbsp;Flansch DN&nbsp;<input class="ii" type="text" style="width:42px">
           </label>
         </div>
 
@@ -411,7 +411,7 @@
           <label class="cb"><input type="radio" name="f-reingas" value="ohne"> ohne</label>
           <label class="cb" style="align-items:center;gap:4px">
             <input type="radio" name="f-reingas" value="unten"> unten &nbsp;600 × 315 &nbsp;
-            <input class="ii" type="text" style="width:45px" placeholder="lg.">
+            <input class="ii" type="text" style="width:45px">
           </label>
         </div>
       </div>
@@ -424,10 +424,10 @@
     <div class="section-body">
       <div class="fg c4" style="margin-bottom:6px">
       <label class="lbl span2">Art.-Nr. 
-          <input type="text" id="f-patron-artnr" placeholder="z.B. 262-5023">
+          <input type="text" id="f-patron-artnr">
         </label>
         <label class="lbl span2">Bemerkung / Sonderausführung
-          <input type="text" id="f-patron-bem" placeholder="z.B. conduktiv, antistatisch …">
+          <input type="text" id="f-patron-bem">
         </label>
       </div>
       <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--grau-dunkel);margin-bottom:4px">Lieferung durch</div>
@@ -436,7 +436,7 @@
         <label class="cb"><input type="radio" name="f-lief"> Lager</label>
         <label class="cb" style="align-items:center;gap:5px">
           <input type="radio" name="f-lief">
-          <input class="ii" type="text" placeholder="Sonstige …" style="width:120px">
+          <input class="ii" type="text" style="width:120px">
         </label>
       </div>
     </div>
@@ -461,11 +461,11 @@
           <!-- Rechts: Typ + Anschluss -->
           <div>
             <div style="margin-bottom:6px">
-              <label class="lbl">Venti-Typ<input type="text" id="f-venti-typ" placeholder=""></label>
+              <label class="lbl">Venti-Typ<input type="text" id="f-venti-typ"></label>
             </div>
             <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--grau-dunkel);margin-bottom:3px">Venti-Anschluß von unten</div>
             <label class="cb" style="align-items:center;gap:4px">
-              <input type="radio" name="f-vanschluss"> mit Anschluß in Bodenplatte 315 ×&nbsp;<input class="ii" type="text" style="width:45px" placeholder="">
+              <input type="radio" name="f-vanschluss"> mit Anschluß in Bodenplatte 315 ×&nbsp;<input class="ii" type="text" style="width:45px">
             </label>
             <label class="cb"><input type="radio" name="f-vanschluss"> ohne</label>
           </div>
@@ -477,7 +477,7 @@
   <div class="section">
     <div class="section-header">Bemerkungen</div>
     <div class="section-body">
-      <textarea style="width:100%;min-height:45px;font-family:var(--font);font-size:11px;padding:5px;border:1px solid var(--grau-mittel);resize:vertical;outline:none" id="f-bem" placeholder="Freitext…"></textarea>
+      <textarea style="width:100%;min-height:45px;font-family:var(--font);font-size:11px;padding:5px;border:1px solid var(--grau-mittel);resize:vertical;outline:none" id="f-bem"></textarea>
     </div>
   </div>
 
@@ -506,11 +506,11 @@
 
   <!-- META -->
   <div class="meta-grid" style="grid-template-columns: 0.25fr 2fr 1fr 0.5fr 0.5fr;">
-    <label class="lbl">Projekt-Nr.<input type="text" id="v-com-nr" placeholder="z.B. 25031" oninput="aktualisierDateiname()"></label>
-    <label class="lbl span2">Kommission<input type="text" id="v-com-name" placeholder="z.B. ERL HBT" oninput="aktualisierDateiname()"></label>
+    <label class="lbl">Projekt-Nr.<input type="text" id="v-com-nr" oninput="aktualisierDateiname()"></label>
+    <label class="lbl span2">Kommission<input type="text" id="v-com-name" oninput="aktualisierDateiname()"></label>
     <label class="lbl">Bestelldatum<input type="date" id="v-datum" oninput="aktualisierDateiname()"></label>
-    <label class="lbl">Liefertermin<input type="text" id="v-liefert" placeholder="z.B. KW 15"></label>
-    <label class="lbl span2">Aufstellungsplan-Nr.<input type="text" id="v-sigg-a" placeholder=""></label>
+    <label class="lbl">Liefertermin<input type="text" id="v-liefert"></label>
+    <label class="lbl span2">Aufstellungsplan-Nr.<input type="text" id="v-sigg-a"></label>
   </div>
 
   <!-- ALLGEMEIN -->
@@ -518,8 +518,8 @@
     <div class="section-header">Allgemein</div>
     <div class="section-body">
       <div class="fg c4">
-        <label class="lbl">Menge (ST)<input type="text" id="v-menge" placeholder="1"></label>
-        <label class="lbl span2">Typ<input type="text" id="v-typ" placeholder="z.B. GR 630/2R" oninput="aktualisierDateiname()"></label>
+        <label class="lbl">Menge (ST)<input type="text" id="v-menge"></label>
+        <label class="lbl span2">Typ<input type="text" id="v-typ" oninput="aktualisierDateiname()"></label>
         <label class="lbl">Ausführung
           <div style="display:flex;gap:10px;margin-top:3px">
             <label class="cb"><input type="radio" name="v-ausf"> LG</label>
@@ -528,8 +528,8 @@
         </label>
       </div>
       <div class="fg c3">
-        <label class="lbl">Lackierung RAL<input type="text" id="v-ral" placeholder="z.B. 7016"></label>
-        <label class="lbl span2">Farbton<input type="text" id="v-farbton" placeholder="z.B. Anthrazit"></label>
+        <label class="lbl">Lackierung RAL<input type="text" id="v-ral"></label>
+        <label class="lbl span2">Farbton<input type="text" id="v-farbton"></label>
       </div>
       <hr class="div">
       <div class="cbg c2" style="margin-bottom:5px">
@@ -537,19 +537,19 @@
         <label class="cb"><input type="checkbox" id="v-vmontage"> mit Ventilatormontage und Probelauf</label>
         <label class="cb" style="align-items:center;gap:5px">
           <input type="radio" name="v-fertigung" value="mz">
-          Gehäuse bestellt bei MZ&nbsp;(LT:&nbsp;<input class="ii" type="text" id="v-mz-lt" placeholder="" style="width:45px">)
+          Gehäuse bestellt bei MZ&nbsp;(LT:&nbsp;<input class="ii" type="text" id="v-mz-lt" style="width:45px">)
         </label>
         <label class="cb"><input type="checkbox" id="v-motortragpl"> mit Motortragplatte</label>
       </div>
       <hr class="div">
       <div class="fg c4">
-        <label class="lbl">Motor kW<input type="text" id="v-motor-kw" placeholder=""></label>
-        <label class="lbl">Polig<input type="text" id="v-motor-polig" placeholder=""></label>
+        <label class="lbl">Motor kW<input type="text" id="v-motor-kw"></label>
+        <label class="lbl">Polig<input type="text" id="v-motor-polig"></label>
         <label class="lbl span2">Motor-Status
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:3px;align-items:center">
             <label class="cb"><input type="checkbox"> am Lager</label>
             <label class="cb" style="align-items:center;gap:4px">
-              <input type="checkbox"> bestellt bei&nbsp;<input class="ii" type="text" id="v-motor-bei" placeholder="" style="width:90px">
+              <input type="checkbox"> bestellt bei&nbsp;<input class="ii" type="text" id="v-motor-bei" style="width:90px">
             </label>
           </div>
         </label>
@@ -557,7 +557,7 @@
       <div class="fg c2" style="margin-top:4px">
           <div style="display:flex;gap:8px;align-items:center;margin-top:3px">
             <label class="cb"><input type="checkbox"> mit Luftregulier-Schieber DN</label>
-            <input type="text" id="v-luftreg-dn" style="width:80px;font-family:var(--font);font-size:11px;padding:2px 4px;border:1px solid var(--grau-mittel);outline:none" placeholder="">
+            <input type="text" id="v-luftreg-dn" style="width:80px;font-family:var(--font);font-size:11px;padding:2px 4px;border:1px solid var(--grau-mittel);outline:none">
             <label class="cb"><input type="checkbox"> ohne</label>
           </div>
         </label>
@@ -582,13 +582,13 @@
             <td><input type="checkbox"></td><td><input type="checkbox"></td>
           </tr>
           <tr>
-            <td>Rohranschluß NW&nbsp;<input class="ii" type="text" placeholder="" style="width:45px">&nbsp;(DIN 24154 Reihe 4)</td>
+            <td>Rohranschluß NW&nbsp;<input class="ii" type="text" style="width:45px">&nbsp;(DIN 24154 Reihe 4)</td>
             <td><input type="checkbox"></td><td><input type="checkbox"></td>
           </tr>
           <tr><td>mit Standardflanschlöcher (MZ-Katalog)</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
           <tr><td>mit Schwingfußset (Querprofil, Gummipuffer m. Platte, Fixanker)</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
           <tr>
-            <td>mit Kompensator saugseitig DN&nbsp;<input class="ii" type="text" placeholder="" style="width:40px"></td>
+            <td>mit Kompensator saugseitig DN&nbsp;<input class="ii" type="text" style="width:40px"></td>
             <td><input type="checkbox"></td><td><input type="checkbox"></td>
           </tr>
           <tr><td>mit Kompensator druckseitig Rechteckform</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
@@ -606,7 +606,7 @@
     </div>
     <div class="section-body">
       <div class="fg c2" style="margin-bottom:5px">
-        <label class="lbl">Auf Filter (Typ)<input type="text" placeholder="Filterbezeichnung"></label>
+        <label class="lbl">Auf Filter (Typ)<input type="text"></label>
       </div>
       <table class="jnt">
         <thead><tr><th>Option</th><th>Ja</th><th>Nein</th></tr></thead>
@@ -616,7 +616,7 @@
             <td><input type="checkbox"></td><td><input type="checkbox"></td>
           </tr>
           <tr>
-            <td>Rohranschluß NW&nbsp;<input class="ii" type="text" placeholder="" style="width:45px">&nbsp;(DIN 24154 Reihe 4)</td>
+            <td>Rohranschluß NW&nbsp;<input class="ii" type="text" style="width:45px">&nbsp;(DIN 24154 Reihe 4)</td>
             <td><input type="checkbox"></td><td><input type="checkbox"></td>
           </tr>
           <tr><td>mit Standardflanschlöcher (Katalog)</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
@@ -634,7 +634,7 @@
     </div>
     <div class="section-body">
       <div class="fg c2">
-        <label class="lbl">Auf Filter (Typ)<input type="text" placeholder="Filterbezeichnung"></label>
+        <label class="lbl">Auf Filter (Typ)<input type="text"></label>
         <label class="lbl">Schieber
           <div style="display:flex;gap:12px;margin-top:3px">
             <label class="cb"><input type="radio" name="v-schieber"> mit Schieber</label>
@@ -666,7 +666,7 @@
   <div class="section">
     <div class="section-header">Bemerkungen</div>
     <div class="section-body">
-      <textarea style="width:100%;min-height:55px;font-family:var(--font);font-size:11px;padding:5px;border:1px solid var(--grau-mittel);resize:vertical;outline:none" id="v-bem" placeholder="Freitext … (z.B. Wetterschutz, Blinddeckel ×1, …)"></textarea>
+      <textarea style="width:100%;min-height:55px;font-family:var(--font);font-size:11px;padding:5px;border:1px solid var(--grau-mittel);resize:vertical;outline:none" id="v-bem"></textarea>
     </div>
   </div>
 
@@ -849,17 +849,21 @@
       return;
     }
     container.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#eee;">' +
-      '<th style="padding:6px 8px;text-align:left;">Typ</th>' +
       '<th style="padding:6px 8px;text-align:left;">Projekt-Nr.</th>' +
       '<th style="padding:6px 8px;text-align:left;">Kommission</th>' +
       '<th style="padding:6px 8px;text-align:left;">Datum</th>' +
+      '<th style="padding:6px 8px;text-align:left;">Filter-Typ</th>' +
+      '<th style="padding:6px 8px;text-align:left;">Ventilator-Typ</th>' +
       '<th style="padding:6px 8px;"></th></tr></thead><tbody>' +
       bestellungList.map(function(r) {
+        var filterTyp = r['f-typ'] || '—';
+        var ventiTyp  = r['v-typ'] || '—';
         return '<tr style="cursor:pointer;border-bottom:1px solid #eee;" onclick="loadBestRecord(\'' + (r._id||'') + '\')">' +
-          '<td style="padding:6px 8px;">' + (r.aktiverTab === 'filter' ? '🔧 Filter' : '💨 Ventilator') + '</td>' +
           '<td style="padding:6px 8px;">' + (r.comNr||'—') + '</td>' +
           '<td style="padding:6px 8px;">' + (r.comName||'—') + '</td>' +
           '<td style="padding:6px 8px;">' + datDE(r.datum) + '</td>' +
+          '<td style="padding:6px 8px;">' + filterTyp + '</td>' +
+          '<td style="padding:6px 8px;">' + ventiTyp + '</td>' +
           '<td style="padding:6px 8px;" onclick="event.stopPropagation()">' +
           '<button onclick="deleteBestRecord(\'' + (r._id||'') + '\',\'' + (r._spId||'') + '\')" style="border:none;background:#dc3545;color:white;padding:3px 8px;border-radius:3px;cursor:pointer;font-size:11px;">🗑</button>' +
           '</td></tr>';
