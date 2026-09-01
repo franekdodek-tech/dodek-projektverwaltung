@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bestellformular – Filter & Ventilator | Dodek Technik · v0.2.0</title>
+<title>Bestellformular – Filter & Ventilator | Dodek Technik · v0.3.0</title>
 <style>
   :root {
     --rot: #CC0000;
@@ -256,7 +256,7 @@
     <button class="btn-dateiname" onclick="exportiereJSONSP()">📤 JSON exportieren</button>
     <label class="btn-dateiname" style="cursor:pointer;">📥 JSON importieren<input type="file" accept="application/json" style="display:none" onchange="importiereJSONSP(event)"></label>
     <button class="btn-druck" onclick="drucken()">🖨 Drucken / PDF</button>
-    <span style="font-size:10px;color:#999;margin-left:8px;align-self:center;">v0.2.0</span>
+    <span style="font-size:10px;color:#999;margin-left:8px;align-self:center;">v0.3.0</span>
   </div>
 </div>
 
@@ -916,16 +916,48 @@
     reader.onload = function(e) {
       try {
         var daten = JSON.parse(e.target.result);
+
+        // Tab zuerst aktivieren — bestimmt welche Felder sichtbar sind
+        // Erkennung: aktiverTab direkt, oder anhand von Inhalt
+        var tab = daten.aktiverTab || 'filter';
+        if (!daten.aktiverTab) {
+          // Alte JSONs haben kein aktiverTab — anhand von Ventilator-Feldern erkennen
+          if (daten['v-typ'] || daten['v-com-nr'] || daten['v-menge']) tab = 'ventilator';
+        }
+        zeigTab(tab);
+
+        // Alle Formularfelder befüllen
         alleFormFelder().forEach(function(el) {
           var key = el.dataset.fkey;
           if (!(key in daten)) return;
           if (el.type === 'checkbox' || el.type === 'radio') el.checked = !!daten[key];
           else el.value = daten[key];
         });
-        if (daten.aktiverTab) zeigTab(daten.aktiverTab);
+
+        // Metafelder explizit setzen falls als comNr/comName/datum gespeichert
+        if (daten.comNr) {
+          var nr = document.getElementById(tab === 'filter' ? 'f-com-nr' : 'v-com-nr');
+          if (nr && !nr.value) nr.value = daten.comNr;
+        }
+        if (daten.comName) {
+          var nm = document.getElementById(tab === 'filter' ? 'f-com-name' : 'v-com-name');
+          if (nm && !nm.value) nm.value = daten.comName;
+        }
+        if (daten.datum) {
+          var dt = document.getElementById(tab === 'filter' ? 'f-datum' : 'v-datum');
+          if (dt && !dt.value) dt.value = daten.datum;
+        }
+
         aktualisierDateiname();
+
         if (!daten._id) daten._id = 'best_' + Date.now();
-        if (confirm('Bestellung importiert. Direkt in SharePoint speichern?')) {
+        daten.aktiverTab = tab;
+        // Metafelder für Liste aktualisieren
+        daten.comNr = document.getElementById(tab === 'filter' ? 'f-com-nr' : 'v-com-nr').value;
+        daten.comName = document.getElementById(tab === 'filter' ? 'f-com-name' : 'v-com-name').value;
+        daten.datum = document.getElementById(tab === 'filter' ? 'f-datum' : 'v-datum').value;
+
+        if (confirm('Bestellung importiert (' + (tab === 'filter' ? 'Filter' : 'Ventilator') + '). Direkt in SharePoint speichern?')) {
           var idx = bestellungList.findIndex(function(r) { return r._id === daten._id; });
           if (idx >= 0) bestellungList[idx] = daten; else bestellungList.push(daten);
           window.parent.postMessage({ type: 'BEST_SAVE', data: daten }, '*');
