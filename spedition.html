@@ -89,15 +89,18 @@
     <div class="sub">lokale App · Daten bleiben auf diesem Rechner</div>
   </div>
   <div class="toolbar">
-    <button type="button" onclick="newOrder()">Neu</button>
-    <label class="filebtn">JSON importieren<input type="file" accept=".json,application/json" onchange="handleJsonImport(this)"></label>
-    <button type="button" class="primary" onclick="exportJson()">JSON exportieren</button>
-    <label class="filebtn">XLS importieren (Beta)<input type="file" accept=".xls,.xlsx" onchange="handleXlsImport(this)"></label>
-    <button type="button" class="primary" onclick="printPdf()">PDF erzeugen (Drucken)</button>
-    <button type="button" onclick="downloadPdfDirect()">PDF direkt speichern</button>
+    <button type="button" onclick="showSpedList()">📋 Alle Aufträge</button>
+    <button type="button" onclick="newOrder()">+ Neuer Auftrag</button>
+    <button type="button" class="primary" onclick="saveToSharePoint()">💾 In SharePoint speichern</button>
+    <button type="button" class="primary" onclick="printPdf()">🖨️ PDF erzeugen</button>
   </div>
 </header>
 
+
+<div id="spedListContainer" style="display:none;padding:16px;">
+  <h2 style="color:#b3121a;margin-bottom:12px;">Speditionsaufträge</h2>
+</div>
+<div id="spedFormContainer">
 <main>
   <div class="notice">
     Diese App läuft vollständig lokal im Browser. Das Adressbuch wird im Browser gespeichert (localStorage). Für Excel-Import und den Direkt-PDF-Download werden beim ersten Laden zwei externe Skripte (SheetJS, html2pdf.js) von einem CDN nachgeladen &ndash; dafür ist einmalig Internetzugang nötig. "PDF erzeugen (Drucken)" funktioniert ohne CDN, exakt über den Browser-Druckdialog ("Als PDF speichern"). Falls die roten Farbakzente im gedruckten PDF fehlen: im Druckdialog "Hintergrundgrafiken"/"Background graphics" aktivieren.
@@ -246,6 +249,7 @@
     </div>
   </div>
 </main>
+</div>
 
 <footer>Speditionsauftrag-App &middot; einzelne Aufträge werden als JSON gesichert &middot; PDF ersetzt den bisherigen Excel-Ausdruck</footer>
 
@@ -344,56 +348,15 @@ function collectSendungen(){
   return rows;
 }
 
-/* ---------- Adressbuch (localStorage) ---------- */
-const AB_KEY = 'spedauftrag_adressbuch_v1';
-const ADDR_FIELDS = ['firma','ansprechpartner','telefon','telefax','bemerkung','oeffnungszeiten','strasse','ladestelle','plzOrt','bestellnr'];
-
-function getAddressBook(){ try{ return JSON.parse(localStorage.getItem(AB_KEY)) || []; }catch(e){ return []; } }
-function setAddressBook(list){ localStorage.setItem(AB_KEY, JSON.stringify(list)); }
-
-function refreshAddressList(){
-  const book = getAddressBook();
-  const dl = document.getElementById('adressbuch-list');
-  dl.innerHTML = book.map(e=>`<option value="${escapeAttr(e.bezeichnung)}">`).join('');
-}
-
-function applyAddress(blockPrefix, entry){
-  if(blockPrefix === 'frachtzahler'){
-    const lines = [entry.firma, entry.strasse, entry.plzOrt].filter(Boolean);
-    const el = document.querySelector('[data-field="frachtzahler.adresse"]');
-    if(el) el.value = lines.join('\n');
-    return;
-  }
-  ADDR_FIELDS.forEach(f=>{
-    const el = document.querySelector(`[data-field="${blockPrefix}.${f}"]`);
-    if(el && entry[f] !== undefined) el.value = entry[f];
-  });
-}
-
-function saveAddress(blockPrefix){
-  const bez = prompt('Bezeichnung für diese Adresse (z.B. "BEKA Parksysteme, Höheischweiler"):');
-  if(!bez) return;
-  const entry = {id:'a'+Date.now(), bezeichnung: bez};
-  if(blockPrefix === 'frachtzahler'){
-    const raw = (document.querySelector('[data-field="frachtzahler.adresse"]').value || '').split('\n').map(s=>s.trim()).filter(Boolean);
-    entry.firma = raw[0] || ''; entry.strasse = raw[1] || ''; entry.plzOrt = raw.slice(2).join(' ') || '';
-  } else {
-    ADDR_FIELDS.forEach(f=>{
-      const el = document.querySelector(`[data-field="${blockPrefix}.${f}"]`);
-      entry[f] = el ? el.value : '';
-    });
-  }
-  const book = getAddressBook();
-  book.push(entry);
-  setAddressBook(book);
-  refreshAddressList();
-}
+/* ---------- Adressbuch (SharePoint via Hub) ---------- */
+function refreshAddressList(){ refreshAddressListSP(); }
+function applyAddress(blockPrefix, entry){ applyAddressSP(blockPrefix, entry); }
+function saveAddress(blockPrefix){ saveAddressSP(blockPrefix); }
 
 document.addEventListener('change', function(e){
   if(e.target.classList && e.target.classList.contains('ab-search')){
     const target = e.target.dataset.target;
-    const book = getAddressBook();
-    const entry = book.find(x=>x.bezeichnung === e.target.value);
+    const entry = addressBook.find(x=>(x.bezeichnung||x.firma) === e.target.value);
     if(entry){ applyAddress(target, entry); e.target.value = ''; }
   }
 });
@@ -404,29 +367,9 @@ function copyFirmaFromFrachtzahler(){
   if(el) el.value = raw || 'Dodek GmbH & Co. KG';
 }
 
-/* ---------- Spediteur-Speicher ---------- */
-const SPED_KEY = 'spedauftrag_spediteure_v1';
-function getSpediteure(){ try{ return JSON.parse(localStorage.getItem(SPED_KEY)) || []; }catch(e){ return []; } }
-function setSpediteure(list){ localStorage.setItem(SPED_KEY, JSON.stringify(list)); }
-function refreshSpediteureList(){
-  const list = getSpediteure();
-  document.getElementById('spediteure-list').innerHTML = list.map(e=>`<option value="${escapeAttr(e.name)}">`).join('');
-}
-function saveSpediteur(){
-  const name = (document.querySelector('[data-field="spediteurName"]').value || '').trim();
-  const email = (document.querySelector('[data-field="spediteurEmail"]').value || '').trim();
-  if(!name){ alert('Bitte zuerst einen Spediteur-Namen eingeben.'); return; }
-  const list = getSpediteure().filter(e=>e.name !== name);
-  list.push({name, email});
-  setSpediteure(list);
-  refreshSpediteureList();
-}
-document.addEventListener('input', function(e){
-  if(e.target.matches && e.target.matches('[data-field="spediteurName"]')){
-    const match = getSpediteure().find(x=>x.name === e.target.value);
-    if(match){ document.querySelector('[data-field="spediteurEmail"]').value = match.email || ''; }
-  }
-});
+/* ---------- Spediteur-Speicher (vereinfacht) ---------- */
+function refreshSpediteureList(){ /* via Adressbuch */ }
+function saveSpediteur(){ saveAddressSP('spediteur'); }
 
 /* ---------- Dateiname-Konvention ---------- */
 function sanitizeFilename(name){ return name.replace(/[\\/:*?"<>|]/g, '-'); }
@@ -701,15 +644,191 @@ function downloadPdfDirect(){
 
 /* ---------- Neu / Init ---------- */
 function newOrder(){
-  if(!confirm('Aktuellen Auftrag verwerfen und neuen leeren Auftrag beginnen?')) return;
+  currentSpedId = null;
   loadFromState(emptyState());
+  const lc = document.getElementById('spedListContainer');
+  const fc = document.getElementById('spedFormContainer');
+  if (lc) lc.style.display = 'none';
+  if (fc) fc.style.display = 'block';
 }
 
-window.addEventListener('DOMContentLoaded', function(){
-  loadFromState(emptyState());
-  refreshAddressList();
-  refreshSpediteureList();
+/* DOMContentLoaded wird durch SharePoint Bridge übernommen */
+
+/* ========== SharePoint Bridge via postMessage ========== */
+const sp = {
+    _pending: {},
+    _id: 0,
+    call(type, data) {
+        return new Promise((resolve, reject) => {
+            const id = ++this._id;
+            this._pending[id] = { resolve, reject };
+            window.parent.postMessage({ type, data, _id: id }, '*');
+            setTimeout(() => {
+                if (this._pending[id]) {
+                    delete this._pending[id];
+                    reject(new Error('Timeout: ' + type));
+                }
+            }, 10000);
+        });
+    }
+};
+
+window.addEventListener('message', function(e) {
+    const msg = e.data;
+    if (!msg) return;
+    // Adressen
+    if (msg.type === 'ADDR_LOAD_RESULT') handleAddrLoad(msg.items);
+    if (msg.type === 'ADDR_SAVE_RESULT') console.log('Adresse gespeichert', msg.spId);
+    if (msg.type === 'ADDR_DELETE_RESULT') console.log('Adresse gelöscht', msg.spId);
+    // Spedition
+    if (msg.type === 'SPED_LOAD_RESULT') handleSpedLoad(msg.items);
+    if (msg.type === 'SPED_SAVE_RESULT') { showStatus('✅ Gespeichert in SharePoint'); }
+    if (msg.type === 'SPED_DELETE_RESULT') { showStatus('🗑️ Gelöscht'); renderSpedList(); }
+    if (msg.type === 'ERROR') { showStatus('❌ Fehler: ' + msg.error); }
 });
+
+// Lade Daten beim Start
+window.addEventListener('DOMContentLoaded', function() {
+    loadFromState(emptyState());
+    window.parent.postMessage({ type: 'ADDR_LOAD' }, '*');
+    window.parent.postMessage({ type: 'SPED_LOAD' }, '*');
+});
+
+/* ---- Adressbuch ---- */
+let addressBook = [];
+
+function handleAddrLoad(items) {
+    addressBook = items || [];
+    refreshAddressListSP();
+}
+
+function refreshAddressListSP() {
+    const dl = document.getElementById('adressbuch-list');
+    if (dl) dl.innerHTML = addressBook.map(e => `<option value="${escapeAttr(e.bezeichnung || e.firma || '')}">`).join('');
+    const sped_dl = document.getElementById('spediteure-list');
+    // Spediteure sind eine Teilmenge
+}
+
+function getAddressBook() { return addressBook; }
+
+function applyAddressSP(blockPrefix, entry) {
+    if (blockPrefix === 'frachtzahler') {
+        const lines = [entry.firma, entry.strasse, entry.plzOrt].filter(Boolean);
+        const el = document.querySelector('[data-field="frachtzahler.adresse"]');
+        if (el) el.value = lines.join('\n');
+        return;
+    }
+    const ADDR_FIELDS = ['firma','ansprechpartner','telefon','telefax','bemerkung','oeffnungszeiten','strasse','ladestelle','plzOrt','bestellnr'];
+    ADDR_FIELDS.forEach(f => {
+        const el = document.querySelector(`[data-field="${blockPrefix}.${f}"]`);
+        if (el && entry[f] !== undefined) el.value = entry[f];
+    });
+}
+
+function saveAddressSP(blockPrefix) {
+    const bez = prompt('Bezeichnung für diese Adresse:');
+    if (!bez) return;
+    const ADDR_FIELDS = ['firma','ansprechpartner','telefon','telefax','bemerkung','oeffnungszeiten','strasse','ladestelle','plzOrt','bestellnr'];
+    const entry = { id: 'a' + Date.now(), bezeichnung: bez };
+    if (blockPrefix === 'frachtzahler') {
+        const raw = (document.querySelector('[data-field="frachtzahler.adresse"]').value || '').split('\n').map(s=>s.trim()).filter(Boolean);
+        entry.firma = raw[0] || ''; entry.strasse = raw[1] || ''; entry.plzOrt = raw.slice(2).join(' ') || '';
+    } else {
+        ADDR_FIELDS.forEach(f => {
+            const el = document.querySelector(`[data-field="${blockPrefix}.${f}"]`);
+            entry[f] = el ? el.value : '';
+        });
+    }
+    addressBook.push(entry);
+    refreshAddressListSP();
+    window.parent.postMessage({ type: 'ADDR_SAVE', data: entry }, '*');
+}
+
+/* ---- Speditionsliste ---- */
+let spedList = [];
+let currentSpedId = null;
+
+function handleSpedLoad(items) {
+    spedList = items || [];
+    renderSpedList();
+}
+
+function renderSpedList() {
+    const container = document.getElementById('spedListContainer');
+    if (!container) return;
+    if (spedList.length === 0) {
+        container.innerHTML = '<p style="color:#999;padding:20px;">Noch keine Speditionsaufträge.</p>';
+        return;
+    }
+    const datDE = iso => { if(!iso) return '—'; const [y,m,d]=iso.split('-'); return d+'.'+m+'.'+y; };
+    container.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:#fbe3e2;">
+            <th style="padding:6px 8px;text-align:left;border-bottom:2px solid #b3121a;">Datum</th>
+            <th style="padding:6px 8px;text-align:left;border-bottom:2px solid #b3121a;">Spediteur</th>
+            <th style="padding:6px 8px;text-align:left;border-bottom:2px solid #b3121a;">Abholung bei</th>
+            <th style="padding:6px 8px;text-align:left;border-bottom:2px solid #b3121a;">Empfänger</th>
+            <th style="padding:6px 8px;text-align:left;border-bottom:2px solid #b3121a;">Kom.-Nr.</th>
+            <th style="padding:6px 8px;border-bottom:2px solid #b3121a;"></th>
+        </tr></thead>
+        <tbody>${spedList.map(r => `<tr style="cursor:pointer;border-bottom:1px solid #eee;" onclick="loadSpedRecord('${r.id}')">
+            <td style="padding:6px 8px;">${datDE(r.datum)}</td>
+            <td style="padding:6px 8px;">${r.spediteurName||'—'}</td>
+            <td style="padding:6px 8px;">${r.abholadresse?.firma||'—'}</td>
+            <td style="padding:6px 8px;">${r.empfaenger?.firma||'—'}</td>
+            <td style="padding:6px 8px;">${r.frachtzahler?.komNr||'—'}</td>
+            <td style="padding:6px 8px;" onclick="event.stopPropagation()">
+                <button onclick="deleteSpedRecord('${r.id}','${r._spId||''}')" style="border:none;background:#dc3545;color:white;padding:3px 8px;border-radius:3px;cursor:pointer;font-size:11px;">🗑</button>
+            </td>
+        </tr>`).join('')}</tbody></table>`;
+}
+
+function loadSpedRecord(id) {
+    const rec = spedList.find(r => r.id === id);
+    if (!rec) return;
+    currentSpedId = id;
+    loadFromState(rec);
+    document.getElementById('spedListContainer').style.display = 'none';
+    document.getElementById('spedFormContainer').style.display = 'block';
+    document.querySelector('.toolbar button[onclick="newOrder()"]') && (document.querySelector('.toolbar button[onclick="newOrder()"]').style.display = 'inline');
+}
+
+function deleteSpedRecord(id, spId) {
+    if (!confirm('Speditionsauftrag löschen?')) return;
+    spedList = spedList.filter(r => r.id !== id);
+    if (spId) window.parent.postMessage({ type: 'SPED_DELETE', spId: parseInt(spId) }, '*');
+    renderSpedList();
+}
+
+function showStatus(msg) {
+    let el = document.getElementById('spStatusMsg');
+    if (!el) { el = document.createElement('div'); el.id='spStatusMsg'; el.style.cssText='position:fixed;top:60px;right:20px;background:#366092;color:white;padding:10px 18px;border-radius:6px;z-index:9999;font-size:13px;'; document.body.appendChild(el); }
+    el.textContent = msg; el.style.display='block';
+    setTimeout(() => { el.style.display='none'; }, 3000);
+}
+
+/* ---------- SharePoint Speichern ---------- */
+function saveToSharePoint() {
+  const s = collectState();
+  if (!s.datum && !s.spediteurName) { alert('Bitte mindestens Datum und Spediteur ausfüllen.'); return; }
+  if (!s.id) s.id = 'sped_' + Date.now();
+  if (currentSpedId) {
+    const existing = spedList.find(r => r.id === currentSpedId);
+    if (existing) { s._spId = existing._spId; s.id = existing.id; }
+  }
+  currentSpedId = s.id;
+  // Update in lokaler Liste
+  const idx = spedList.findIndex(r => r.id === s.id);
+  if (idx >= 0) spedList[idx] = s; else spedList.push(s);
+  window.parent.postMessage({ type: 'SPED_SAVE', data: s }, '*');
+}
+
+function showSpedList() {
+  const lc = document.getElementById('spedListContainer');
+  const fc = document.getElementById('spedFormContainer');
+  if (lc) { lc.style.display = 'block'; renderSpedList(); }
+  if (fc) fc.style.display = 'none';
+}
+
 </script>
 </body>
 </html>
