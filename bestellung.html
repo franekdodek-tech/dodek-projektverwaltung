@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bestellformular – Filter & Ventilator | Dodek Technik · v0.1.0</title>
+<title>Bestellformular – Filter & Ventilator | Dodek Technik · v0.2.0</title>
 <style>
   :root {
     --rot: #CC0000;
@@ -253,8 +253,10 @@
     <button class="btn-dateiname" onclick="showBestList()">📋 Alle Bestellungen</button>
     <button class="btn-dateiname" onclick="neueBestellung()">+ Neue Bestellung</button>
     <button class="btn-dateiname" onclick="saveToSharePoint()">💾 In SharePoint speichern</button>
+    <button class="btn-dateiname" onclick="exportiereJSONSP()">📤 JSON exportieren</button>
+    <label class="btn-dateiname" style="cursor:pointer;">📥 JSON importieren<input type="file" accept="application/json" style="display:none" onchange="importiereJSONSP(event)"></label>
     <button class="btn-druck" onclick="drucken()">🖨 Drucken / PDF</button>
-    <span style="font-size:10px;color:#999;margin-left:8px;align-self:center;">v0.1.0</span>
+    <span style="font-size:10px;color:#999;margin-left:8px;align-self:center;">v0.2.0</span>
   </div>
 </div>
 
@@ -885,6 +887,53 @@
     bestellungList = bestellungList.filter(function(r) { return r._id !== id; });
     if (spId) window.parent.postMessage({ type: 'BEST_DELETE', spId: parseInt(spId) }, '*');
     renderBestList();
+  }
+
+  function exportiereJSONSP() {
+    var daten = {};
+    alleFormFelder().forEach(function(el) {
+      var key = el.dataset.fkey;
+      daten[key] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
+    });
+    daten.aktiverTab = aktiverTab;
+    daten.comNr = aktiverTab === 'filter'
+      ? document.getElementById('f-com-nr').value
+      : document.getElementById('v-com-nr').value;
+    generiereUndZeig();
+    var vorschlag = document.getElementById('dateiname-text').textContent;
+    var dateiname = (vorschlag && vorschlag !== '– (Felder ausfüllen)') ? vorschlag : 'Bestellung';
+    var blob = new Blob([JSON.stringify(daten, null, 2)], {type: 'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = dateiname + '.json';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
+
+  function importiereJSONSP(event) {
+    var datei = event.target.files[0]; if (!datei) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var daten = JSON.parse(e.target.result);
+        alleFormFelder().forEach(function(el) {
+          var key = el.dataset.fkey;
+          if (!(key in daten)) return;
+          if (el.type === 'checkbox' || el.type === 'radio') el.checked = !!daten[key];
+          else el.value = daten[key];
+        });
+        if (daten.aktiverTab) zeigTab(daten.aktiverTab);
+        aktualisierDateiname();
+        if (!daten._id) daten._id = 'best_' + Date.now();
+        if (confirm('Bestellung importiert. Direkt in SharePoint speichern?')) {
+          var idx = bestellungList.findIndex(function(r) { return r._id === daten._id; });
+          if (idx >= 0) bestellungList[idx] = daten; else bestellungList.push(daten);
+          window.parent.postMessage({ type: 'BEST_SAVE', data: daten }, '*');
+        }
+      } catch(err) { alert('Fehler beim Einlesen: ' + err.message); }
+      event.target.value = '';
+    };
+    reader.readAsText(datei);
   }
 
   function showBestList() {
