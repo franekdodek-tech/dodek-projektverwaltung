@@ -243,15 +243,16 @@
 </head>
 <body>
 
+<div id="bestListContainer" style="display:none;padding:16px;"><h2 style="margin-bottom:12px;">Bestellungen</h2></div>
+<div id="bestFormContainer">
 <!-- TAB-LEISTE -->
 <div class="tab-bar">
   <button class="tab-btn aktiv" id="btn-filter" onclick="zeigTab('filter')">Filter-Bestellblatt</button>
   <button class="tab-btn" id="btn-ventilator" onclick="zeigTab('ventilator')">Ventilator-Bestellung</button>
   <div class="tab-aktionen">
-    <button class="btn-dateiname" onclick="zeigDateiname()">📋 Dateiname generieren</button>
-    <button class="btn-dateiname" onclick="exportiereJSON()">💾 JSON Export</button>
-    <button class="btn-dateiname" onclick="document.getElementById('json-datei-input').click()">📂 JSON Import</button>
-    <input type="file" id="json-datei-input" accept="application/json" style="display:none" onchange="importiereJSON(event)">
+    <button class="btn-dateiname" onclick="showBestList()">📋 Alle Bestellungen</button>
+    <button class="btn-dateiname" onclick="neueBestellung()">+ Neue Bestellung</button>
+    <button class="btn-dateiname" onclick="saveToSharePoint()">💾 In SharePoint speichern</button>
     <button class="btn-druck" onclick="drucken()">🖨 Drucken / PDF</button>
   </div>
 </div>
@@ -808,13 +809,8 @@
     event.target.value = ''; // damit dieselbe Datei erneut wählbar ist
   }
 
-  // Feld-Schlüssel VOR allen anderen Aktionen initialisieren
-  initFormKeys();
-
-  // Heute als Standard
-  var heute = new Date().toISOString().split('T')[0];
-  document.getElementById('f-datum').value = heute;
-  document.getElementById('v-datum').value = heute;
+  // Initialisierung durch SharePoint Bridge übernommen
 </script>
+</div>
 </body>
 </html>
