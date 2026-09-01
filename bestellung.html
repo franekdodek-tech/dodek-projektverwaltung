@@ -810,6 +810,136 @@
   }
 
   // Initialisierung durch SharePoint Bridge übernommen
+
+  /* ========== SharePoint Bridge via postMessage ========== */
+  var bestellungList = [];
+  var currentBestSpId = null;
+
+  window.addEventListener('message', function(e) {
+    var msg = e.data;
+    if (!msg) return;
+    if (msg.type === 'BEST_LOAD_RESULT') handleBestLoad(msg.items);
+    if (msg.type === 'BEST_SAVE_RESULT') { currentBestSpId = msg.spId; showBestStatus('✅ Gespeichert in SharePoint'); }
+    if (msg.type === 'BEST_DELETE_RESULT') { showBestStatus('🗑️ Gelöscht'); renderBestList(); }
+    if (msg.type === 'ERROR') showBestStatus('❌ Fehler: ' + msg.error);
+  });
+
+  window.addEventListener('DOMContentLoaded', function() {
+    var heute = new Date().toISOString().split('T')[0];
+    document.getElementById('f-datum').value = heute;
+    document.getElementById('v-datum').value = heute;
+    initFormKeys();
+    window.parent.postMessage({ type: 'BEST_LOAD' }, '*');
+  });
+
+  function handleBestLoad(items) {
+    bestellungList = items || [];
+    renderBestList();
+  }
+
+  function renderBestList() {
+    var container = document.getElementById('bestListContainer');
+    if (!container) return;
+    function datDE(iso) { if(!iso) return '—'; var p=iso.split('-'); return p[2]+'.'+p[1]+'.'+p[0]; }
+    if (bestellungList.length === 0) {
+      container.innerHTML = '<p style="color:#999;padding:20px;">Noch keine Bestellungen.</p>';
+      return;
+    }
+    container.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#eee;">' +
+      '<th style="padding:6px 8px;text-align:left;">Typ</th>' +
+      '<th style="padding:6px 8px;text-align:left;">Projekt-Nr.</th>' +
+      '<th style="padding:6px 8px;text-align:left;">Kommission</th>' +
+      '<th style="padding:6px 8px;text-align:left;">Datum</th>' +
+      '<th style="padding:6px 8px;"></th></tr></thead><tbody>' +
+      bestellungList.map(function(r) {
+        return '<tr style="cursor:pointer;border-bottom:1px solid #eee;" onclick="loadBestRecord(\'' + (r._id||'') + '\')">' +
+          '<td style="padding:6px 8px;">' + (r.aktiverTab === 'filter' ? '🔧 Filter' : '💨 Ventilator') + '</td>' +
+          '<td style="padding:6px 8px;">' + (r.comNr||'—') + '</td>' +
+          '<td style="padding:6px 8px;">' + (r.comName||'—') + '</td>' +
+          '<td style="padding:6px 8px;">' + datDE(r.datum) + '</td>' +
+          '<td style="padding:6px 8px;" onclick="event.stopPropagation()">' +
+          '<button onclick="deleteBestRecord(\'' + (r._id||'') + '\',\'' + (r._spId||'') + '\')" style="border:none;background:#dc3545;color:white;padding:3px 8px;border-radius:3px;cursor:pointer;font-size:11px;">🗑</button>' +
+          '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  function loadBestRecord(id) {
+    var rec = bestellungList.find(function(r) { return r._id === id; });
+    if (!rec) return;
+    currentBestSpId = rec._spId || null;
+    zeigTab(rec.aktiverTab || 'filter');
+    alleFormFelder().forEach(function(el) {
+      var key = el.dataset.fkey;
+      if (!(key in rec)) return;
+      if (el.type === 'checkbox' || el.type === 'radio') el.checked = !!rec[key];
+      else el.value = rec[key];
+    });
+    aktualisierDateiname();
+    document.getElementById('bestListContainer').style.display = 'none';
+    document.getElementById('bestFormContainer').style.display = 'block';
+  }
+
+  function deleteBestRecord(id, spId) {
+    if (!confirm('Bestellung löschen?')) return;
+    bestellungList = bestellungList.filter(function(r) { return r._id !== id; });
+    if (spId) window.parent.postMessage({ type: 'BEST_DELETE', spId: parseInt(spId) }, '*');
+    renderBestList();
+  }
+
+  function showBestList() {
+    document.getElementById('bestListContainer').style.display = 'block';
+    document.getElementById('bestFormContainer').style.display = 'none';
+    renderBestList();
+  }
+
+  function neueBestellung() {
+    currentBestSpId = null;
+    alleFormFelder().forEach(function(el) {
+      if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+      else el.value = '';
+    });
+    var heute = new Date().toISOString().split('T')[0];
+    document.getElementById('f-datum').value = heute;
+    document.getElementById('v-datum').value = heute;
+    document.getElementById('bestListContainer').style.display = 'none';
+    document.getElementById('bestFormContainer').style.display = 'block';
+  }
+
+  function saveToSharePoint() {
+    var daten = {};
+    alleFormFelder().forEach(function(el) {
+      var key = el.dataset.fkey;
+      daten[key] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
+    });
+    daten.aktiverTab = aktiverTab;
+    daten.datum = aktiverTab === 'filter'
+      ? document.getElementById('f-datum').value
+      : document.getElementById('v-datum').value;
+    daten.comNr = aktiverTab === 'filter'
+      ? document.getElementById('f-com-nr').value
+      : document.getElementById('v-com-nr').value;
+    daten.comName = aktiverTab === 'filter'
+      ? document.getElementById('f-com-name').value
+      : document.getElementById('v-com-name').value;
+    if (!daten._id) daten._id = 'best_' + Date.now();
+    if (currentBestSpId) daten._spId = currentBestSpId;
+    var idx = bestellungList.findIndex(function(r) { return r._id === daten._id; });
+    if (idx >= 0) bestellungList[idx] = daten; else bestellungList.push(daten);
+    window.parent.postMessage({ type: 'BEST_SAVE', data: daten }, '*');
+  }
+
+  function showBestStatus(msg) {
+    var el = document.getElementById('bestStatusMsg');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'bestStatusMsg';
+      el.style.cssText = 'position:fixed;top:10px;right:20px;background:#366092;color:white;padding:10px 18px;border-radius:6px;z-index:9999;font-size:13px;';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.display = 'block';
+    setTimeout(function() { el.style.display = 'none'; }, 3000);
+  }
 </script>
 </div>
 </body>
