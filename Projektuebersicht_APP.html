@@ -1092,6 +1092,7 @@
             <button onclick="showView('quotes')">🧮 Vorkalkulation</button>
             <button onclick="showView('editor')" id="editorButton" style="display: none;">📝 Projekt bearbeiten</button>
             <button onclick="showView('articles')">📦 Artikelstamm</button>
+            <button onclick="showView('tools')" id="toolsBtn">🛠️ Tools</button>
             <button onclick="showView('settings')" id="settingsBtn" style="display:none;">⚙️ Einstellungen</button>
         </div>
         
@@ -1386,17 +1387,13 @@
                     </div>
 
                     <div class="add-position-form">
-                        <!-- Zeile 1: Artikelstamm -->
-                        <div style="display:flex; gap:8px; align-items:flex-end; margin-bottom:10px;">
-                            <div style="flex:1; max-width:400px;">
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+                            <div style="flex:1; min-width:150px;">
                                 <label>Aus Artikelstamm</label>
                                 <select id="quoteArticleSelect" onchange="fillQuoteFromArticle()">
                                     <option value="">-- optional --</option>
                                 </select>
                             </div>
-                        </div>
-                        <!-- Zeile 2: Manuelle Felder -->
-                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
                             <div style="flex:2; min-width:160px;">
                                 <label>Beschreibung *</label>
                                 <input type="text" id="newQuoteDescription" placeholder="Positionsbeschreibung">
@@ -1512,6 +1509,80 @@
                         <tbody id="stockTable"></tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+
+        <!-- TOOLS VIEW -->
+        <div id="toolsView" class="view">
+            <h2 style="margin-bottom:20px;">🛠️ Tools</h2>
+            <div style="display:flex; gap:15px; flex-wrap:wrap; margin-bottom:25px;">
+                <button onclick="showToolSection('spedition')" id="toolBtnSpedition"
+                        style="padding:15px 25px;font-size:15px;border-radius:8px;border:2px solid #366092;background:white;cursor:pointer;">
+                    🚚 Speditionsaufträge
+                </button>
+                <button onclick="showToolSection('bestellung')" id="toolBtnBestellung"
+                        style="padding:15px 25px;font-size:15px;border-radius:8px;border:2px solid #366092;background:white;cursor:pointer;">
+                    🔧 Filter / Ventilator Bestellungen
+                </button>
+            </div>
+
+            <!-- Spedition Bereich -->
+            <div id="toolSectionSpedition" style="display:none;">
+                <div id="speditionListSection">
+                    <div class="positions-section" style="margin-bottom:20px;">
+                        <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;">
+                            <h3>🚚 Speditionsaufträge</h3>
+                            <button onclick="createNewSpedition()" class="btn-success">+ Neuer Auftrag</button>
+                        </div>
+                        <div class="positions-table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Datum</th>
+                                        <th>Spediteur</th>
+                                        <th>Abholadresse</th>
+                                        <th>Empfänger</th>
+                                        <th>Kom.-Nr.</th>
+                                        <th class="action-cell">Aktion</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="speditionListTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div id="speditionEditorSection" style="display:none;"></div>
+            </div>
+
+            <!-- Bestellung Bereich -->
+            <div id="toolSectionBestellung" style="display:none;">
+                <div id="bestellungListSection">
+                    <div class="positions-section" style="margin-bottom:20px;">
+                        <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;">
+                            <h3>🔧 Filter / Ventilator Bestellungen</h3>
+                            <div style="display:flex;gap:8px;">
+                                <button onclick="createNewBestellung('filter')" class="btn-success">+ Filter-Bestellblatt</button>
+                                <button onclick="createNewBestellung('ventilator')" class="btn-success">+ Ventilator-Bestellung</button>
+                            </div>
+                        </div>
+                        <div class="positions-table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Typ</th>
+                                        <th>Projekt-Nr.</th>
+                                        <th>Kommission</th>
+                                        <th>Datum</th>
+                                        <th>Filtertyp / Venti-Typ</th>
+                                        <th class="action-cell">Aktion</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bestellungListTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div id="bestellungEditorSection" style="display:none;"></div>
             </div>
         </div>
 
@@ -2225,8 +2296,11 @@ function applyPermissions() {
             guidProjects: '1e1a835c-20b9-41ea-920f-f8b391981c71',
             guidArticles: '26a0bbca-31bf-4a0d-8bd2-abe07d614725',
             guidStock:    'df491bc5-f23b-493a-a8d0-37a15024cf29',
-            guidQuotes:   '39105ce6-473c-4af0-bab0-68659edcbed3',
-            guidSettings: '89b9fdeb-6907-4cfc-a1f5-2bc8bc0bdbe2'
+            guidQuotes:      '39105ce6-473c-4af0-bab0-68659edcbed3',
+            guidSettings:    '89b9fdeb-6907-4cfc-a1f5-2bc8bc0bdbe2',
+            guidSpedition:   '19d7c801-cfef-480d-853a-067b28868ddf',
+            guidBestellungen:'3cc2e862-d584-4086-936d-6a1bbb20c87c',
+            guidAdressen:    'f43c964f-3f6b-4549-ba24-fe7183ca27aa'
         };
 
         const msalConfig = {
@@ -2679,6 +2753,9 @@ function applyPermissions() {
             await loadStockFromSharePoint();
             await loadQuotesFromSharePoint();
             await loadSettingsFromSharePoint();
+            await loadSpeditionFromSharePoint();
+            await loadBestellungFromSharePoint();
+            await loadAdressenFromSharePoint();
 
             applyPermissions();
         }
@@ -2689,7 +2766,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.4.0';
+        const APP_VERSION = 'v1.5.0';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -3504,6 +3581,11 @@ function applyPermissions() {
                 document.getElementById('settingsView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
                 renderSettingsView();
+            } else if (viewName === 'tools') {
+                document.getElementById('toolsView').classList.add('active');
+                document.getElementById('editorButton').style.display = 'none';
+                renderSpeditionList();
+                renderBestellungList();
             }
         }
         
@@ -6438,7 +6520,748 @@ function applyPermissions() {
         window.updateQuoteBOMItem = updateQuoteBOMItem;
         window.importBOMFromArticle = importBOMFromArticle;
 
-        // ========== EINSTELLUNGEN UI ==========
+        // ========== SHAREPOINT TOOLS ==========
+
+        window.speditionDatabase = {};
+        window.bestellungDatabase = {};
+        window.adressenDatabase = {};
+
+        async function loadSpeditionFromSharePoint() {
+            try {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidSpedition}')/items?$select=Id,Title,SpeditionData&$top=500`;
+                const data = await spFetch(url);
+                window.speditionDatabase = {};
+                (data.value || []).forEach(item => {
+                    try {
+                        if (item.SpeditionData) {
+                            const rec = JSON.parse(item.SpeditionData);
+                            rec._spId = item.Id;
+                            window.speditionDatabase[rec.id] = rec;
+                        }
+                    } catch(e) {}
+                });
+            } catch(e) { console.error('Fehler Spedition laden:', e); }
+        }
+
+        async function saveSpeditionToSharePoint(rec) {
+            const payload = { Title: rec.spediteurName || 'Speditionsauftrag', SpeditionData: JSON.stringify(rec) };
+            if (rec._spId) {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidSpedition}')/items(${rec._spId})`;
+                await spFetch(url, { method:'PATCH', headers:{'IF-MATCH':'*','X-HTTP-Method':'MERGE'}, body:JSON.stringify(payload) });
+            } else {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidSpedition}')/items`;
+                const result = await spFetch(url, { method:'POST', body:JSON.stringify(payload) });
+                rec._spId = result.id;
+                window.speditionDatabase[rec.id] = rec;
+            }
+        }
+
+        async function deleteSpeditionFromSharePoint(spId) {
+            if (!spId) return;
+            await spFetch(`${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidSpedition}')/items(${spId})`,
+                { method:'DELETE', headers:{'IF-MATCH':'*'} });
+        }
+
+        async function loadBestellungFromSharePoint() {
+            try {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidBestellungen}')/items?$select=Id,Title,BestellungData&$top=500`;
+                const data = await spFetch(url);
+                window.bestellungDatabase = {};
+                (data.value || []).forEach(item => {
+                    try {
+                        if (item.BestellungData) {
+                            const rec = JSON.parse(item.BestellungData);
+                            rec._spId = item.Id;
+                            window.bestellungDatabase[rec.id] = rec;
+                        }
+                    } catch(e) {}
+                });
+            } catch(e) { console.error('Fehler Bestellung laden:', e); }
+        }
+
+        async function saveBestellungToSharePoint(rec) {
+            const payload = { Title: `${rec.typ === 'filter' ? 'Filter' : 'Ventilator'} ${rec.comNr || ''}`.trim(), BestellungData: JSON.stringify(rec) };
+            if (rec._spId) {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidBestellungen}')/items(${rec._spId})`;
+                await spFetch(url, { method:'PATCH', headers:{'IF-MATCH':'*','X-HTTP-Method':'MERGE'}, body:JSON.stringify(payload) });
+            } else {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidBestellungen}')/items`;
+                const result = await spFetch(url, { method:'POST', body:JSON.stringify(payload) });
+                rec._spId = result.id;
+                window.bestellungDatabase[rec.id] = rec;
+            }
+        }
+
+        async function deleteBestellungFromSharePoint(spId) {
+            if (!spId) return;
+            await spFetch(`${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidBestellungen}')/items(${spId})`,
+                { method:'DELETE', headers:{'IF-MATCH':'*'} });
+        }
+
+        async function loadAdressenFromSharePoint() {
+            try {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidAdressen}')/items?$select=Id,Title,AdressData&$top=500`;
+                const data = await spFetch(url);
+                window.adressenDatabase = {};
+                (data.value || []).forEach(item => {
+                    try {
+                        if (item.AdressData) {
+                            const rec = JSON.parse(item.AdressData);
+                            rec._spId = item.Id;
+                            window.adressenDatabase[rec.id] = rec;
+                        }
+                    } catch(e) {}
+                });
+            } catch(e) { console.error('Fehler Adressen laden:', e); }
+        }
+
+        async function saveAdresseToSharePoint(rec) {
+            const payload = { Title: rec.bezeichnung || rec.firma || 'Adresse', AdressData: JSON.stringify(rec) };
+            if (rec._spId) {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidAdressen}')/items(${rec._spId})`;
+                await spFetch(url, { method:'PATCH', headers:{'IF-MATCH':'*','X-HTTP-Method':'MERGE'}, body:JSON.stringify(payload) });
+            } else {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidAdressen}')/items`;
+                const result = await spFetch(url, { method:'POST', body:JSON.stringify(payload) });
+                rec._spId = result.id;
+                window.adressenDatabase[rec.id] = rec;
+            }
+        }
+
+        // ========== TOOLS ==========
+
+        window.speditionDatabase = {};
+        window.bestellungDatabase = {};
+        window.adressenDatabase = {};
+
+        async function loadSpeditionFromSharePoint() {
+            try {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidSpedition}')/items?$select=Id,Title,SpeditionData&$top=500`;
+                const data = await spFetch(url);
+                window.speditionDatabase = {};
+                (data.value || []).forEach(item => {
+                    try {
+                        if (item.SpeditionData) {
+                            const rec = JSON.parse(item.SpeditionData);
+                            rec._spId = item.Id;
+                            window.speditionDatabase[rec.id] = rec;
+                        }
+                    } catch(e) {}
+                });
+            } catch(e) { console.error('Fehler Spedition laden:', e); }
+        }
+
+        async function saveSpeditionToSharePoint(rec) {
+            const payload = { Title: rec.spediteurName || 'Speditionsauftrag', SpeditionData: JSON.stringify(rec) };
+            if (rec._spId) {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidSpedition}')/items(${rec._spId})`;
+                await spFetch(url, { method:'PATCH', headers:{'IF-MATCH':'*','X-HTTP-Method':'MERGE'}, body:JSON.stringify(payload) });
+            } else {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidSpedition}')/items`;
+                const result = await spFetch(url, { method:'POST', body:JSON.stringify(payload) });
+                rec._spId = result.id;
+            }
+        }
+
+        async function deleteSpeditionFromSharePoint(spId) {
+            if (!spId) return;
+            await spFetch(`${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidSpedition}')/items(${spId})`,
+                { method:'DELETE', headers:{'IF-MATCH':'*'} });
+        }
+
+        async function loadBestellungFromSharePoint() {
+            try {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidBestellungen}')/items?$select=Id,Title,BestellungData&$top=500`;
+                const data = await spFetch(url);
+                window.bestellungDatabase = {};
+                (data.value || []).forEach(item => {
+                    try {
+                        if (item.BestellungData) {
+                            const rec = JSON.parse(item.BestellungData);
+                            rec._spId = item.Id;
+                            window.bestellungDatabase[rec.id] = rec;
+                        }
+                    } catch(e) {}
+                });
+            } catch(e) { console.error('Fehler Bestellung laden:', e); }
+        }
+
+        async function saveBestellungToSharePoint(rec) {
+            const payload = { Title: `${rec.typ === 'filter' ? 'Filter' : 'Ventilator'} ${rec.comNr || ''}`.trim(), BestellungData: JSON.stringify(rec) };
+            if (rec._spId) {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidBestellungen}')/items(${rec._spId})`;
+                await spFetch(url, { method:'PATCH', headers:{'IF-MATCH':'*','X-HTTP-Method':'MERGE'}, body:JSON.stringify(payload) });
+            } else {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidBestellungen}')/items`;
+                const result = await spFetch(url, { method:'POST', body:JSON.stringify(payload) });
+                rec._spId = result.id;
+            }
+        }
+
+        async function deleteBestellungFromSharePoint(spId) {
+            if (!spId) return;
+            await spFetch(`${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidBestellungen}')/items(${spId})`,
+                { method:'DELETE', headers:{'IF-MATCH':'*'} });
+        }
+
+        async function loadAdressenFromSharePoint() {
+            try {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidAdressen}')/items?$select=Id,Title,AdressData&$top=500`;
+                const data = await spFetch(url);
+                window.adressenDatabase = {};
+                (data.value || []).forEach(item => {
+                    try {
+                        if (item.AdressData) {
+                            const rec = JSON.parse(item.AdressData);
+                            rec._spId = item.Id;
+                            window.adressenDatabase[rec.id] = rec;
+                        }
+                    } catch(e) {}
+                });
+            } catch(e) { console.error('Fehler Adressen laden:', e); }
+        }
+
+        async function saveAdresseToSharePoint(rec) {
+            const payload = { Title: rec.bezeichnung || rec.firma || 'Adresse', AdressData: JSON.stringify(rec) };
+            if (rec._spId) {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidAdressen}')/items(${rec._spId})`;
+                await spFetch(url, { method:'PATCH', headers:{'IF-MATCH':'*','X-HTTP-Method':'MERGE'}, body:JSON.stringify(payload) });
+            } else {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidAdressen}')/items`;
+                const result = await spFetch(url, { method:'POST', body:JSON.stringify(payload) });
+                rec._spId = result.id;
+            }
+        }
+
+        function showToolSection(section) {
+            document.getElementById('toolSectionSpedition').style.display = section === 'spedition' ? 'block' : 'none';
+            document.getElementById('toolSectionBestellung').style.display = section === 'bestellung' ? 'block' : 'none';
+            document.getElementById('toolBtnSpedition').style.background = section === 'spedition' ? '#366092' : 'white';
+            document.getElementById('toolBtnSpedition').style.color = section === 'spedition' ? 'white' : '';
+            document.getElementById('toolBtnBestellung').style.background = section === 'bestellung' ? '#366092' : 'white';
+            document.getElementById('toolBtnBestellung').style.color = section === 'bestellung' ? 'white' : '';
+        }
+        window.showToolSection = showToolSection;
+
+        function renderSpeditionList() {
+            const tbody = document.getElementById('speditionListTable');
+            if (!tbody) return;
+            const items = Object.values(window.speditionDatabase).sort((a,b) => (b.datum||'').localeCompare(a.datum||''));
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#999;">Noch keine Speditionsaufträge. Oben "Neuer Auftrag" klicken.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = items.map(rec => `
+                <tr style="cursor:pointer;" onclick="openSpedition('${rec.id}')">
+                    <td>${formatDateDE(rec.datum) || '—'}</td>
+                    <td>${rec.spediteurName || '—'}</td>
+                    <td>${rec.abholadresse?.firma || '—'}</td>
+                    <td>${rec.empfaenger?.firma || '—'}</td>
+                    <td>${rec.frachtzahler?.komNr || '—'}</td>
+                    <td class="action-cell" onclick="event.stopPropagation()">
+                        <button onclick="openSpedition('${rec.id}')" class="btn-small btn-secondary">✏️</button>
+                        <button onclick="deleteSpedition('${rec.id}')" class="btn-danger btn-small">🗑️</button>
+                    </td>
+                </tr>`).join('');
+        }
+        window.renderSpeditionList = renderSpeditionList;
+
+        function emptySpeditionState() {
+            return {
+                id: `sped_${Date.now()}`,
+                datum: new Date().toISOString().slice(0,10),
+                spediteurName: '', spediteurEmail: '',
+                auftraggeber: {firma:'Dodek GmbH & Co. KG', ansprechpartner:'Franek Dodek', telefon:'07564 / 94895-0', telefax:'07564 / 94895-50'},
+                transportart: {stueckgut:false, ladungTeilladung:false, abholungNeutralisieren:false},
+                abholDatum:'', abholUhrzeit:'', anlieferDatum:'', anlieferUhrzeit:'',
+                abholadresse: {firma:'', ansprechpartner:'', telefon:'', bemerkung:'', oeffnungszeiten:'', strasse:'', ladestelle:'', plzOrt:''},
+                beladeart: {rampe:false, stapler:false, kran:false, hebebuehne:false},
+                empfaenger: {firma:'', ansprechpartner:'', telefon:'', bestellnr:'', oeffnungszeiten:'', strasse:'', ladestelle:'', plzOrt:''},
+                entladeart: {rampe:false, stapler:false, kran:false, hebebuehne:false},
+                sendungen: [{anzahl:'',verpackungsart:'',inhalt:'',gewicht:'',masse:''},{anzahl:'',verpackungsart:'',inhalt:'',gewicht:'',masse:''},{anzahl:'',verpackungsart:'',inhalt:'',gewicht:'',masse:''}],
+                warenwert:'', transportversicherung:false, svsVerbotskunde:false,
+                frachtzahler: {adresse:'Dodek GmbH & Co. KG\nStocket 3\n88410 Bad Wurzach', komNr:''}
+            };
+        }
+
+        function createNewSpedition() { window.currentSpedition = emptySpeditionState(); openSpeditionEditor(); }
+        window.createNewSpedition = createNewSpedition;
+
+        function openSpedition(id) {
+            const rec = window.speditionDatabase[id];
+            if (!rec) return;
+            window.currentSpedition = JSON.parse(JSON.stringify(rec));
+            openSpeditionEditor();
+        }
+        window.openSpedition = openSpedition;
+
+        async function deleteSpedition(id) {
+            const rec = window.speditionDatabase[id];
+            if (!rec || !confirm('Speditionsauftrag löschen?')) return;
+            if (rec._spId) await deleteSpeditionFromSharePoint(rec._spId);
+            delete window.speditionDatabase[id];
+            renderSpeditionList();
+            showMessage('Speditionsauftrag gelöscht', 'success');
+        }
+        window.deleteSpedition = deleteSpedition;
+
+        function openSpeditionEditor() {
+            document.getElementById('speditionListSection').style.display = 'none';
+            const editor = document.getElementById('speditionEditorSection');
+            editor.style.display = 'block';
+            editor.innerHTML = buildSpeditionEditorHTML(window.currentSpedition);
+            loadSpeditionIntoForm(window.currentSpedition);
+        }
+
+        function buildSpeditionEditorHTML(s) {
+            return `
+            <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;">
+                <button onclick="saveSpedition()" class="btn-success">💾 Speichern</button>
+                <button onclick="printSpedition()" class="btn-secondary">🖨️ PDF drucken</button>
+                <button onclick="showSpeditionList()" class="btn-secondary">⬅️ Zurück zur Liste</button>
+            </div>
+            <div class="positions-section" style="margin-bottom:15px;">
+                <div class="section-header"><h3>Kopfdaten</h3></div>
+                <div style="padding:15px;" class="form-grid">
+                    <div class="form-group"><label>Datum</label><input type="date" id="sp-datum"></div>
+                    <div class="form-group"><label>Spediteur</label><input type="text" id="sp-spediteurName" placeholder="z.B. Grieshaber"></div>
+                    <div class="form-group"><label>Spediteur E-Mail</label><input type="text" id="sp-spediteurEmail"></div>
+                </div>
+            </div>
+            <div class="positions-section" style="margin-bottom:15px;">
+                <div class="section-header"><h3>Auftraggeber</h3></div>
+                <div style="padding:15px;" class="form-grid">
+                    <div class="form-group"><label>Firmenname</label><input type="text" id="sp-ag-firma"></div>
+                    <div class="form-group"><label>Ansprechpartner</label><input type="text" id="sp-ag-ansp"></div>
+                    <div class="form-group"><label>Telefon</label><input type="text" id="sp-ag-tel"></div>
+                    <div class="form-group"><label>Telefax</label><input type="text" id="sp-ag-fax"></div>
+                </div>
+            </div>
+            <div class="positions-section" style="margin-bottom:15px;">
+                <div class="section-header"><h3>Transportart & Termine</h3></div>
+                <div style="padding:15px;">
+                    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px;">
+                        <label><input type="checkbox" id="sp-stueckgut"> Stückgut</label>
+                        <label><input type="checkbox" id="sp-ladung"> Ladung/Teilladung</label>
+                        <label><input type="checkbox" id="sp-neutralisieren"> Abholung neutralisieren</label>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group"><label>Abholung ab – Datum</label><input type="date" id="sp-abholDatum"></div>
+                        <div class="form-group"><label>Abholung ab – Uhrzeit</label><input type="text" id="sp-abholUhrzeit" placeholder="z.B. 8.30 Uhr"></div>
+                        <div class="form-group"><label>Anlieferung bis – Datum</label><input type="date" id="sp-anlieferDatum"></div>
+                        <div class="form-group"><label>Anlieferung bis – Uhrzeit</label><input type="text" id="sp-anlieferUhrzeit"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="positions-section" style="margin-bottom:15px;">
+                <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <h3>Abholadresse</h3>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <select id="sp-abholAdressSelect" onchange="fillSpedAdresse('abhol',this.value)" style="font-size:12px;"><option value="">— Adresse wählen —</option></select>
+                        <button onclick="saveSpedAdresse('abhol')" class="btn-secondary btn-small">💾</button>
+                    </div>
+                </div>
+                <div style="padding:15px;" class="form-grid">
+                    <div class="form-group"><label>Firmenname</label><input type="text" id="sp-abhol-firma"></div>
+                    <div class="form-group"><label>Ansprechpartner</label><input type="text" id="sp-abhol-ansp"></div>
+                    <div class="form-group"><label>Telefon</label><input type="text" id="sp-abhol-tel"></div>
+                    <div class="form-group"><label>Bemerkung</label><input type="text" id="sp-abhol-bem"></div>
+                    <div class="form-group"><label>Öffnungszeiten</label><input type="text" id="sp-abhol-oeffn"></div>
+                    <div class="form-group"><label>Straße/Hausnr.</label><input type="text" id="sp-abhol-str"></div>
+                    <div class="form-group"><label>Ladestelle/Tor</label><input type="text" id="sp-abhol-lade"></div>
+                    <div class="form-group"><label>PLZ/Ort</label><input type="text" id="sp-abhol-plz"></div>
+                </div>
+                <div style="padding:0 15px 15px;display:flex;gap:15px;flex-wrap:wrap;">
+                    <label><input type="checkbox" id="sp-bel-rampe"> über Rampe</label>
+                    <label><input type="checkbox" id="sp-bel-stapler"> seitlich mit Stapler</label>
+                    <label><input type="checkbox" id="sp-bel-kran"> Kran</label>
+                    <label><input type="checkbox" id="sp-bel-hebe"> Hebebühne erforderl.</label>
+                </div>
+            </div>
+            <div class="positions-section" style="margin-bottom:15px;">
+                <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <h3>Empfängeradresse</h3>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <select id="sp-empfAdressSelect" onchange="fillSpedAdresse('empf',this.value)" style="font-size:12px;"><option value="">— Adresse wählen —</option></select>
+                        <button onclick="saveSpedAdresse('empf')" class="btn-secondary btn-small">💾</button>
+                    </div>
+                </div>
+                <div style="padding:15px;" class="form-grid">
+                    <div class="form-group"><label>Firmenname</label><input type="text" id="sp-empf-firma"></div>
+                    <div class="form-group"><label>Ansprechpartner</label><input type="text" id="sp-empf-ansp"></div>
+                    <div class="form-group"><label>Telefon</label><input type="text" id="sp-empf-tel"></div>
+                    <div class="form-group"><label>Bestellnr.</label><input type="text" id="sp-empf-bestellnr"></div>
+                    <div class="form-group"><label>Öffnungszeiten</label><input type="text" id="sp-empf-oeffn"></div>
+                    <div class="form-group"><label>Straße/Hausnr.</label><input type="text" id="sp-empf-str"></div>
+                    <div class="form-group"><label>Ladestelle/Tor</label><input type="text" id="sp-empf-lade"></div>
+                    <div class="form-group"><label>PLZ/Ort</label><input type="text" id="sp-empf-plz"></div>
+                </div>
+                <div style="padding:0 15px 15px;display:flex;gap:15px;flex-wrap:wrap;">
+                    <label><input type="checkbox" id="sp-ent-rampe"> über Rampe</label>
+                    <label><input type="checkbox" id="sp-ent-stapler"> seitlich mit Stapler</label>
+                    <label><input type="checkbox" id="sp-ent-kran"> Kran</label>
+                    <label><input type="checkbox" id="sp-ent-hebe"> Hebebühne erforderl.</label>
+                </div>
+            </div>
+            <div class="positions-section" style="margin-bottom:15px;">
+                <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <h3>Sendungsdaten (Packliste)</h3>
+                    <button onclick="addSpedSendungRow()" class="btn-secondary btn-small">+ Zeile</button>
+                </div>
+                <div style="padding:15px;overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                        <thead><tr style="background:#f0f4ff;">
+                            <th style="padding:5px;border:1px solid #ddd;width:10%">Anzahl</th>
+                            <th style="padding:5px;border:1px solid #ddd;width:18%">Verpackungsart</th>
+                            <th style="padding:5px;border:1px solid #ddd;">Inhalt</th>
+                            <th style="padding:5px;border:1px solid #ddd;width:14%">Gewicht (brutto)</th>
+                            <th style="padding:5px;border:1px solid #ddd;width:18%">Maße L×B×H (cm)</th>
+                            <th style="width:30px;"></th>
+                        </tr></thead>
+                        <tbody id="sp-sendungenBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="positions-section" style="margin-bottom:15px;">
+                <div class="section-header"><h3>Versicherung & Frachtzahler</h3></div>
+                <div style="padding:15px;" class="form-grid">
+                    <div class="form-group"><label>Warenwert in €</label><input type="text" id="sp-warenwert"></div>
+                    <div class="form-group" style="display:flex;align-items:flex-end;gap:15px;">
+                        <label><input type="checkbox" id="sp-transversich"> Transportversicherung</label>
+                        <label><input type="checkbox" id="sp-svs"> SVS Verbotskunde</label>
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;"><label>Frachtzahler Firma/Adresse</label><textarea id="sp-frachtz-adresse" rows="3" style="width:100%;"></textarea></div>
+                    <div class="form-group"><label>Bitte Kom.-Nr.</label><input type="text" id="sp-frachtz-komNr"></div>
+                </div>
+            </div>`;
+        }
+
+        function loadSpeditionIntoForm(s) {
+            const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
+            const chk = (id, val) => { const el = document.getElementById(id); if(el) el.checked = !!val; };
+            set('sp-datum', s.datum); set('sp-spediteurName', s.spediteurName); set('sp-spediteurEmail', s.spediteurEmail);
+            set('sp-ag-firma', s.auftraggeber?.firma); set('sp-ag-ansp', s.auftraggeber?.ansprechpartner);
+            set('sp-ag-tel', s.auftraggeber?.telefon); set('sp-ag-fax', s.auftraggeber?.telefax);
+            chk('sp-stueckgut', s.transportart?.stueckgut); chk('sp-ladung', s.transportart?.ladungTeilladung); chk('sp-neutralisieren', s.transportart?.abholungNeutralisieren);
+            set('sp-abholDatum', s.abholDatum); set('sp-abholUhrzeit', s.abholUhrzeit);
+            set('sp-anlieferDatum', s.anlieferDatum); set('sp-anlieferUhrzeit', s.anlieferUhrzeit);
+            set('sp-abhol-firma', s.abholadresse?.firma); set('sp-abhol-ansp', s.abholadresse?.ansprechpartner);
+            set('sp-abhol-tel', s.abholadresse?.telefon); set('sp-abhol-bem', s.abholadresse?.bemerkung);
+            set('sp-abhol-oeffn', s.abholadresse?.oeffnungszeiten); set('sp-abhol-str', s.abholadresse?.strasse);
+            set('sp-abhol-lade', s.abholadresse?.ladestelle); set('sp-abhol-plz', s.abholadresse?.plzOrt);
+            chk('sp-bel-rampe', s.beladeart?.rampe); chk('sp-bel-stapler', s.beladeart?.stapler);
+            chk('sp-bel-kran', s.beladeart?.kran); chk('sp-bel-hebe', s.beladeart?.hebebuehne);
+            set('sp-empf-firma', s.empfaenger?.firma); set('sp-empf-ansp', s.empfaenger?.ansprechpartner);
+            set('sp-empf-tel', s.empfaenger?.telefon); set('sp-empf-bestellnr', s.empfaenger?.bestellnr);
+            set('sp-empf-oeffn', s.empfaenger?.oeffnungszeiten); set('sp-empf-str', s.empfaenger?.strasse);
+            set('sp-empf-lade', s.empfaenger?.ladestelle); set('sp-empf-plz', s.empfaenger?.plzOrt);
+            chk('sp-ent-rampe', s.entladeart?.rampe); chk('sp-ent-stapler', s.entladeart?.stapler);
+            chk('sp-ent-kran', s.entladeart?.kran); chk('sp-ent-hebe', s.entladeart?.hebebuehne);
+            set('sp-warenwert', s.warenwert); chk('sp-transversich', s.transportversicherung); chk('sp-svs', s.svsVerbotskunde);
+            set('sp-frachtz-adresse', s.frachtzahler?.adresse); set('sp-frachtz-komNr', s.frachtzahler?.komNr);
+            const body = document.getElementById('sp-sendungenBody');
+            if (body) body.innerHTML = (s.sendungen || []).map(row => spedSendungRowHtml(row)).join('');
+            refreshSpedAdressSelects();
+        }
+
+        function spedSendungRowHtml(row) {
+            row = row || {};
+            return `<tr>
+                <td style="border:1px solid #ddd;padding:2px;"><input type="text" value="${row.anzahl||''}" style="width:100%;border:none;padding:4px;font-size:12px;"></td>
+                <td style="border:1px solid #ddd;padding:2px;"><input type="text" value="${row.verpackungsart||''}" style="width:100%;border:none;padding:4px;font-size:12px;"></td>
+                <td style="border:1px solid #ddd;padding:2px;"><input type="text" value="${row.inhalt||''}" style="width:100%;border:none;padding:4px;font-size:12px;"></td>
+                <td style="border:1px solid #ddd;padding:2px;"><input type="text" value="${row.gewicht||''}" style="width:100%;border:none;padding:4px;font-size:12px;"></td>
+                <td style="border:1px solid #ddd;padding:2px;"><input type="text" value="${row.masse||''}" style="width:100%;border:none;padding:4px;font-size:12px;"></td>
+                <td><button onclick="this.closest('tr').remove()" style="border:none;background:none;cursor:pointer;color:#dc3545;font-size:14px;">🗑</button></td>
+            </tr>`;
+        }
+        window.spedSendungRowHtml = spedSendungRowHtml;
+
+        function addSpedSendungRow() { document.getElementById('sp-sendungenBody').insertAdjacentHTML('beforeend', spedSendungRowHtml()); }
+        window.addSpedSendungRow = addSpedSendungRow;
+
+        function collectSpeditionFromForm() {
+            const get = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+            const chk = id => { const el = document.getElementById(id); return el ? el.checked : false; };
+            const s = window.currentSpedition;
+            s.datum = get('sp-datum'); s.spediteurName = get('sp-spediteurName'); s.spediteurEmail = get('sp-spediteurEmail');
+            s.auftraggeber = { firma:get('sp-ag-firma'), ansprechpartner:get('sp-ag-ansp'), telefon:get('sp-ag-tel'), telefax:get('sp-ag-fax') };
+            s.transportart = { stueckgut:chk('sp-stueckgut'), ladungTeilladung:chk('sp-ladung'), abholungNeutralisieren:chk('sp-neutralisieren') };
+            s.abholDatum = get('sp-abholDatum'); s.abholUhrzeit = get('sp-abholUhrzeit');
+            s.anlieferDatum = get('sp-anlieferDatum'); s.anlieferUhrzeit = get('sp-anlieferUhrzeit');
+            s.abholadresse = { firma:get('sp-abhol-firma'), ansprechpartner:get('sp-abhol-ansp'), telefon:get('sp-abhol-tel'), bemerkung:get('sp-abhol-bem'), oeffnungszeiten:get('sp-abhol-oeffn'), strasse:get('sp-abhol-str'), ladestelle:get('sp-abhol-lade'), plzOrt:get('sp-abhol-plz') };
+            s.beladeart = { rampe:chk('sp-bel-rampe'), stapler:chk('sp-bel-stapler'), kran:chk('sp-bel-kran'), hebebuehne:chk('sp-bel-hebe') };
+            s.empfaenger = { firma:get('sp-empf-firma'), ansprechpartner:get('sp-empf-ansp'), telefon:get('sp-empf-tel'), bestellnr:get('sp-empf-bestellnr'), oeffnungszeiten:get('sp-empf-oeffn'), strasse:get('sp-empf-str'), ladestelle:get('sp-empf-lade'), plzOrt:get('sp-empf-plz') };
+            s.entladeart = { rampe:chk('sp-ent-rampe'), stapler:chk('sp-ent-stapler'), kran:chk('sp-ent-kran'), hebebuehne:chk('sp-ent-hebe') };
+            s.warenwert = get('sp-warenwert'); s.transportversicherung = chk('sp-transversich'); s.svsVerbotskunde = chk('sp-svs');
+            s.frachtzahler = { adresse:get('sp-frachtz-adresse'), komNr:get('sp-frachtz-komNr') };
+            const rows = [];
+            document.querySelectorAll('#sp-sendungenBody tr').forEach(tr => {
+                const inputs = tr.querySelectorAll('input[type=text]');
+                if (inputs.length >= 5) {
+                    const row = { anzahl:inputs[0].value, verpackungsart:inputs[1].value, inhalt:inputs[2].value, gewicht:inputs[3].value, masse:inputs[4].value };
+                    if (Object.values(row).some(v => v.trim())) rows.push(row);
+                }
+            });
+            s.sendungen = rows.length ? rows : emptySpeditionState().sendungen;
+            return s;
+        }
+
+        async function saveSpedition() {
+            const s = collectSpeditionFromForm();
+            window.speditionDatabase[s.id] = s;
+            try { await saveSpeditionToSharePoint(s); showMessage('Speditionsauftrag gespeichert', 'success'); }
+            catch(e) { showMessage('Fehler: ' + e.message, 'error'); }
+        }
+        window.saveSpedition = saveSpedition;
+
+        function showSpeditionList() {
+            document.getElementById('speditionListSection').style.display = 'block';
+            document.getElementById('speditionEditorSection').style.display = 'none';
+            renderSpeditionList();
+        }
+        window.showSpeditionList = showSpeditionList;
+
+        function refreshSpedAdressSelects() {
+            const addrs = Object.values(window.adressenDatabase);
+            ['sp-abholAdressSelect','sp-empfAdressSelect'].forEach(id => {
+                const sel = document.getElementById(id);
+                if (!sel) return;
+                sel.innerHTML = '<option value="">— Adresse wählen —</option>' +
+                    addrs.map(a => `<option value="${a.id}">${a.bezeichnung || a.firma || a.id}</option>`).join('');
+            });
+        }
+
+        function fillSpedAdresse(prefix, adressId) {
+            if (!adressId) return;
+            const addr = window.adressenDatabase[adressId];
+            if (!addr) return;
+            const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
+            set(`sp-${prefix}-firma`, addr.firma); set(`sp-${prefix}-ansp`, addr.ansprechpartner);
+            set(`sp-${prefix}-tel`, addr.telefon); set(`sp-${prefix}-bem`, addr.bemerkung);
+            set(`sp-${prefix}-oeffn`, addr.oeffnungszeiten); set(`sp-${prefix}-str`, addr.strasse);
+            set(`sp-${prefix}-lade`, addr.ladestelle); set(`sp-${prefix}-plz`, addr.plzOrt);
+            if (prefix === 'empf') { const el = document.getElementById('sp-empf-bestellnr'); if(el) el.value = addr.bestellnr || ''; }
+        }
+        window.fillSpedAdresse = fillSpedAdresse;
+
+        async function saveSpedAdresse(prefix) {
+            const get = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+            const firma = get(`sp-${prefix}-firma`);
+            if (!firma) { showMessage('Firmenname erforderlich', 'error'); return; }
+            const bez = prompt('Bezeichnung für diese Adresse:', firma);
+            if (!bez) return;
+            const addr = { id:`addr_${Date.now()}`, bezeichnung:bez, firma:get(`sp-${prefix}-firma`), ansprechpartner:get(`sp-${prefix}-ansp`), telefon:get(`sp-${prefix}-tel`), bemerkung:get(`sp-${prefix}-bem`), oeffnungszeiten:get(`sp-${prefix}-oeffn`), strasse:get(`sp-${prefix}-str`), ladestelle:get(`sp-${prefix}-lade`), plzOrt:get(`sp-${prefix}-plz`), bestellnr:prefix==='empf'?get('sp-empf-bestellnr'):'' };
+            window.adressenDatabase[addr.id] = addr;
+            await saveAdresseToSharePoint(addr);
+            refreshSpedAdressSelects();
+            showMessage(`Adresse "${bez}" gespeichert`, 'success');
+        }
+        window.saveSpedAdresse = saveSpedAdresse;
+
+        function printSpedition() {
+            const s = collectSpeditionFromForm();
+            const esc = str => String(str ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+            const chkBox = (val, label) => `<span style="display:inline-block;width:9pt;height:9pt;border:1px solid #333;text-align:center;line-height:9pt;font-size:7pt;margin-right:3px;">${val?'X':''}</span>${esc(label)}`;
+            const field = (label, value) => `<div style="margin-bottom:2px;"><span style="font-weight:bold;min-width:35mm;display:inline-block;">${esc(label)}:</span> ${esc(value)}</div>`;
+            const sendRows = (s.sendungen||[]).filter(r=>Object.values(r).some(v=>String(v).trim())).map(r=>`<tr><td style="border:1px solid #ccc;padding:3px;">${esc(r.anzahl)}</td><td style="border:1px solid #ccc;padding:3px;">${esc(r.verpackungsart)}</td><td style="border:1px solid #ccc;padding:3px;">${esc(r.inhalt)}</td><td style="border:1px solid #ccc;padding:3px;">${esc(r.gewicht)}</td><td style="border:1px solid #ccc;padding:3px;">${esc(r.masse)}</td></tr>`).join('');
+            const datDE = iso => { if(!iso) return ''; const [y,m,d]=iso.split('-'); return d+'.'+m+'.'+y; };
+            const w = window.open('','_blank');
+            w.document.write(`<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>Speditionsauftrag</title>
+            <style>body{font-family:Arial,sans-serif;font-size:10pt;margin:15mm;}h2{color:#b3121a;border-bottom:2px solid #b3121a;padding-bottom:3px;}
+            .card{border:1px solid #ccc;margin-bottom:8px;page-break-inside:avoid;}.card h3{background:#fbe3e2;color:#7d0c11;margin:0;padding:4px 8px;font-size:9pt;text-transform:uppercase;}.card .body{padding:6px 10px;font-size:10pt;}
+            @media print{@page{size:A4;margin:12mm;}}</style></head><body>
+            <h2>Speditionsauftrag</h2>
+            <p style="font-size:9pt;color:#666;">Datum: ${datDE(s.datum)} | Spediteur: ${esc(s.spediteurName)}</p>
+            <div class="card"><h3>Auftraggeber</h3><div class="body">${field('Firma',s.auftraggeber?.firma)}${field('Ansprechpartner',s.auftraggeber?.ansprechpartner)}${field('Telefon',s.auftraggeber?.telefon)}${field('Telefax',s.auftraggeber?.telefax)}</div></div>
+            <div class="card"><h3>Transportart & Termine</h3><div class="body"><div style="margin-bottom:6px;">${chkBox(s.transportart?.stueckgut,'Stückgut')} &nbsp; ${chkBox(s.transportart?.ladungTeilladung,'Ladung/Teilladung')} &nbsp; ${chkBox(s.transportart?.abholungNeutralisieren,'Abholung neutralisieren')}</div>${field('Abholung ab',datDE(s.abholDatum)+' '+(s.abholUhrzeit||''))}${field('Anlieferung bis',datDE(s.anlieferDatum)+' '+(s.anlieferUhrzeit||''))}</div></div>
+            <div class="card"><h3>Abholadresse</h3><div class="body">${field('Firma',s.abholadresse?.firma)}${field('Ansprechpartner',s.abholadresse?.ansprechpartner)}${field('Telefon',s.abholadresse?.telefon)}${field('Straße',s.abholadresse?.strasse)}${field('PLZ/Ort',s.abholadresse?.plzOrt)}${field('Öffnungszeiten',s.abholadresse?.oeffnungszeiten)}<div>${chkBox(s.beladeart?.rampe,'Rampe')} ${chkBox(s.beladeart?.stapler,'Stapler')} ${chkBox(s.beladeart?.kran,'Kran')} ${chkBox(s.beladeart?.hebebuehne,'Hebebühne')}</div></div></div>
+            <div class="card"><h3>Empfängeradresse</h3><div class="body">${field('Firma',s.empfaenger?.firma)}${field('Ansprechpartner',s.empfaenger?.ansprechpartner)}${field('Telefon',s.empfaenger?.telefon)}${field('Straße',s.empfaenger?.strasse)}${field('PLZ/Ort',s.empfaenger?.plzOrt)}${field('Bestellnr.',s.empfaenger?.bestellnr)}<div>${chkBox(s.entladeart?.rampe,'Rampe')} ${chkBox(s.entladeart?.stapler,'Stapler')} ${chkBox(s.entladeart?.kran,'Kran')} ${chkBox(s.entladeart?.hebebuehne,'Hebebühne')}</div></div></div>
+            <div class="card"><h3>Sendungsdaten</h3><div class="body"><table style="width:100%;border-collapse:collapse;font-size:9.5pt;"><thead><tr><th style="border:1px solid #ccc;padding:3px;background:#fbe3e2;">Anzahl</th><th style="border:1px solid #ccc;padding:3px;background:#fbe3e2;">Verpackungsart</th><th style="border:1px solid #ccc;padding:3px;background:#fbe3e2;">Inhalt</th><th style="border:1px solid #ccc;padding:3px;background:#fbe3e2;">Gewicht</th><th style="border:1px solid #ccc;padding:3px;background:#fbe3e2;">Maße</th></tr></thead><tbody>${sendRows}</tbody></table></div></div>
+            <div class="card"><h3>Versicherung & Frachtzahler</h3><div class="body">${field('Warenwert',s.warenwert+' €')}<div>${chkBox(s.transportversicherung,'Transportversicherung')} &nbsp; ${chkBox(s.svsVerbotskunde,'SVS Verbotskunde')}</div>${field('Frachtzahler',s.frachtzahler?.adresse?.replace(/\n/g,', '))}${field('Kom.-Nr.',s.frachtzahler?.komNr)}</div></div>
+            <script>window.onload=function(){window.print();}<\/script></body></html>`);
+            w.document.close();
+        }
+        window.printSpedition = printSpedition;
+
+        function renderBestellungList() {
+            const tbody = document.getElementById('bestellungListTable');
+            if (!tbody) return;
+            const items = Object.values(window.bestellungDatabase).sort((a,b) => (b.datum||'').localeCompare(a.datum||''));
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#999;">Noch keine Bestellungen.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = items.map(rec => `
+                <tr style="cursor:pointer;" onclick="openBestellung('${rec.id}')">
+                    <td><span style="background:${rec.typ==='filter'?'#e8f5e9':'#e3f2fd'};padding:2px 8px;border-radius:10px;font-size:12px;">${rec.typ==='filter'?'🔧 Filter':'💨 Ventilator'}</span></td>
+                    <td>${rec.comNr || '—'}</td>
+                    <td>${rec.comName || '—'}</td>
+                    <td>${formatDateDE(rec.datum) || '—'}</td>
+                    <td>${rec.filtertyp || rec.vtTyp || '—'}</td>
+                    <td class="action-cell" onclick="event.stopPropagation()">
+                        <button onclick="openBestellung('${rec.id}')" class="btn-small btn-secondary">✏️</button>
+                        <button onclick="deleteBestellung('${rec.id}')" class="btn-danger btn-small">🗑️</button>
+                    </td>
+                </tr>`).join('');
+        }
+        window.renderBestellungList = renderBestellungList;
+
+        function createNewBestellung(typ) {
+            window.currentBestellung = { id:`best_${Date.now()}`, typ, datum:new Date().toISOString().slice(0,10), comNr:'', comName:'', liefertermin:'', aufstell:'', menge:'', filtertyp:'', steuerung:'', anbringung:'', ral:'', farbton:'', patronArtnr:'', patronBem:'', ventiTyp:'', bemerkung:'', vtMenge:'', vtTyp:'', vtRal:'', vtFarbton:'', vtMotorKw:'', vtMotorPolig:'' };
+            openBestellungEditor();
+        }
+        window.createNewBestellung = createNewBestellung;
+
+        function openBestellung(id) {
+            const rec = window.bestellungDatabase[id];
+            if (!rec) return;
+            window.currentBestellung = JSON.parse(JSON.stringify(rec));
+            openBestellungEditor();
+        }
+        window.openBestellung = openBestellung;
+
+        async function deleteBestellung(id) {
+            const rec = window.bestellungDatabase[id];
+            if (!rec || !confirm('Bestellung löschen?')) return;
+            if (rec._spId) await deleteBestellungFromSharePoint(rec._spId);
+            delete window.bestellungDatabase[id];
+            renderBestellungList();
+            showMessage('Bestellung gelöscht', 'success');
+        }
+        window.deleteBestellung = deleteBestellung;
+
+        function openBestellungEditor() {
+            document.getElementById('bestellungListSection').style.display = 'none';
+            const editor = document.getElementById('bestellungEditorSection');
+            editor.style.display = 'block';
+            editor.innerHTML = buildBestellungEditorHTML(window.currentBestellung);
+        }
+
+        function buildBestellungEditorHTML(b) {
+            const isFilter = b.typ === 'filter';
+            return `
+            <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                <h3 style="margin:0;">${isFilter?'🔧 Filter-Bestellblatt':'💨 Ventilator-Bestellung'}</h3>
+                <button onclick="saveBestellung()" class="btn-success">💾 Speichern</button>
+                <button onclick="printBestellung()" class="btn-secondary">🖨️ PDF drucken</button>
+                <button onclick="showBestellungList()" class="btn-secondary">⬅️ Zurück</button>
+            </div>
+            <div class="positions-section" style="margin-bottom:15px;">
+                <div class="section-header"><h3>Kopfdaten</h3></div>
+                <div style="padding:15px;" class="form-grid">
+                    <div class="form-group"><label>Projekt-Nr.</label><input type="text" id="be-comNr" value="${b.comNr||''}"></div>
+                    <div class="form-group"><label>Kommission</label><input type="text" id="be-comName" value="${b.comName||''}"></div>
+                    <div class="form-group"><label>Bestelldatum</label><input type="date" id="be-datum" value="${b.datum||''}"></div>
+                    <div class="form-group"><label>Liefertermin</label><input type="text" id="be-liefert" value="${b.liefertermin||''}"></div>
+                    <div class="form-group"><label>Aufstellungsplan-Nr.</label><input type="text" id="be-aufstell" value="${b.aufstell||''}"></div>
+                </div>
+            </div>
+            ${isFilter ? `
+            <div class="positions-section" style="margin-bottom:15px;">
+                <div class="section-header"><h3>Allgemein</h3></div>
+                <div style="padding:15px;" class="form-grid">
+                    <div class="form-group"><label>Menge (ST)</label><input type="text" id="be-menge" value="${b.menge||''}"></div>
+                    <div class="form-group"><label>Filtertyp</label><input type="text" id="be-filtertyp" value="${b.filtertyp||''}" placeholder="z.B. DTZ 16"></div>
+                    <div class="form-group"><label>Steuerung Typ</label><input type="text" id="be-steuerung" value="${b.steuerung||''}"></div>
+                    <div class="form-group"><label>Anbringung</label><input type="text" id="be-anbringung" value="${b.anbringung||''}"></div>
+                </div>
+            </div>
+            <div class="positions-section" style="margin-bottom:15px;">
+                <div class="section-header"><h3>Lackierung</h3></div>
+                <div style="padding:15px;" class="form-grid">
+                    <div class="form-group"><label>RAL-Nr.</label><input type="text" id="be-ral" value="${b.ral||''}"></div>
+                    <div class="form-group"><label>Farbton</label><input type="text" id="be-farbton" value="${b.farbton||''}"></div>
+                </div>
+            </div>
+            <div class="positions-section" style="margin-bottom:15px;">
+                <div class="section-header"><h3>Filterpatronen</h3></div>
+                <div style="padding:15px;" class="form-grid">
+                    <div class="form-group"><label>Art.-Nr.</label><input type="text" id="be-patronArtnr" value="${b.patronArtnr||''}"></div>
+                    <div class="form-group"><label>Bemerkung</label><input type="text" id="be-patronBem" value="${b.patronBem||''}"></div>
+                </div>
+            </div>
+            <div class="positions-section" style="margin-bottom:15px;">
+                <div class="section-header"><h3>Ventilator</h3></div>
+                <div style="padding:15px;" class="form-grid">
+                    <div class="form-group"><label>Ventilator-Typ</label><input type="text" id="be-ventiTyp" value="${b.ventiTyp||''}"></div>
+                </div>
+            </div>` : `
+            <div class="positions-section" style="margin-bottom:15px;">
+                <div class="section-header"><h3>Allgemein</h3></div>
+                <div style="padding:15px;" class="form-grid">
+                    <div class="form-group"><label>Menge (ST)</label><input type="text" id="be-vtMenge" value="${b.vtMenge||''}"></div>
+                    <div class="form-group"><label>Typ</label><input type="text" id="be-vtTyp" value="${b.vtTyp||''}" placeholder="z.B. GR 630/2R"></div>
+                    <div class="form-group"><label>RAL-Nr.</label><input type="text" id="be-vtRal" value="${b.vtRal||''}"></div>
+                    <div class="form-group"><label>Farbton</label><input type="text" id="be-vtFarbton" value="${b.vtFarbton||''}"></div>
+                    <div class="form-group"><label>Motor kW</label><input type="text" id="be-vtMotorKw" value="${b.vtMotorKw||''}"></div>
+                    <div class="form-group"><label>Polig</label><input type="text" id="be-vtMotorPolig" value="${b.vtMotorPolig||''}"></div>
+                </div>
+            </div>`}
+            <div class="positions-section" style="margin-bottom:15px;">
+                <div class="section-header"><h3>Bemerkungen</h3></div>
+                <div style="padding:15px;"><textarea id="be-bem" rows="3" style="width:100%;">${b.bemerkung||''}</textarea></div>
+            </div>`;
+        }
+
+        function collectBestellungFromForm() {
+            const b = window.currentBestellung;
+            const get = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+            b.comNr = get('be-comNr'); b.comName = get('be-comName'); b.datum = get('be-datum');
+            b.liefertermin = get('be-liefert'); b.aufstell = get('be-aufstell'); b.bemerkung = get('be-bem');
+            if (b.typ === 'filter') {
+                b.menge = get('be-menge'); b.filtertyp = get('be-filtertyp');
+                b.steuerung = get('be-steuerung'); b.anbringung = get('be-anbringung');
+                b.ral = get('be-ral'); b.farbton = get('be-farbton');
+                b.patronArtnr = get('be-patronArtnr'); b.patronBem = get('be-patronBem');
+                b.ventiTyp = get('be-ventiTyp');
+            } else {
+                b.vtMenge = get('be-vtMenge'); b.vtTyp = get('be-vtTyp');
+                b.vtRal = get('be-vtRal'); b.vtFarbton = get('be-vtFarbton');
+                b.vtMotorKw = get('be-vtMotorKw'); b.vtMotorPolig = get('be-vtMotorPolig');
+            }
+            return b;
+        }
+
+        async function saveBestellung() {
+            const b = collectBestellungFromForm();
+            window.bestellungDatabase[b.id] = b;
+            try { await saveBestellungToSharePoint(b); showMessage('Bestellung gespeichert', 'success'); }
+            catch(e) { showMessage('Fehler: ' + e.message, 'error'); }
+        }
+        window.saveBestellung = saveBestellung;
+
+        function showBestellungList() {
+            document.getElementById('bestellungListSection').style.display = 'block';
+            document.getElementById('bestellungEditorSection').style.display = 'none';
+            renderBestellungList();
+        }
+        window.showBestellungList = showBestellungList;
+
+        function printBestellung() {
+            const b = collectBestellungFromForm();
+            const esc = str => String(str ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+            const field = (label, value) => value ? `<div style="margin-bottom:3px;"><span style="font-weight:bold;font-size:9pt;color:#555;">${esc(label)}:</span> <span style="font-size:10pt;">${esc(value)}</span></div>` : '';
+            const isFilter = b.typ === 'filter';
+            const datDE = iso => { if(!iso) return ''; const [y,m,d]=iso.split('-'); return d+'.'+m+'.'+y; };
+            const w = window.open('','_blank');
+            w.document.write(`<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>${isFilter?'Filter-Bestellblatt':'Ventilator-Bestellung'}</title>
+            <style>body{font-family:'Arial Narrow',Arial,sans-serif;font-size:10pt;margin:12mm;}h1{font-size:18pt;font-weight:900;text-transform:uppercase;border-bottom:3px solid #CC0000;padding-bottom:5px;margin-bottom:10px;}h1 span{color:#CC0000;}
+            .meta{background:#f5f5f5;border:1px solid #ddd;padding:8px;margin-bottom:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:5px;font-size:9.5pt;}
+            .card{border:1px solid #ccc;margin-bottom:8px;page-break-inside:avoid;}.card h3{background:#1a1a1a;color:white;margin:0;padding:4px 8px;font-size:9pt;text-transform:uppercase;}.card .body{padding:6px 10px;}
+            @media print{@page{size:A4;margin:10mm;}}</style></head><body>
+            <h1>${isFilter?'Filter-<span>Bestellblatt</span>':'Ventilator-<span>Bestellung</span>'}</h1>
+            <div class="meta"><div><strong>Projekt-Nr.</strong><br>${esc(b.comNr)}</div><div><strong>Kommission</strong><br>${esc(b.comName)}</div><div><strong>Datum</strong><br>${datDE(b.datum)}</div><div><strong>Liefertermin</strong><br>${esc(b.liefertermin)}</div></div>
+            ${isFilter ? `<div class="card"><h3>Allgemein</h3><div class="body">${field('Menge',b.menge)}${field('Filtertyp',b.filtertyp)}${field('Steuerung',b.steuerung)}${field('Anbringung',b.anbringung)}</div></div>
+            <div class="card"><h3>Lackierung</h3><div class="body">${field('RAL',b.ral)}${field('Farbton',b.farbton)}</div></div>
+            <div class="card"><h3>Filterpatronen</h3><div class="body">${field('Art.-Nr.',b.patronArtnr)}${field('Bemerkung',b.patronBem)}</div></div>
+            <div class="card"><h3>Ventilator</h3><div class="body">${field('Typ',b.ventiTyp)}</div></div>`
+            : `<div class="card"><h3>Allgemein</h3><div class="body">${field('Menge',b.vtMenge)}${field('Typ',b.vtTyp)}${field('RAL',b.vtRal)}${field('Farbton',b.vtFarbton)}${field('Motor kW',b.vtMotorKw)}${field('Polig',b.vtMotorPolig)}</div></div>`}
+            ${b.bemerkung?`<div class="card"><h3>Bemerkungen</h3><div class="body">${esc(b.bemerkung).replace(/\n/g,'<br>')}</div></div>`:''}
+            <script>window.onload=function(){window.print();}<\/script></body></html>`);
+            w.document.close();
+        }
+        window.printBestellung = printBestellung;
 
         function renderSettingsView() {
             renderRolePermissionsTable();
