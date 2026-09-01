@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Speditionsauftrag · v0.1.0</title>
+<title>Speditionsauftrag · v0.2.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
@@ -93,7 +93,9 @@
     <button type="button" onclick="newOrder()">+ Neuer Auftrag</button>
     <button type="button" class="primary" onclick="saveToSharePoint()">💾 In SharePoint speichern</button>
     <button type="button" class="primary" onclick="printPdf()">🖨️ PDF erzeugen</button>
-    <span style="font-size:10px;color:rgba(255,255,255,0.6);margin-left:8px;align-self:center;">v0.1.0</span>
+    <button type="button" onclick="exportJson()">📤 JSON exportieren</button>
+    <label class="filebtn">📥 JSON importieren<input type="file" accept=".json,application/json" onchange="handleJsonImportSP(this)"></label>
+    <span style="font-size:10px;color:rgba(255,255,255,0.6);margin-left:8px;align-self:center;">v0.2.0</span>
   </div>
 </header>
 
@@ -821,6 +823,41 @@ function saveToSharePoint() {
   const idx = spedList.findIndex(r => r.id === s.id);
   if (idx >= 0) spedList[idx] = s; else spedList.push(s);
   window.parent.postMessage({ type: 'SPED_SAVE', data: s }, '*');
+}
+
+/* ---------- JSON Export ---------- */
+function exportJson() {
+  const s = collectState();
+  if (!s.datum && !s.spediteurName) { alert('Kein Auftrag zum Exportieren.'); return; }
+  const filename = suggestFilename('json');
+  const blob = new Blob([JSON.stringify(s, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+/* ---------- JSON Import → direkt in SharePoint speichern ---------- */
+function handleJsonImportSP(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      loadFromState(data);
+      if (!data.id) data.id = 'sped_' + Date.now();
+      if (confirm('Auftrag importiert. Direkt in SharePoint speichern?')) {
+        const existing = spedList.find(r => r.id === data.id);
+        if (existing) data._spId = existing._spId;
+        const idx = spedList.findIndex(r => r.id === data.id);
+        if (idx >= 0) spedList[idx] = data; else spedList.push(data);
+        window.parent.postMessage({ type: 'SPED_SAVE', data: data }, '*');
+      }
+    } catch(err) { alert('Konnte JSON nicht lesen: ' + err.message); }
+    input.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
 }
 
 function showSpedList() {
