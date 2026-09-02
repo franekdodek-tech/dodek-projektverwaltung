@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Speditionsauftrag · v0.2.0</title>
+<title>Speditionsauftrag · v0.3.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
@@ -95,7 +95,7 @@
     <button type="button" class="primary" onclick="printPdf()">🖨️ PDF erzeugen</button>
     <button type="button" onclick="exportJson()">📤 JSON exportieren</button>
     <label class="filebtn">📥 JSON importieren<input type="file" accept=".json,application/json" onchange="handleJsonImportSP(this)"></label>
-    <span style="font-size:10px;color:rgba(255,255,255,0.6);margin-left:8px;align-self:center;">v0.2.0</span>
+    <span style="font-size:10px;color:rgba(255,255,255,0.6);margin-left:8px;align-self:center;">v0.3.0</span>
   </div>
 </header>
 
@@ -105,9 +105,7 @@
 </div>
 <div id="spedFormContainer">
 <main>
-  <div class="notice">
-    Diese App läuft vollständig lokal im Browser. Das Adressbuch wird im Browser gespeichert (localStorage). Für Excel-Import und den Direkt-PDF-Download werden beim ersten Laden zwei externe Skripte (SheetJS, html2pdf.js) von einem CDN nachgeladen &ndash; dafür ist einmalig Internetzugang nötig. "PDF erzeugen (Drucken)" funktioniert ohne CDN, exakt über den Browser-Druckdialog ("Als PDF speichern"). Falls die roten Farbakzente im gedruckten PDF fehlen: im Druckdialog "Hintergrundgrafiken"/"Background graphics" aktivieren.
-  </div>
+
 
   <div class="card">
     <h2>Kopfdaten</h2>
@@ -681,7 +679,14 @@ window.addEventListener('message', function(e) {
     if (!msg) return;
     // Adressen
     if (msg.type === 'ADDR_LOAD_RESULT') handleAddrLoad(msg.items);
-    if (msg.type === 'ADDR_SAVE_RESULT') console.log('Adresse gespeichert', msg.spId);
+    if (msg.type === 'ADDR_SAVE_RESULT') {
+        // _spId zurück in addressBook schreiben damit Update statt Insert
+        if (msg.spId && msg.localId) {
+            const addr = addressBook.find(a => a.id === msg.localId);
+            if (addr) addr._spId = msg.spId;
+        }
+        showStatus('✅ Adresse gespeichert');
+    }
     if (msg.type === 'ADDR_DELETE_RESULT') console.log('Adresse gelöscht', msg.spId);
     // Spedition
     if (msg.type === 'SPED_LOAD_RESULT') handleSpedLoad(msg.items);
@@ -744,7 +749,7 @@ function saveAddressSP(blockPrefix) {
     }
     addressBook.push(entry);
     refreshAddressListSP();
-    window.parent.postMessage({ type: 'ADDR_SAVE', data: entry }, '*');
+    window.parent.postMessage({ type: 'ADDR_SAVE', data: entry, localId: entry.id }, '*');
 }
 
 /* ---- Speditionsliste ---- */
@@ -868,5 +873,6 @@ function showSpedList() {
 }
 
 </script>
+</div><!-- /spedFormContainer -->
 </body>
 </html>
