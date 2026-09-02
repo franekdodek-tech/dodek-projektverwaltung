@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bestellformular – Filter & Ventilator | Dodek Technik · v0.4.0</title>
+<title>Bestellformular – Filter & Ventilator | Dodek Technik · v0.5.0</title>
 <style>
   :root {
     --rot: #CC0000;
@@ -256,7 +256,7 @@
     <button class="btn-dateiname" onclick="exportiereJSONSP()">📤 JSON exportieren</button>
     <label class="btn-dateiname" style="cursor:pointer;">📥 JSON importieren<input type="file" accept="application/json" style="display:none" onchange="importiereJSONSP(event)"></label>
     <button class="btn-druck" onclick="drucken()">🖨 Drucken / PDF</button>
-    <span style="font-size:10px;color:#999;margin-left:8px;align-self:center;">v0.4.0</span>
+    <span style="font-size:10px;color:#999;margin-left:8px;align-self:center;">v0.5.0</span>
   </div>
 </div>
 
@@ -817,6 +817,7 @@
   /* ========== SharePoint Bridge via postMessage ========== */
   var bestellungList = [];
   var currentBestSpId = null;
+  var currentBestId = null; // Bleibt erhalten zwischen Speichervorgängen
 
   window.addEventListener('message', function(e) {
     var msg = e.data;
@@ -874,6 +875,7 @@
     var rec = bestellungList.find(function(r) { return r._id === id; });
     if (!rec) return;
     currentBestSpId = rec._spId || null;
+    currentBestId = rec._id || null;
     zeigTab(rec.aktiverTab || 'filter');
     alleFormFelder().forEach(function(el) {
       var key = el.dataset.fkey;
@@ -956,6 +958,8 @@
 
         if (!daten._id) daten._id = 'best_' + Date.now();
         daten.aktiverTab = tab;
+        currentBestId = daten._id;
+        currentBestSpId = daten._spId || null;
         // Metafelder für Liste aktualisieren
         daten.comNr = document.getElementById(tab === 'filter' ? 'f-com-nr' : 'v-com-nr').value;
         daten.comName = document.getElementById(tab === 'filter' ? 'f-com-name' : 'v-com-name').value;
@@ -980,6 +984,7 @@
 
   function neueBestellung() {
     currentBestSpId = null;
+    currentBestId = null;
     alleFormFelder().forEach(function(el) {
       if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
       else el.value = '';
@@ -1007,8 +1012,12 @@
     daten.comName = aktiverTab === 'filter'
       ? document.getElementById('f-com-name').value
       : document.getElementById('v-com-name').value;
-    if (!daten._id) daten._id = 'best_' + Date.now();
+
+    // _id persistent halten — wird beim ersten Speichern vergeben und nie geändert
+    if (!currentBestId) currentBestId = 'best_' + Date.now();
+    daten._id = currentBestId;
     if (currentBestSpId) daten._spId = currentBestSpId;
+
     var idx = bestellungList.findIndex(function(r) { return r._id === daten._id; });
     if (idx >= 0) bestellungList[idx] = daten; else bestellungList.push(daten);
     window.parent.postMessage({ type: 'BEST_SAVE', data: daten }, '*');
