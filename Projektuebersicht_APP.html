@@ -2709,7 +2709,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.5.0';
+        const APP_VERSION = 'v1.5.1';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -6579,11 +6579,11 @@ function applyPermissions() {
                         if (rec._spId) {
                             const url = `${TOOL_SP_CONFIG.siteUrl}/_api/web/lists(guid'${TOOL_SP_CONFIG.guidAdressen}')/items(${rec._spId})`;
                             await spToolFetch(url, { method:'PATCH', headers:{'IF-MATCH':'*'}, body:payload });
-                            source.postMessage({ type:'ADDR_SAVE_RESULT', spId: rec._spId }, '*');
+                            source.postMessage({ type:'ADDR_SAVE_RESULT', spId: rec._spId, localId: msg.localId }, '*');
                         } else {
                             const url = `${TOOL_SP_CONFIG.siteUrl}/_api/web/lists(guid'${TOOL_SP_CONFIG.guidAdressen}')/items`;
                             const result = await spToolFetch(url, { method:'POST', body:payload });
-                            source.postMessage({ type:'ADDR_SAVE_RESULT', spId: result?.Id }, '*');
+                            source.postMessage({ type:'ADDR_SAVE_RESULT', spId: result?.Id, localId: msg.localId }, '*');
                         }
                         break;
                     }
