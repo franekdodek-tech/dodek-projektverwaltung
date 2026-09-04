@@ -79,7 +79,10 @@
         .view-selector {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 15px;
         }
         
         .view {
@@ -1326,8 +1329,9 @@
                                 <th>Kunde</th>
                                 <th>Datum</th>
                                 <th class="number-cell">EK gesamt</th>
+                                <th class="number-cell">Rabatt</th>
                                 <th class="number-cell">VK Wiederverkauf</th>
-                                <th class="number-cell">VK Endkunde</th>
+                                <th class="number-cell">VK End</th>
                                 <th class="action-cell">Aktion</th>
                             </tr>
                         </thead>
@@ -1438,8 +1442,8 @@
                                     <th class="number-cell">EK gesamt</th>
                                     <th class="number-cell">VK WV/Stück</th>
                                     <th class="number-cell">VK WV gesamt</th>
-                                    <th class="number-cell">VK EK/Stück</th>
-                                    <th class="number-cell">VK EK gesamt</th>
+                                    <th class="number-cell">VK End/Stück</th>
+                                    <th class="number-cell">VK End gesamt</th>
                                     <th class="number-cell">VK Hand</th>
                                     <th class="action-cell">Aktion</th>
                                 </tr>
@@ -2716,7 +2720,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.3';
+        const APP_VERSION = 'v1.6.4';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5857,8 +5861,9 @@ function applyPermissions() {
             document.getElementById('quoteTitle').value = q.title || '';
             document.getElementById('quoteCustomer').value = q.customer || '';
             document.getElementById('quoteDate').value = q.date || new Date().toISOString().split('T')[0];
-            document.getElementById('quoteFactorReseller').value = q.factorReseller || 1.30;
-            document.getElementById('quoteFactorEndcustomer').value = q.factorEndcustomer || 1.60;
+            document.getElementById('quoteFactorReseller').value    = q.factorReseller || 1.30;
+            document.getElementById('quoteFactorEndcustomer').value  = q.factorEndcustomer || 1.60;
+            document.getElementById('quoteDiscount').value           = q.discount || 0;
             document.getElementById('quoteListSection').style.display = 'none';
             document.getElementById('quoteEditorSection').style.display = 'block';
             updateQuoteArticleSelect();
@@ -6109,7 +6114,7 @@ function applyPermissions() {
                     <div style="font-size:12px;color:#666;">DB: ${formatCurrency(dbReseller)} (${dbPctReseller.toFixed(1)}%)</div>
                 </div>
                 <div class="summary-card" style="background:white;border-radius:8px;padding:15px 20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);min-width:180px;text-align:right;">
-                    <div style="font-size:12px;color:#666;margin-bottom:4px;">VK Endkunde</div>
+                    <div style="font-size:12px;color:#666;margin-bottom:4px;">VK End</div>
                     <div style="font-size:20px;font-weight:700;color:#28a745;">${formatCurrency(totalVKEndcust)}</div>
                     <div style="font-size:12px;color:#666;">DB: ${formatCurrency(dbEndcust)} (${dbPctEndcust.toFixed(1)}%)</div>
                 </div>
@@ -6138,15 +6143,20 @@ function applyPermissions() {
             tbody.innerHTML = quotes.map(q => {
                 const r = q.factorReseller || 1.30;
                 const e = q.factorEndcustomer || 1.60;
+                const discount = q.discount || 0;
+                const discountFactor = 1 - (discount / 100);
                 const totalEK = (q.positions || []).reduce((s, p) => s + (p.totalEK || 0), 0);
+                const vkR = totalEK * r * discountFactor;
+                const vkE = totalEK * e * discountFactor;
                 return `
                 <tr style="cursor:pointer;" onclick="openExistingQuote('${q.id}')">
                     <td><strong>${q.title || '—'}</strong></td>
                     <td>${q.customer || '—'}</td>
                     <td>${q.date || '—'}</td>
                     <td class="number-cell">${formatCurrency(totalEK)}</td>
-                    <td class="number-cell" style="color:#366092;">${formatCurrency(totalEK * r)}</td>
-                    <td class="number-cell" style="color:#28a745;">${formatCurrency(totalEK * e)}</td>
+                    <td class="number-cell">${discount > 0 ? `<span style="color:#fd7e14;font-weight:600;">${discount.toFixed(1)} %</span>` : '—'}</td>
+                    <td class="number-cell" style="color:#366092;">${formatCurrency(vkR)}</td>
+                    <td class="number-cell" style="color:#28a745;">${formatCurrency(vkE)}</td>
                     <td class="action-cell" onclick="event.stopPropagation()">
                         <button onclick="openExistingQuote('${q.id}')" class="btn-small btn-secondary">✏️</button>
                         <button onclick="deleteQuoteById('${q.id}')" class="btn-danger btn-small">🗑️</button>
@@ -6166,13 +6176,14 @@ function applyPermissions() {
             const q = window.currentQuote;
             if (!q) return;
 
-            q.title            = document.getElementById('quoteTitle').value.trim();
-            q.customer         = document.getElementById('quoteCustomer').value.trim();
-            q.date             = document.getElementById('quoteDate').value;
-            q.factorReseller   = parseFloat(document.getElementById('quoteFactorReseller').value) || 1.30;
+            q.title             = document.getElementById('quoteTitle').value.trim();
+            q.customer          = document.getElementById('quoteCustomer').value.trim();
+            q.date              = document.getElementById('quoteDate').value;
+            q.factorReseller    = parseFloat(document.getElementById('quoteFactorReseller').value) || 1.30;
             q.factorEndcustomer = parseFloat(document.getElementById('quoteFactorEndcustomer').value) || 1.60;
+            q.discount          = parseFloat(document.getElementById('quoteDiscount').value) || 0;
 
-            if (!q.title) { showMessage('Bezeichnung erforderlich', 'error'); return; }
+            if (!q.title) { window.showMessage('Bezeichnung erforderlich', 'error'); return; }
 
             // _spId aus bestehender Datenbank übernehmen falls vorhanden
             if (window.quoteDatabase[q.id]?._spId) {
@@ -6359,8 +6370,8 @@ function applyPermissions() {
                                 <th class="number">EK gesamt</th>
                                 <th class="number">VK WV/Stück</th>
                                 <th class="number">VK WV gesamt</th>
-                                <th class="number">VK EK/Stück</th>
-                                <th class="number">VK EK gesamt</th>
+                                <th class="number">VK End/Stück</th>
+                                <th class="number">VK End gesamt</th>
                                 <th class="number">VK Hand</th>
                             </tr>
                         </thead>
@@ -6414,7 +6425,7 @@ function applyPermissions() {
                             <div class="summary-label">DB: ${dbR.toFixed(2)} € (${totalVKR > 0 ? (dbR/totalVKR*100).toFixed(1) : 0}%)</div>
                         </div>
                         <div class="summary-box">
-                            <div class="summary-label">VK Endkunde</div>
+                            <div class="summary-label">VK End</div>
                             <div class="summary-value" style="color:#28a745;">${totalVKE.toFixed(2)} €</div>
                             <div class="summary-label">DB: ${dbE.toFixed(2)} € (${totalVKE > 0 ? (dbE/totalVKE*100).toFixed(1) : 0}%)</div>
                         </div>
@@ -6477,7 +6488,7 @@ function applyPermissions() {
                                 <th class="number">EK-Preis</th>
                                 <th class="number">EK gesamt</th>
                                 <th class="number">VK Wiederverkauf</th>
-                                <th class="number">VK Endkunde</th>
+                                <th class="number">VK End</th>
                                 <th class="number">VK Hand</th>
                             </tr>
                         </thead>
@@ -6519,7 +6530,7 @@ function applyPermissions() {
                             <div class="summary-label">DB: ${dbR.toFixed(2)} € (${(dbR/totalVKR*100).toFixed(1)}%)</div>
                         </div>
                         <div class="summary-box">
-                            <div class="summary-label">VK Endkunde</div>
+                            <div class="summary-label">VK End</div>
                             <div class="summary-value" style="color:#28a745;">${totalVKE.toFixed(2)} €</div>
                             <div class="summary-label">DB: ${dbE.toFixed(2)} € (${(dbE/totalVKE*100).toFixed(1)}%)</div>
                         </div>
