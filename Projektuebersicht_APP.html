@@ -1089,7 +1089,7 @@
             <button onclick="showView('statistics')">📈 Statistiken</button>
             <button onclick="showView('tasks')">📋 Aufgaben</button>
             <button onclick="showView('stock')">📦 Lager</button>
-            <button onclick="showView('quotes')">🧮 Vorkalkulation</button>
+            <button onclick="showView('quotes')">🧮 Kalkulation</button>
             <button onclick="showView('editor')" id="editorButton" style="display: none;">📝 Projekt bearbeiten</button>
             <button onclick="showView('articles')">📦 Artikelstamm</button>
             <button onclick="showView('tools')">🛠️ Tools</button>
@@ -1310,13 +1310,13 @@
 
         <!-- QUOTES VIEW -->
         <div id="quotesView" class="view">
-            <h2 style="margin-bottom: 20px;">🧮 Vorkalkulation</h2>
+            <h2 style="margin-bottom: 20px;">🧮 Kalkulation</h2>
 
-            <!-- Liste der Vorkalkulationen -->
+            <!-- Liste der Kalkulationen -->
             <div id="quoteListSection" class="positions-section" style="margin-bottom: 20px;">
                 <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
-                    <h3>Vorkalkulationen</h3>
-                    <button onclick="createNewQuote()" class="btn-success">+ Neue Vorkalkulation</button>
+                    <h3>Kalkulationen</h3>
+                    <button onclick="createNewQuote()" class="btn-success">+ Neue Kalkulation</button>
                 </div>
                 <div class="positions-table-wrapper">
                     <table>
@@ -1336,7 +1336,7 @@
                 </div>
             </div>
 
-            <!-- Editor für eine Vorkalkulation -->
+            <!-- Editor für eine Kalkulation -->
             <div id="quoteEditorSection" style="display:none;">
 
                 <!-- Kopfdaten -->
@@ -1387,13 +1387,17 @@
                     </div>
 
                     <div class="add-position-form">
-                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
-                            <div style="flex:1; min-width:150px;">
+                        <!-- Zeile 1: Artikelstamm -->
+                        <div style="display:flex; gap:8px; align-items:flex-end; margin-bottom:10px;">
+                            <div style="flex:1; max-width:400px;">
                                 <label>Aus Artikelstamm</label>
                                 <select id="quoteArticleSelect" onchange="fillQuoteFromArticle()">
                                     <option value="">-- optional --</option>
                                 </select>
                             </div>
+                        </div>
+                        <!-- Zeile 2: Manuelle Felder -->
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
                             <div style="flex:2; min-width:160px;">
                                 <label>Beschreibung *</label>
                                 <input type="text" id="newQuoteDescription" placeholder="Positionsbeschreibung">
@@ -1430,10 +1434,12 @@
                                     <th>Gewerk</th>
                                     <th>Stückliste</th>
                                     <th class="number-cell">Menge</th>
-                                    <th class="number-cell">EK-Preis</th>
+                                    <th class="number-cell">EK/Stück</th>
                                     <th class="number-cell">EK gesamt</th>
-                                    <th class="number-cell">VK Wiederverkauf</th>
-                                    <th class="number-cell">VK Endkunde</th>
+                                    <th class="number-cell">VK WV/Stück</th>
+                                    <th class="number-cell">VK WV gesamt</th>
+                                    <th class="number-cell">VK EK/Stück</th>
+                                    <th class="number-cell">VK EK gesamt</th>
                                     <th class="number-cell">VK Hand</th>
                                     <th class="action-cell">Aktion</th>
                                 </tr>
@@ -1622,9 +1628,9 @@
                 </div>
             </div>
 
-            <!-- Vorkalkulations-Faktoren -->
+            <!-- Kalkulationsfaktoren -->
             <div class="positions-section" style="margin-bottom: 20px;">
-                <div class="section-header"><h3>🧮 Vorkalkulations-Faktoren (Standard)</h3></div>
+                <div class="section-header"><h3>🧮 Kalkulations-Faktoren (Standard)</h3></div>
                 <div style="padding: 20px; display:flex; gap:20px; flex-wrap:wrap; align-items:flex-end;">
                     <div>
                         <label>Faktor Wiederverkauf</label>
@@ -2526,7 +2532,7 @@ function applyPermissions() {
                     }
                 });
             } catch (e) {
-                console.error('Fehler beim Laden der Vorkalkulationen:', e);
+                console.error('Fehler beim Laden der Kalkulationen:', e);
             }
         }
 
@@ -2709,7 +2715,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.5.1';
+        const APP_VERSION = 'v1.6.0';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5950,8 +5956,10 @@ function applyPermissions() {
                 const hasBOM = pos.bom.length > 0;
                 const vkReseller    = pos.totalEK * reseller * discountFactor;
                 const vkEndcustomer = pos.totalEK * endcustomer * discountFactor;
-                const dbR = vkReseller - pos.totalEK;
-                const dbE = vkEndcustomer - pos.totalEK;
+                const qty           = pos.quantity || 1;
+                const ekPerUnit     = pos.totalEK / qty;
+                const vkRPerUnit    = vkReseller / qty;
+                const vkEPerUnit    = vkEndcustomer / qty;
                 const vkHand = pos.vkHand !== undefined ? pos.vkHand : '';
 
                 // BOM-Zeilen
@@ -5960,12 +5968,12 @@ function applyPermissions() {
                     <td colspan="2" style="padding-left:30px;">
                         <input type="text" value="${comp.description}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'description', this.value)"
-                               placeholder="Komponente" style="width:100%;font-size:12px;">
+                               style="width:100%;font-size:12px;">
                     </td>
                     <td>
                         <input type="text" value="${comp.supplier || ''}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'supplier', this.value)"
-                               placeholder="Lieferant" style="width:100%;font-size:12px;">
+                               style="width:100%;font-size:12px;">
                     </td>
                     <td class="number-cell">
                         <input type="number" step="0.01" value="${comp.quantity}"
@@ -5978,7 +5986,7 @@ function applyPermissions() {
                                style="width:80px;font-size:12px;">
                     </td>
                     <td class="number-cell" style="font-size:12px;">${formatCurrency(comp.quantity * comp.unitPrice)}</td>
-                    <td colspan="3"></td>
+                    <td colspan="5"></td>
                     <td class="action-cell">
                         <button onclick="removeQuoteBOMItem(${index}, ${bi})" class="btn-danger btn-small" style="font-size:11px;">×</button>
                     </td>
@@ -6000,6 +6008,8 @@ function applyPermissions() {
                     <td class="editable-cell" style="white-space:nowrap;">
                         <button onclick="importBOMFromArticle(${index})" class="btn-secondary btn-small" title="Stückliste aus Artikelstamm importieren" style="font-size:11px;">📋</button>
                         <button onclick="addQuoteBOMItem(${index})" class="btn-secondary btn-small" title="Komponente hinzufügen" style="font-size:11px;">+</button>
+                        <button onclick="copyQuotePosition(${index})" class="btn-secondary btn-small" title="Position kopieren" style="font-size:11px;">⧉</button>
+                        <button onclick="saveQuotePositionAsArticle(${index})" class="btn-secondary btn-small" title="Als Artikel speichern" style="font-size:11px;">💾</button>
                         ${hasBOM ? `<span style="font-size:11px;color:#366092;">${pos.bom.length} Komp.</span>` : ''}
                     </td>
                     <td class="number-cell editable-cell">
@@ -6008,15 +6018,17 @@ function applyPermissions() {
                                style="width:70px;text-align:right;">
                     </td>
                     <td class="number-cell" style="color:#666;font-size:12px;">
-                        ${hasBOM ? `<em>aus BOM</em>` : `<input type="number" step="0.01" value="${pos.unitPrice}"
+                        ${hasBOM ? `<span style="font-size:11px;">${formatCurrency(ekPerUnit)}</span>` : `<input type="number" step="0.01" value="${pos.unitPrice}"
                                onchange="updateQuotePosition(${index}, 'unitPrice', this.value)"
                                style="width:90px;text-align:right;">`}
                     </td>
                     <td class="number-cell">${formatCurrency(pos.totalEK)}</td>
+                    <td class="number-cell" style="color:#366092;font-size:12px;">${formatCurrency(vkRPerUnit)}</td>
                     <td class="number-cell" style="color:#366092;">
                         ${formatCurrency(vkReseller)}
                         <span style="font-size:11px;color:#888;"> (${pos.totalEK > 0 ? ((vkReseller - pos.totalEK) / vkReseller * 100).toFixed(1) : 0}%)</span>
                     </td>
+                    <td class="number-cell" style="color:#28a745;font-size:12px;">${formatCurrency(vkEPerUnit)}</td>
                     <td class="number-cell" style="color:#28a745;">
                         ${formatCurrency(vkEndcustomer)}
                         <span style="font-size:11px;color:#888;"> (${pos.totalEK > 0 ? ((vkEndcustomer - pos.totalEK) / vkEndcustomer * 100).toFixed(1) : 0}%)</span>
@@ -6032,7 +6044,7 @@ function applyPermissions() {
                     </td>
                 </tr>
                 ${bomRows}
-                ${hasBOM ? `<tr style="background:#f0f4ff;"><td colspan="9" style="padding:4px 6px 8px 30px;font-size:11px;color:#366092;">
+                ${hasBOM ? `<tr style="background:#f0f4ff;"><td colspan="11" style="padding:4px 6px 8px 30px;font-size:11px;color:#366092;">
                     EK gesamt (BOM × ${pos.quantity}×): <strong>${formatCurrency(pos.totalEK)}</strong>
                 </td></tr>` : ''}`;
             }).join('');
@@ -6096,7 +6108,7 @@ function applyPermissions() {
             const quotes = Object.values(window.quoteDatabase || {});
 
             if (quotes.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:#999;">Noch keine Vorkalkulationen — oben "Neue Vorkalkulation" klicken.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:#999;">Noch keine Kalkulationen — oben "Neue Kalkulation" klicken.</td></tr>`;
                 return;
             }
 
@@ -6277,11 +6289,132 @@ function applyPermissions() {
             const { reseller, endcustomer, discount } = getQuoteFactors();
             const discountFactor = 1 - (discount / 100);
             const positions = q.positions || [];
-            const totalEK = positions.reduce((s, p) => s + p.totalEK, 0);
-            const totalVKR = totalEK * reseller;
-            const totalVKE = totalEK * endcustomer;
+            const totalEK    = positions.reduce((s, p) => s + p.totalEK, 0);
+            const totalVKR   = totalEK * reseller * discountFactor;
+            const totalVKE   = totalEK * endcustomer * discountFactor;
             const dbR = totalVKR - totalEK;
             const dbE = totalVKE - totalEK;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="de">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Kalkulation — ${q.title || '—'}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; font-size: 11px; margin: 20px; color: #333; }
+                        h1 { font-size: 16px; color: #366092; margin-bottom: 5px; }
+                        .meta { color: #666; margin-bottom: 10px; font-size: 10px; }
+                        .factors { font-size: 10px; color: #555; margin-bottom: 15px; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10px; }
+                        th { background: #366092; color: white; padding: 5px 6px; text-align: left; }
+                        td { padding: 4px 6px; border-bottom: 1px solid #eee; }
+                        .number { text-align: right; }
+                        .summary { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px; }
+                        .summary-box { border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; min-width: 140px; }
+                        .summary-label { font-size: 9px; color: #666; }
+                        .summary-value { font-size: 14px; font-weight: bold; }
+                        @media print { body { margin: 10px; } }
+                    </style>
+                </head>
+                <body>
+                    <h1>Kalkulation — ${q.title || '—'}</h1>
+                    <div class="meta">
+                        Kunde: ${q.customer || '—'} &nbsp;|&nbsp; Datum: ${q.date || '—'} &nbsp;|&nbsp; Dodek GmbH & Co. KG
+                    </div>
+                    <div class="factors">
+                        Faktor Wiederverkauf: ${reseller.toFixed(2)} &nbsp;|&nbsp;
+                        Faktor Endkunde: ${endcustomer.toFixed(2)}
+                        ${discount > 0 ? ` &nbsp;|&nbsp; <strong style="color:#fd7e14;">Projektrabatt: ${discount.toFixed(1)} %</strong>` : ''}
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Beschreibung</th>
+                                <th>Gewerk</th>
+                                <th class="number">Menge</th>
+                                <th class="number">EK/Stück</th>
+                                <th class="number">EK gesamt</th>
+                                <th class="number">VK WV/Stück</th>
+                                <th class="number">VK WV gesamt</th>
+                                <th class="number">VK EK/Stück</th>
+                                <th class="number">VK EK gesamt</th>
+                                <th class="number">VK Hand</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${positions.map(pos => {
+                                const hasBOM = pos.bom && pos.bom.length > 0;
+                                const qty = pos.quantity || 1;
+                                const vkR = pos.totalEK * reseller * discountFactor;
+                                const vkE = pos.totalEK * endcustomer * discountFactor;
+                                const ekUnit = pos.totalEK / qty;
+                                const vkRUnit = vkR / qty;
+                                const vkEUnit = vkE / qty;
+                                const bomRows = hasBOM ? pos.bom.map(comp => `
+                                <tr style="background:#f9f9f9;font-size:9px;">
+                                    <td style="padding-left:18px;color:#666;">↳ ${comp.description}${comp.supplier ? ` <em>(${comp.supplier})</em>` : ''}</td>
+                                    <td style="color:#666;">—</td>
+                                    <td class="number" style="color:#666;">${comp.quantity}</td>
+                                    <td class="number" style="color:#666;">${comp.unitPrice.toFixed(2)} €</td>
+                                    <td class="number" style="color:#666;">${(comp.quantity * comp.unitPrice).toFixed(2)} €</td>
+                                    <td colspan="5"></td>
+                                </tr>`).join('') : '';
+                                return `
+                                <tr>
+                                    <td><strong>${pos.description}</strong></td>
+                                    <td>${pos.trade || '—'}</td>
+                                    <td class="number">${qty}</td>
+                                    <td class="number">${hasBOM ? '<em>BOM</em>' : ekUnit.toFixed(2) + ' €'}</td>
+                                    <td class="number">${pos.totalEK.toFixed(2)} €</td>
+                                    <td class="number" style="color:#366092;">${vkRUnit.toFixed(2)} €</td>
+                                    <td class="number" style="color:#366092;">${vkR.toFixed(2)} € <small>(DB: ${pos.totalEK > 0 ? ((vkR-pos.totalEK)/vkR*100).toFixed(1) : 0}%)</small></td>
+                                    <td class="number" style="color:#28a745;">${vkEUnit.toFixed(2)} €</td>
+                                    <td class="number" style="color:#28a745;">${vkE.toFixed(2)} € <small>(DB: ${pos.totalEK > 0 ? ((vkE-pos.totalEK)/vkE*100).toFixed(1) : 0}%)</small></td>
+                                    <td class="number">${pos.vkHand ? parseFloat(pos.vkHand).toFixed(2) + ' €' : '—'}</td>
+                                </tr>
+                                ${bomRows}`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                    <div class="summary">
+                        <div class="summary-box">
+                            <div class="summary-label">EK gesamt</div>
+                            <div class="summary-value">${totalEK.toFixed(2)} €</div>
+                        </div>
+                        ${discount > 0 ? `<div class="summary-box" style="border:1px solid #ffc107;background:#fff8e1;">
+                            <div class="summary-label">Projektrabatt</div>
+                            <div class="summary-value" style="color:#fd7e14;">${discount.toFixed(1)} %</div>
+                        </div>` : ''}
+                        <div class="summary-box">
+                            <div class="summary-label">VK Wiederverkauf</div>
+                            <div class="summary-value" style="color:#366092;">${totalVKR.toFixed(2)} €</div>
+                            <div class="summary-label">DB: ${dbR.toFixed(2)} € (${totalVKR > 0 ? (dbR/totalVKR*100).toFixed(1) : 0}%)</div>
+                        </div>
+                        <div class="summary-box">
+                            <div class="summary-label">VK Endkunde</div>
+                            <div class="summary-value" style="color:#28a745;">${totalVKE.toFixed(2)} €</div>
+                            <div class="summary-label">DB: ${dbE.toFixed(2)} € (${totalVKE > 0 ? (dbE/totalVKE*100).toFixed(1) : 0}%)</div>
+                        </div>
+                        ${(() => {
+                            const totalVKHand = positions.filter(p => p.vkHand).reduce((s, p) => s + (parseFloat(p.vkHand) || 0), 0) * discountFactor;
+                            if (totalVKHand <= 0) return '';
+                            const dbHand = totalVKHand - totalEK;
+                            const dbPctHand = totalEK > 0 ? (dbHand / totalVKHand * 100) : 0;
+                            return `<div class="summary-box" style="border:2px solid #fd7e14;">
+                                <div class="summary-label">VK Hand (manuell)</div>
+                                <div class="summary-value" style="color:#fd7e14;">${totalVKHand.toFixed(2)} €</div>
+                                <div class="summary-label">DB: ${dbHand.toFixed(2)} € (${dbPctHand.toFixed(1)}%)</div>
+                            </div>`;
+                        })()}
+                    </div>
+                    <script>window.onload = function() { window.print(); }<\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
 
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`
@@ -6456,6 +6589,48 @@ function applyPermissions() {
             renderQuotePositions();
             showMessage(`${article.bom.length} Komponenten aus "${article.name}" importiert`, 'success');
         }
+
+        function copyQuotePosition(index) {
+            const pos = window.currentQuote.positions[index];
+            if (!pos) return;
+            const copy = JSON.parse(JSON.stringify(pos));
+            copy.id = `qpos_${Date.now()}`;
+            window.currentQuote.positions.splice(index + 1, 0, copy);
+            renderQuotePositions();
+            showMessage('Position kopiert', 'success');
+        }
+        window.copyQuotePosition = copyQuotePosition;
+
+        function saveQuotePositionAsArticle(index) {
+            const pos = window.currentQuote.positions[index];
+            if (!pos) return;
+
+            const artId   = prompt('Artikel-ID:', pos.description.substring(0, 10).replace(/\s/g, '_').toUpperCase());
+            if (!artId) return;
+            if (articleDatabase[artId]) {
+                if (!confirm(`Artikel "${artId}" existiert bereits. Überschreiben?`)) return;
+            }
+            const artName = prompt('Artikelname:', pos.description);
+            if (!artName) return;
+
+            const article = {
+                id:            artId,
+                name:          artName,
+                purchasePrice: pos.unitPrice || 0,
+                bom:           (pos.bom || []).map(comp => ({
+                    name:               comp.description,
+                    supplier:           comp.supplier || '',
+                    quantity:           comp.quantity,
+                    price:              comp.unitPrice,
+                    supplierArticleNumber: ''
+                }))
+            };
+
+            articleDatabase[artId] = article;
+            saveArticleToSharePoint(article);
+            showMessage(`Artikel "${artId}" im Stamm gespeichert`, 'success');
+        }
+        window.saveQuotePositionAsArticle = saveQuotePositionAsArticle;
 
         window.addQuoteBOMItem = addQuoteBOMItem;
         window.removeQuoteBOMItem = removeQuoteBOMItem;
@@ -7080,5 +7255,4 @@ function applyPermissions() {
 
         window.applyPermissions = applyPermissions;
 
-        } // Ende initApp
     </script>
