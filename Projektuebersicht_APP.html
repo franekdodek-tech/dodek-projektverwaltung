@@ -2238,8 +2238,7 @@ function applyPermissions() {
             });
         });
 
-        function initApp() {
-
+        // SP_CONFIG global — wird von initApp und Tool-Bridge benötigt
         const SP_CONFIG = {
             tenantId:     '1100d6c4-c332-4483-a651-db30fc47132e',
             clientId:     'b1546e68-d699-43ac-8a09-277fd5f18b57',
@@ -2254,6 +2253,8 @@ function applyPermissions() {
             guidQuotes:   '39105ce6-473c-4af0-bab0-68659edcbed3',
             guidSettings: '89b9fdeb-6907-4cfc-a1f5-2bc8bc0bdbe2'
         };
+
+        function initApp() {
 
         const msalConfig = {
             auth: {
@@ -2715,7 +2716,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.0';
+        const APP_VERSION = 'v1.6.2';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
