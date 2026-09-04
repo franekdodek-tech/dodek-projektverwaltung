@@ -2716,7 +2716,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.2';
+        const APP_VERSION = 'v1.6.3';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5982,8 +5982,9 @@ function applyPermissions() {
                 const vkEPerUnit    = vkEndcustomer / qty;
                 const vkHand = pos.vkHand !== undefined ? pos.vkHand : '';
 
-                // BOM-Zeilen
-                const bomRows = hasBOM ? pos.bom.map((comp, bi) => `
+                // BOM-Zeilen (klappbar)
+                const bomCollapsed = pos._bomCollapsed || false;
+                const bomRows = hasBOM ? (bomCollapsed ? '' : pos.bom.map((comp, bi) => `
                 <tr style="background:#f8f9fa;">
                     <td colspan="2" style="padding-left:30px;">
                         <input type="text" value="${comp.description}"
@@ -6010,7 +6011,7 @@ function applyPermissions() {
                     <td class="action-cell">
                         <button onclick="removeQuoteBOMItem(${index}, ${bi})" class="btn-danger btn-small" style="font-size:11px;">×</button>
                     </td>
-                </tr>`).join('') : '';
+                </tr>`).join('')) : '';
 
                 return `
                 <tr>
@@ -6030,7 +6031,7 @@ function applyPermissions() {
                         <button onclick="addQuoteBOMItem(${index})" class="btn-secondary btn-small" title="Komponente hinzufügen" style="font-size:11px;">+</button>
                         <button onclick="copyQuotePosition(${index})" class="btn-secondary btn-small" title="Position kopieren" style="font-size:11px;">⧉</button>
                         <button onclick="saveQuotePositionAsArticle(${index})" class="btn-secondary btn-small" title="Als Artikel speichern" style="font-size:11px;">💾</button>
-                        ${hasBOM ? `<span style="font-size:11px;color:#366092;">${pos.bom.length} Komp.</span>` : ''}
+                        ${hasBOM ? `<button onclick="toggleQuoteBOM(${index})" class="btn-secondary btn-small" style="font-size:11px;" title="${bomCollapsed ? 'BOM einblenden' : 'BOM ausblenden'}">${bomCollapsed ? '▶' : '▼'} ${pos.bom.length} Komp.</button>` : ''}
                     </td>
                     <td class="number-cell editable-cell">
                         <input type="number" step="0.01" value="${pos.quantity}"
@@ -6601,7 +6602,7 @@ function applyPermissions() {
             copy.id = `qpos_${Date.now()}`;
             window.currentQuote.positions.splice(index + 1, 0, copy);
             renderQuotePositions();
-            showMessage('Position kopiert', 'success');
+            window.showMessage('Position kopiert', 'success');
         }
         window.copyQuotePosition = copyQuotePosition;
 
@@ -6609,7 +6610,7 @@ function applyPermissions() {
             const pos = window.currentQuote.positions[index];
             if (!pos) return;
 
-            const artId   = prompt('Artikel-ID:', pos.description.substring(0, 10).replace(/\s/g, '_').toUpperCase());
+            const artId = prompt('Artikel-ID:', pos.description.substring(0, 10).replace(/\s/g, '_').toUpperCase());
             if (!artId) return;
             if (articleDatabase[artId]) {
                 if (!confirm(`Artikel "${artId}" existiert bereits. Überschreiben?`)) return;
@@ -6622,19 +6623,27 @@ function applyPermissions() {
                 name:          artName,
                 purchasePrice: pos.unitPrice || 0,
                 bom:           (pos.bom || []).map(comp => ({
-                    name:               comp.description,
-                    supplier:           comp.supplier || '',
-                    quantity:           comp.quantity,
-                    price:              comp.unitPrice,
-                    supplierArticleNumber: ''
+                    name:                 comp.description,
+                    supplier:             comp.supplier || '',
+                    quantity:             comp.quantity,
+                    price:                comp.unitPrice,
+                    supplierArticleNumber:''
                 }))
             };
 
             articleDatabase[artId] = article;
             saveArticleToSharePoint(article);
-            showMessage(`Artikel "${artId}" im Stamm gespeichert`, 'success');
+            window.showMessage(`Artikel "${artId}" im Stamm gespeichert`, 'success');
         }
         window.saveQuotePositionAsArticle = saveQuotePositionAsArticle;
+
+        function toggleQuoteBOM(index) {
+            const pos = window.currentQuote.positions[index];
+            if (!pos) return;
+            pos._bomCollapsed = !pos._bomCollapsed;
+            renderQuotePositions();
+        }
+        window.toggleQuoteBOM = toggleQuoteBOM;
 
         window.addQuoteBOMItem = addQuoteBOMItem;
         window.removeQuoteBOMItem = removeQuoteBOMItem;
