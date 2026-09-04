@@ -5831,6 +5831,25 @@ function applyPermissions() {
             };
             openQuoteEditor();
         }
+        window.createNewQuote            = createNewQuote;
+        window.openExistingQuote         = openExistingQuote;
+        window.showQuoteList             = showQuoteList;
+        window.openQuoteEditor           = openQuoteEditor;
+        window.addQuotePosition          = addQuotePosition;
+        window.deleteQuotePosition       = deleteQuotePosition;
+        window.updateQuotePosition       = updateQuotePosition;
+        window.saveQuote                 = saveQuote;
+        window.deleteCurrentQuote        = deleteCurrentQuote;
+        window.deleteQuoteById           = deleteQuoteById;
+        window.convertQuoteToProject     = convertQuoteToProject;
+        window.printQuote                = printQuote;
+        window.fillQuoteFromArticle      = fillQuoteFromArticle;
+        window.updateQuoteArticleSelect  = updateQuoteArticleSelect;
+        window.renderQuotePositions      = renderQuotePositions;
+        window.renderQuoteSummary        = renderQuoteSummary;
+        window.renderQuoteList           = renderQuoteList;
+        window.getQuoteFactors           = getQuoteFactors;
+        window.recalcQuotePosition       = recalcQuotePosition;
 
         function openQuoteEditor() {
             const q = window.currentQuote;
@@ -6520,22 +6539,6 @@ function applyPermissions() {
             `);
             printWindow.document.close();
         }
-
-        // Globale Expositionen
-        window.createNewQuote = createNewQuote;
-        window.openExistingQuote = openExistingQuote;
-        window.showQuoteList = showQuoteList;
-        window.addQuotePosition = addQuotePosition;
-        window.deleteQuotePosition = deleteQuotePosition;
-        window.updateQuotePosition = updateQuotePosition;
-        window.saveQuote = saveQuote;
-        window.deleteCurrentQuote = deleteCurrentQuote;
-        window.deleteQuoteById = deleteQuoteById;
-        window.convertQuoteToProject = convertQuoteToProject;
-        window.printQuote = printQuote;
-        window.fillQuoteFromArticle = fillQuoteFromArticle;
-        window.updateQuoteArticleSelect = updateQuoteArticleSelect;
-        window.renderQuotePositions = renderQuotePositions;
 
         function addQuoteBOMItem(posIndex) {
             const pos = window.currentQuote.positions[posIndex];
