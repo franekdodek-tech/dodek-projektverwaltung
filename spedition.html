@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Speditionsauftrag · v0.4.0</title>
+<title>Speditionsauftrag · v0.5.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
@@ -95,7 +95,7 @@
     <button type="button" class="primary" onclick="printPdf()">🖨️ PDF erzeugen</button>
     <button type="button" onclick="exportJson()">📤 JSON exportieren</button>
     <label class="filebtn">📥 JSON importieren<input type="file" accept=".json,application/json" onchange="handleJsonImportSP(this)"></label>
-    <span style="font-size:10px;color:rgba(255,255,255,0.6);margin-left:8px;align-self:center;">v0.4.0</span>
+    <span style="font-size:10px;color:rgba(255,255,255,0.6);margin-left:8px;align-self:center;">v0.5.0</span>
   </div>
 </header>
 
@@ -690,6 +690,10 @@ window.addEventListener('message', function(e) {
     if (msg.type === 'ADDR_DELETE_RESULT') console.log('Adresse gelöscht', msg.spId);
     // Spedition
     if (msg.type === 'SPED_LOAD_RESULT') handleSpedLoad(msg.items);
+    if (msg.type === 'SPED_LOAD_TRIGGER') {
+        window.parent.postMessage({ type: 'ADDR_LOAD' }, '*');
+        window.parent.postMessage({ type: 'SPED_LOAD' }, '*');
+    }
     if (msg.type === 'SPED_SAVE_RESULT') { showStatus('✅ Gespeichert in SharePoint'); }
     if (msg.type === 'SPED_DELETE_RESULT') { showStatus('🗑️ Gelöscht'); renderSpedList(); }
     if (msg.type === 'ERROR') { showStatus('❌ Fehler: ' + msg.error); }
@@ -698,8 +702,17 @@ window.addEventListener('message', function(e) {
 // Lade Daten beim Start
 window.addEventListener('DOMContentLoaded', function() {
     loadFromState(emptyState());
-    window.parent.postMessage({ type: 'ADDR_LOAD' }, '*');
-    window.parent.postMessage({ type: 'SPED_LOAD' }, '*');
+    // Kurze Verzögerung damit Hub-Listener bereit ist
+    setTimeout(function() {
+        window.parent.postMessage({ type: 'ADDR_LOAD' }, '*');
+        window.parent.postMessage({ type: 'SPED_LOAD' }, '*');
+    }, 500);
+    // Retry falls keine Antwort kommt
+    setTimeout(function() {
+        if (spedList.length === 0) {
+            window.parent.postMessage({ type: 'SPED_LOAD' }, '*');
+        }
+    }, 3000);
 });
 
 /* ---- Adressbuch ---- */
