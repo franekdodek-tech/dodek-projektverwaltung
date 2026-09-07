@@ -2722,7 +2722,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.5';
+        const APP_VERSION = 'v1.6.6';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -3541,6 +3541,17 @@ function applyPermissions() {
                 document.getElementById('toolsView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
                 showTool('spedition');
+                // Kurze Verzögerung damit iframes geladen sind
+                setTimeout(() => {
+                    const iframeSped = document.getElementById('iframeSpedition');
+                    const iframeBest = document.getElementById('iframeBestellung');
+                    if (iframeSped?.contentWindow) {
+                        iframeSped.contentWindow.postMessage({ type: 'SPED_LOAD_TRIGGER' }, '*');
+                    }
+                    if (iframeBest?.contentWindow) {
+                        iframeBest.contentWindow.postMessage({ type: 'BEST_LOAD_TRIGGER' }, '*');
+                    }
+                }, 800);
             }
         }
         
