@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Speditionsauftrag · v0.3.0</title>
+<title>Speditionsauftrag · v0.4.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
@@ -95,7 +95,7 @@
     <button type="button" class="primary" onclick="printPdf()">🖨️ PDF erzeugen</button>
     <button type="button" onclick="exportJson()">📤 JSON exportieren</button>
     <label class="filebtn">📥 JSON importieren<input type="file" accept=".json,application/json" onchange="handleJsonImportSP(this)"></label>
-    <span style="font-size:10px;color:rgba(255,255,255,0.6);margin-left:8px;align-self:center;">v0.3.0</span>
+    <span style="font-size:10px;color:rgba(255,255,255,0.6);margin-left:8px;align-self:center;">v0.4.0</span>
   </div>
 </header>
 
@@ -785,6 +785,7 @@ function renderSpedList() {
             <td style="padding:6px 8px;">${r.empfaenger?.firma||'—'}</td>
             <td style="padding:6px 8px;">${r.frachtzahler?.komNr||'—'}</td>
             <td style="padding:6px 8px;" onclick="event.stopPropagation()">
+                <button onclick="copySpedRecord('${r.id}')" style="border:none;background:#6c757d;color:white;padding:3px 8px;border-radius:3px;cursor:pointer;font-size:11px;margin-right:3px;" title="Als Vorlage kopieren">⧉</button>
                 <button onclick="deleteSpedRecord('${r.id}','${r._spId||''}')" style="border:none;background:#dc3545;color:white;padding:3px 8px;border-radius:3px;cursor:pointer;font-size:11px;">🗑</button>
             </td>
         </tr>`).join('')}</tbody></table>`;
@@ -798,6 +799,21 @@ function loadSpedRecord(id) {
     document.getElementById('spedListContainer').style.display = 'none';
     document.getElementById('spedFormContainer').style.display = 'block';
     document.querySelector('.toolbar button[onclick="newOrder()"]') && (document.querySelector('.toolbar button[onclick="newOrder()"]').style.display = 'inline');
+}
+
+function copySpedRecord(id) {
+    const rec = spedList.find(r => r.id === id);
+    if (!rec) return;
+    // Tiefe Kopie ohne _spId und mit neuer id — wird als neuer Auftrag behandelt
+    const copy = JSON.parse(JSON.stringify(rec));
+    copy.id = 'sped_' + Date.now();
+    delete copy._spId;
+    copy.datum = new Date().toISOString().slice(0, 10); // Datum auf heute setzen
+    currentSpedId = copy.id;
+    loadFromState(copy);
+    document.getElementById('spedListContainer').style.display = 'none';
+    document.getElementById('spedFormContainer').style.display = 'block';
+    showStatus('📋 Kopie erstellt — bitte anpassen und speichern');
 }
 
 function deleteSpedRecord(id, spId) {
