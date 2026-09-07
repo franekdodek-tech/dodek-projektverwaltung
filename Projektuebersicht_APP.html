@@ -19,7 +19,7 @@
         }
         
         .container {
-            max-width: 1800px;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -1436,15 +1436,15 @@
                                 <tr>
                                     <th>Beschreibung</th>
                                     <th>Gewerk</th>
-                                    <th>Stückliste</th>
-                                    <th class="number-cell">Menge</th>
-                                    <th class="number-cell">EK/Stück</th>
-                                    <th class="number-cell">EK gesamt</th>
-                                    <th class="number-cell">VK WV/Stück</th>
-                                    <th class="number-cell">VK WV gesamt</th>
-                                    <th class="number-cell">VK End/Stück</th>
-                                    <th class="number-cell">VK End gesamt</th>
-                                    <th class="number-cell">VK Hand</th>
+                                    <th style="min-width:80px;">Stückliste</th>
+                                    <th class="number-cell" style="min-width:60px;">Menge</th>
+                                    <th class="number-cell" style="min-width:80px;">EK/St.</th>
+                                    <th class="number-cell" style="min-width:90px;">EK ges.</th>
+                                    <th class="number-cell" style="min-width:80px;">WV/St.</th>
+                                    <th class="number-cell" style="min-width:100px;">WV ges.</th>
+                                    <th class="number-cell" style="min-width:80px;">End/St.</th>
+                                    <th class="number-cell" style="min-width:100px;">End ges.</th>
+                                    <th class="number-cell" style="min-width:90px;">VK Hand</th>
                                     <th class="action-cell">Aktion</th>
                                 </tr>
                             </thead>
@@ -2291,6 +2291,7 @@ function applyPermissions() {
                 return result.accessToken;
             }
         }
+        window.getSpToken = getSpToken;
 
         async function spFetch(url, options = {}) {
             const token = await getSpToken();
@@ -2312,6 +2313,7 @@ function applyPermissions() {
             if (!text) return null;
             return JSON.parse(text);
         }
+        window.spFetch = spFetch;
 
         // ========== SHAREPOINT PROJEKTE ==========
 
@@ -2720,7 +2722,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.4';
+        const APP_VERSION = 'v1.6.5';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -6693,7 +6695,8 @@ function applyPermissions() {
             const source = event.source; // iframe window
 
             async function spToolFetch(url, options = {}) {
-                return await spFetch(url, options);
+                if (!window.spFetch) throw new Error('spFetch nicht verfügbar — bitte einloggen');
+                return await window.spFetch(url, options);
             }
 
             try {
