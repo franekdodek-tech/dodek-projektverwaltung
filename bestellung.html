@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bestellformular – Filter & Ventilator | Dodek Technik · v0.5.0</title>
+<title>Bestellformular – Filter & Ventilator | Dodek Technik · v0.6.0</title>
 <style>
   :root {
     --rot: #CC0000;
@@ -256,7 +256,7 @@
     <button class="btn-dateiname" onclick="exportiereJSONSP()">📤 JSON exportieren</button>
     <label class="btn-dateiname" style="cursor:pointer;">📥 JSON importieren<input type="file" accept="application/json" style="display:none" onchange="importiereJSONSP(event)"></label>
     <button class="btn-druck" onclick="drucken()">🖨 Drucken / PDF</button>
-    <span style="font-size:10px;color:#999;margin-left:8px;align-self:center;">v0.5.0</span>
+    <span style="font-size:10px;color:#999;margin-left:8px;align-self:center;">v0.6.0</span>
   </div>
 </div>
 
@@ -823,6 +823,9 @@
     var msg = e.data;
     if (!msg) return;
     if (msg.type === 'BEST_LOAD_RESULT') handleBestLoad(msg.items);
+    if (msg.type === 'BEST_LOAD_TRIGGER') {
+        window.parent.postMessage({ type: 'BEST_LOAD' }, '*');
+    }
     if (msg.type === 'BEST_SAVE_RESULT') { currentBestSpId = msg.spId; showBestStatus('✅ Gespeichert in SharePoint'); }
     if (msg.type === 'BEST_DELETE_RESULT') { showBestStatus('🗑️ Gelöscht'); renderBestList(); }
     if (msg.type === 'ERROR') showBestStatus('❌ Fehler: ' + msg.error);
@@ -833,7 +836,14 @@
     document.getElementById('f-datum').value = heute;
     document.getElementById('v-datum').value = heute;
     initFormKeys();
-    window.parent.postMessage({ type: 'BEST_LOAD' }, '*');
+    setTimeout(function() {
+        window.parent.postMessage({ type: 'BEST_LOAD' }, '*');
+    }, 500);
+    setTimeout(function() {
+        if (bestellungList.length === 0) {
+            window.parent.postMessage({ type: 'BEST_LOAD' }, '*');
+        }
+    }, 3000);
   });
 
   function handleBestLoad(items) {
