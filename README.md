@@ -1,179 +1,112 @@
 # Dodek Hub
 
-Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Aufgaben, Vorkalkulation, Artikelstamm und Lager in einer Anwendung.
+Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalkulation, Aufgaben, Artikelstamm und Lager in einer Anwendung.
 
-🌐 **App aufrufen:** [https://franekdodek-tech.github.io/dodek-projektverwaltung/](https://franekdodek-tech.github.io/dodek-projektverwaltung/)
+🌐 **App:** https://franekdodek-tech.github.io/dodek-projektverwaltung/
 
 ---
 
-## Zweck
+## Aktuelle Versionen
 
-Dodek Hub ist das zentrale operative System für ca. 150 Aufträge pro Jahr. Es deckt ab: Projektsteuerung, Angebotskalkulation, Einkaufsverwaltung, Aufgaben- und Teamkoordination, Artikelstamm mit Stücklisten, Vorkalkulation sowie Lagerverwaltung.
+| Datei | Version |
+|---|---|
+| `Projektuebersicht_APP.html` | v1.6.6 |
+| `spedition.html` | v0.6.0 |
+| `bestellung.html` | v0.8.0 |
 
 ---
 
 ## Funktionsumfang
 
 ### 📊 Dashboard
-- Alle Projekte gelistet, nach Jahrgängen gruppiert und kollabierbar
-- Farbliche Statusanzeige: Rot (kein AB) / Grün (AB) / Gelb (Rechnung offen) / Lila (Nachkalk. ausstehend) / Weiß (vollständig)
-- Schnellzugriff auf AB, Rechnung, Geliefert, Nachkalkulation per Checkbox
-- Volltextsuche über Projektnummer, Kunde, VK/EK-Positionen, Lieferanten, Aufgaben
-- Jahresfilter + Status-Filter (Kein AB / AB / Rechnung / Nachkalk. ausstehend / Vollständig)
-- VK/EK/DB-Summen pro Jahrgang
-- **Projekt kopieren** — übernimmt VK/EK-Positionen und Gewerke ohne Stammdaten
+- Projekte nach Jahrgängen gruppiert und kollabierbar
+- Farbliche Statusanzeige (kein AB / AB / Rechnung / Nachkalkulation)
+- Volltextsuche, Jahresfilter, VK/EK/DB-Summen pro Jahrgang
+- Projekt kopieren
 
 ### 📁 Projekteditierung
-- Stammdaten: Projektnummer, Kunde, Projektbezeichnung, Auftragsnummer, Lieferdatum (mit KW-Anzeige)
-- **Gewerke-Schnellauswahl** per Buttonbox (Filteranlage, Ventilator, WRG, Rohrleitung, Elektrik, Steuerung, Montage, UVV, Schallschutz, Erfassungselemente, Ersatzteile) + Freitexteingabe für Sonderfälle
-- **Verkaufspositionen** (VK): Manuell oder aus Artikelstamm, Einzelpreis editierbar, Drag & Drop Sortierung, auto-wachsende Beschreibungsfelder
-  - BOM-Dialog: wenn VK-Artikel eine Stückliste hat → automatischer Import als EK-Positionen
-- **Einkaufspositionen** (EK): Manuell, aus Artikelstamm oder per BOM-Import, Einzelpreis editierbar, Drag & Drop Sortierung, auto-wachsende Felder, mit:
-  - Bestellstatus: Offen / Bestellt / Teilgeliefert / Geliefert / Aus Lager / Abgerechnet
-  - Zuständigkeitszuweisung (Franek, Hagen, Harry, Nicole)
-  - Mehrere Positionen eines Lieferanten per Dialog
-- **Aufgaben**: Projektbezogene Freitextaufgaben mit Zuständigkeit und Status (Offen / In Bearbeitung / Erledigt), auto-wachsende Felder
-- **"Projekt abschließen"** — setzt alle EK-Positionen auf Abgerechnet / Nicht notwendig
-- Gewerke-Tabelle mit VK/EK/DB-Aufschlüsselung
-- Zusammenfassungskacheln (VK, EK, DB absolut und %)
+- Stammdaten, Gewerke-Schnellauswahl, Lieferdatum mit KW
+- **Verkaufspositionen (VK):** aus Artikelstamm oder manuell, Drag & Drop
+- **Einkaufspositionen (EK):** Bestellstatus, Zuständigkeit, BOM-Import
+- Aufgaben mit Status und Zuständigkeit
+- Projekt abschließen
+
+### 🧮 Kalkulation
+- Positionen aus Artikelstamm oder manuell, BOM klappbar
+- Faktoren: Wiederverkauf (WV) und Endkunde (End)
+- EP und GP pro Position, Projektrabatt
+- Position kopieren, als Artikel speichern
+- PDF-Druck mit Rabatt und EP/GP
 
 ### 📋 Aufgabenliste (projektübergreifend)
-- Drei Gruppen: **🛒 Einkauf** / **📌 Allgemein** / **📦 Lager** (Nachbestellbedarf)
+- Gruppen: Einkauf / Allgemein / Lager
 - Filter nach Zuständigkeit und Jahr
-- Checkbox "Erledigte ausblenden" — blendet Geliefert, Aus Lager, Abgerechnet und Erledigt aus
-- Direkter Sprung ins Projekt bzw. ins Lager
-
-### 🧮 Vorkalkulation
-- Eigenständige Kalkulationen vor Projektanlage
-- Positionen aus Artikelstamm oder Freitext mit Gewerk-Zuordnung
-- **Zwei Faktoren**: Wiederverkauf und Endkunde — VK-Preise werden automatisch berechnet
-- **VK Hand**: manuelles Preisfeld pro Position ohne automatische Berechnung
-- Deckungsbeitragsanzeige pro Position (%) und in der Zusammenfassung (absolut + %)
-- VK Hand Kachel erscheint automatisch wenn Hand-Werte eingetragen sind
-- **Drucken**: internes Drucklayout mit allen Preisebenen und DB
-- **In Projekt umwandeln**: VK, EK-Positionen und Gewerke werden übernommen
-- Gespeichert in SharePoint `DodekVorkalkulation`
 
 ### 📦 Lagerverwaltung
-- Lagerartikel mit Bestand, Mindestmenge, Einheit, optionaler Artikelnummer
-- Übernahme aus Artikelstamm per Dropdown
-- Farbliche Kennzeichnung: grün = OK, rot = unter Mindestmenge
-- Kritische Artikel erscheinen automatisch in der Aufgabenliste (Gruppe 📦 Lager)
-- Gespeichert in SharePoint `DodekLager`
+- Bestand, Mindestmenge, kritische Artikel in Aufgabenliste
 
 ### 🗂️ Artikelstamm
-- Artikel mit ID, Bezeichnung, EK-Preis, Marge, VK-Preis, Gewerk, Typ
-- Artikel-ID beim Bearbeiten änderbar
-- Stücklisten (BOM) mit Lieferant, Lieferantenartikelnummer, Komponente, Menge, Preis
-- BOM-Import: Stückliste wird automatisch in EK-Positionen umgewandelt (inkl. Lieferantenartikelnummern)
-- Nur Admin kann Artikel anlegen, bearbeiten oder löschen
+- ID, Bezeichnung, EK/VK-Preis, Marge, Gewerk, Typ
+- Stücklisten (BOM) mit Lieferant und Lieferantenartikelnummer
 
-### 📈 Statistiken
-- Jahresbezogene Auswertungen
-- Top-10 Kunden nach Umsatz, Projektanzahl und Deckungsbeitrag
-- Gewerke-Analyse, zeitliche Verteilung
-
-### 💾 Export
-- Excel-Export pro Projekt (Verkauf, Einkauf, Gewerke auf separaten Sheets)
-- JSON-Export / -Import pro Projekt
-- JSON-Backup / -Restore für Gesamtdaten und Artikelstamm
-- Druckbarer PDF-Report pro Projekt
-- Druckbares internes Kalkulationsblatt pro Vorkalkulation
-
----
-
-## Nutzerrechte
-
-Rollenbasiertes Berechtigungssystem auf Basis des Microsoft-Logins. Die Rolle wird nach dem Login oben rechts angezeigt: 👑 Admin / ✏️ Editor / 👁️ Leser
-
-| Recht | Admin | Editor | Reader |
-|---|---|---|---|
-| Projekte lesen | ✅ | ✅ | ✅ |
-| Projekte anlegen/bearbeiten | ✅ | ✅ | ❌ |
-| Projekte löschen | ✅ | ❌ | ❌ |
-| Projekt kopieren | ✅ | ✅ | ❌ |
-| EK/VK Positionen bearbeiten | ✅ | ✅ | ❌ |
-| Aufgaben bearbeiten | ✅ | ✅ | ❌ |
-| Lager bearbeiten | ✅ | ✅ | ❌ |
-| Vorkalkulation bearbeiten | ✅ | ✅ | ❌ |
-| Artikelstamm nutzen | ✅ | ✅ | ✅ |
-| Artikelstamm anlegen/bearbeiten | ✅ | ❌ | ❌ |
-| Alles löschen | ✅ | ❌ | ❌ |
-
-### Rollenzuweisung
-
-```javascript
-const PERMISSIONS = {
-    'franek.dodek@dodek.de':  'admin',
-    'hagen.dodek@dodek.de':   'editor',
-    'nicole.merk@dodek.de':   'editor',
-    'harry.dodek@dodek.de':   'reader'
-};
-```
-
-Unbekannte E-Mail-Adressen erhalten automatisch `reader`.
+### 🛠️ Tools (iframe-Apps)
+- **spedition.html** — Speditionsaufträge mit Adressbuch
+- **bestellung.html** — Filter- und Ventilator-Bestellformulare
+- Beide über postMessage-Bridge mit Hub verbunden, Daten in SharePoint
 
 ---
 
 ## Technischer Aufbau
 
-- **Single-file HTML-Anwendung** — keine Installation, läuft direkt im Browser
-- **Hosting**: GitHub Pages
-- **Datenspeicherung**: SharePoint-Listen über Microsoft REST API
-- **Authentifizierung**: Microsoft OAuth 2.0 (Azure AD / Entra ID), delegierte Berechtigung `AllSites.Write`
-- **Abhängigkeiten**: MSAL Browser 2.38.3 (lokal im Repo), SheetJS (CDN)
-- **Nutzer**: 4 Personen mit M365-Account (Dodek GmbH & Co. KG)
+- Single-file HTML, gehostet auf GitHub Pages
+- Auth: Microsoft OAuth 2.0 (MSAL Browser 2.38.3, lokal im Repo)
+- Daten: SharePoint REST API über GUID
+- Kein Build-Prozess, kein Server
 
-### SharePoint Konfiguration
+### SharePoint Listen
 
-| Parameter | Wert |
+| Liste | Zweck |
 |---|---|
-| SharePoint Site | `https://dodekgmbh.sharepoint.com/sites/DodekProjektverwaltung` |
-| Liste Projekte | `DodekProjekte` |
-| Liste Artikel | `DodekArtikel` |
-| Liste Lager | `DodekLager` |
-| Liste Vorkalkulation | `DodekVorkalkulation` |
-| Redirect URI | `https://franekdodek-tech.github.io/dodek-projektverwaltung/Projektuebersicht_APP.html` |
+| DodekProjekte | Projekte |
+| DodekArtikel | Artikelstamm |
+| DodekLager | Lagerbestand |
+| DodekVorkalkulation | Kalkulationen |
+| DodekEinstellungen | App-Einstellungen |
+| DodekSpedition | Speditionsaufträge |
+| DodekBestellungen | Filter/Ventilator-Bestellungen |
+| DodekAdressen | Adressbuch |
 
 > Listen werden über GUID angesprochen — konfiguriert in `SP_CONFIG` im App-Code.
+
+### Nutzerrollen
+
+| Nutzer | Rolle |
+|---|---|
+| franek.dodek@dodek.de | Admin |
+| hagen.dodek@dodek.de | Editor |
+| nicole.merk@dodek.de | Editor |
+| harry.dodek@dodek.de | Reader |
 
 ---
 
 ## Phasenstatus
 
-### Phase 1 + 2 ✅ Abgeschlossen
+### ✅ Phase 1 + 2 — Abgeschlossen
 - SharePoint Mehrbenutzer-Betrieb, Microsoft Login
-- EK-Bestellstatus, Zuständigkeit, Aufgaben, Lager
-- Gewerke-Schnellauswahl, BOM-Dialog, Projekt kopieren
+- EK-Bestellstatus, Zuständigkeit, Aufgaben, Lagerverwaltung
+- Kalkulation mit EP/GP, Rabatt, Kopieren, Als Artikel speichern
 - Rollenbasierte Nutzerrechte (Admin / Editor / Reader)
-- Status-Filter im Dashboard, violette Zeilen für ausstehende Nachkalkulation
-- Vorkalkulation mit zwei Faktoren, DB-Anzeige, Drucken, Projekt-Umwandlung
-- Auto-wachsende Beschreibungsfelder
+- Tools-Tab mit Spedition und Bestellung
 
-### Phase 3 ⏳ Ausstehend
+### ⏳ Phase 3 — Ausstehend
 - Power Automate: E-Mail-Benachrichtigung bei Aufgabenzuweisung
-
-### Geplant (noch offen)
-- Lagerverwaltung PopUp: Wareneingänge buchen, Zulauf vermerken, Preishistorie
-- Lieferantenstamm
-
----
-
-## Konfiguration
-
-### Standard-Gewerke
-```javascript
-const DEFAULT_TRADES = [
-    'Filteranlage', 'Ventilator', 'WRG', 'Rohrleitung',
-    'Elektrik', 'Steuerung', 'Montage', 'UVV',
-    'Schallschutz', 'Erfassungselemente', 'Ersatzteile'
-];
-```
 
 ---
 
 ## Deployment
 
+Änderungen im `main`-Branch werden automatisch über GitHub Pages deployed.
+
 ```
-main  →  GitHub Pages  →  https://franekdodek-tech.github.io/dodek-projektverwaltung/
+main → GitHub Pages → https://franekdodek-tech.github.io/dodek-projektverwaltung/
 ```
