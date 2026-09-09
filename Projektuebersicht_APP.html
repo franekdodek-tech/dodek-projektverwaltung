@@ -2755,7 +2755,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.8';
+        const APP_VERSION = 'v1.6.9';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -4958,6 +4958,7 @@ function applyPermissions() {
             currency: 'EUR'
         }).format(value);
     }
+    window.formatCurrency = formatCurrency;
     
     function showMessage(text, type) {
         const msg = document.getElementById('message');
@@ -4968,6 +4969,7 @@ function applyPermissions() {
             msg.classList.remove('active');
         }, 5000);
     }
+    window.showMessage = showMessage;
 
     // Sicherstellen dass nur Dashboard beim Laden aktiv ist
     (async () => {
@@ -5608,6 +5610,10 @@ function applyPermissions() {
         window.deleteProject = deleteProject;
         window.deleteCurrentProject = deleteCurrentProject;
         window.closeProject = closeProject;
+        window.renderSalesPositions = renderSalesPositions;
+        window.renderPurchasePositions = renderPurchasePositions;
+        window.updateSummary = updateSummary;
+        window.saveArticleToSharePoint = saveArticleToSharePoint;
         window.addSalesPosition = addSalesPosition;
         window.deleteSalesPosition = deleteSalesPosition;
         window.updateSalesPosition = updateSalesPosition;
