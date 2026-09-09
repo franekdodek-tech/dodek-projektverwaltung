@@ -2755,7 +2755,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.7';
+        const APP_VERSION = 'v1.6.8';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -3748,7 +3748,7 @@ function applyPermissions() {
         }
         
         function createNewProject() {
-            currentProject = {
+            window.currentProject = currentProject = {
                 projectNumber: '',
                 customer: '',
                 projectName: '',
@@ -3801,7 +3801,7 @@ function applyPermissions() {
                 assignedTo: 'unassigned'
             }));
 
-            currentProject = {
+            window.currentProject = currentProject = {
                 projectNumber: '',
                 customer: '',
                 projectName: '',
@@ -3840,7 +3840,7 @@ function applyPermissions() {
         window.copyProject = copyProject;
         
         function openProject(projectNumber) {
-            currentProject = allProjects[projectNumber];
+            window.currentProject = currentProject = allProjects[projectNumber];
             
             if (!currentProject.projectName) currentProject.projectName = '';
             if (!currentProject.orderNumber) currentProject.orderNumber = '';
@@ -3917,7 +3917,7 @@ function applyPermissions() {
                     await deleteProjectFromSharePoint(currentProject._spId);
                 }
                 delete allProjects[currentProject.projectNumber];
-                currentProject = null;
+                window.currentProject = currentProject = null;
                 showView('dashboard');
                 updateYearFilter();
                 showMessage('Projekt gelöscht', 'success');
@@ -5005,7 +5005,7 @@ function applyPermissions() {
         }
         allProjects = {};
         window.allProjects = {};
-        currentProject = null;
+        window.currentProject = currentProject = null;
         renderDashboard();
         showView('dashboard');
         showMessage(`${count} Projekt(e) gelöscht.`, 'success');
@@ -6293,7 +6293,7 @@ function applyPermissions() {
             // Gewerke aus Positionen ableiten
             const trades = [...new Set(q.positions.map(p => p.trade).filter(t => t))];
 
-            currentProject = {
+            window.currentProject = currentProject = {
                 projectNumber: '',
                 customer: q.customer || '',
                 projectName: q.title || '',
