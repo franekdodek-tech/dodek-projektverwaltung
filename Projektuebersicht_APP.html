@@ -2258,6 +2258,39 @@ function applyPermissions() {
             guidSettings: '89b9fdeb-6907-4cfc-a1f5-2bc8bc0bdbe2'
         };
 
+
+        // Team-Mitglieder (für Aufgabenzuweisung EK-Positionen)
+        const TEAM_MEMBERS = [
+            { id: 'unassigned',     name: '-- Nicht zugewiesen --' },
+            { id: 'not_required',   name: '-- Nicht notwendig --' },
+            { id: 'franek',         name: 'Franek' },
+            { id: 'hagen',          name: 'Hagen' },
+            { id: 'harry',          name: 'Harry' },
+            { id: 'nicole',         name: 'Nicole' }
+        ];
+
+        // Bestellstatus EK-Positionen
+        const PURCHASE_STATUS = [
+            { id: 'open',    label: 'Offen',           color: '#dc3545' },
+            { id: 'ordered', label: 'Bestellt',        color: '#fd7e14' },
+            { id: 'partial', label: 'Bestätigt',       color: '#b8860b' },
+            { id: 'done',    label: 'Lager/Geliefert', color: '#28a745' }
+        ];
+
+        // Aufgabenstatus
+        const TASK_STATUS = [
+            { id: 'open',        label: 'Offen',          color: '#dc3545' },
+            { id: 'inprogress',  label: 'In Bearbeitung', color: '#fd7e14' },
+            { id: 'done',        label: 'Erledigt',       color: '#28a745' }
+        ];
+
+        // Standard-Gewerke für Schnellauswahl
+        const DEFAULT_TRADES = [
+            'Filteranlage', 'Ventilator', 'WRG', 'Rohrleitung',
+            'Elektrik', 'Steuerung', 'Montage', 'UVV',
+            'Schallschutz', 'Erfassungselemente', 'Ersatzteile'
+        ];
+
         function initApp() {
 
         const msalConfig = {
@@ -2722,42 +2755,11 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.6';
+        const APP_VERSION = 'v1.6.7';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
         // Team-Mitglieder (für Aufgabenzuweisung EK-Positionen)
-        const TEAM_MEMBERS = [
-            { id: 'unassigned',     name: '-- Nicht zugewiesen --' },
-            { id: 'not_required',   name: '-- Nicht notwendig --' },
-            { id: 'franek',         name: 'Franek' },
-            { id: 'hagen',          name: 'Hagen' },
-            { id: 'harry',          name: 'Harry' },
-            { id: 'nicole',         name: 'Nicole' }
-        ];
-
-        // Bestellstatus EK-Positionen
-        const PURCHASE_STATUS = [
-            { id: 'open',    label: 'Offen',           color: '#dc3545' },
-            { id: 'ordered', label: 'Bestellt',        color: '#fd7e14' },
-            { id: 'partial', label: 'Bestätigt',       color: '#b8860b' },
-            { id: 'done',    label: 'Lager/Geliefert', color: '#28a745' }
-        ];
-
-        // Aufgabenstatus
-        const TASK_STATUS = [
-            { id: 'open',        label: 'Offen',          color: '#dc3545' },
-            { id: 'inprogress',  label: 'In Bearbeitung', color: '#fd7e14' },
-            { id: 'done',        label: 'Erledigt',       color: '#28a745' }
-        ];
-
-        // Standard-Gewerke für Schnellauswahl
-        const DEFAULT_TRADES = [
-            'Filteranlage', 'Ventilator', 'WRG', 'Rohrleitung',
-            'Elektrik', 'Steuerung', 'Montage', 'UVV',
-            'Schallschutz', 'Erfassungselemente', 'Ersatzteile'
-        ];
-
         // Nutzerrechte (werden aus DodekEinstellungen überschrieben)
         let PERMISSIONS = {
             'franek.dodek@dodek.de':  'admin',
