@@ -4302,7 +4302,7 @@ function applyPermissions() {
             }
 
             // Build index map for sort+filter then render by original indices
-            const filterOpen = window.ekFilterOpen || false;
+            const filterOpen = window.ekFilterOpen === true;
             const sortField = window.ekSortField || null;
             const sortDir = window.ekSortDir || 'asc';
 
