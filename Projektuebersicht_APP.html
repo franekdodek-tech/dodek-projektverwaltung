@@ -3517,18 +3517,30 @@ function applyPermissions() {
         
         // ========== VIEW MANAGEMENT ==========
         
+        // Scroll-Position der Projektliste merken
+        let dashboardScrollY = 0;
+
         function showView(viewName) {
+            // Scroll-Position merken wenn wir die Dashboard-Ansicht verlassen
+            const currentlyDashboard = document.getElementById('dashboardView').classList.contains('active');
+            if (currentlyDashboard && viewName !== 'dashboard') {
+                dashboardScrollY = window.scrollY;
+            }
+
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            
+
             if (viewName === 'dashboard') {
                 document.getElementById('dashboardView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
                 renderDashboard();
+                // Scroll-Position wiederherstellen
+                requestAnimationFrame(() => window.scrollTo({ top: dashboardScrollY, behavior: 'instant' }));
             } else if (viewName === 'editor') {
                 document.getElementById('editorView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'inline-block';
                 applyPermissions();
                 updateArticleSelects();
+                window.scrollTo({ top: 0, behavior: 'instant' });
             } else if (viewName === 'articles') {
                 document.getElementById('articlesView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
