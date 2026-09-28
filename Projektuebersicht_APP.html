@@ -1935,17 +1935,24 @@
                     <button onclick="openMultiPositionDialog()" class="btn-secondary" style="margin-left:8px;">➕ Mehrere Positionen</button>
                 </div>
                 
+                <div style="display:flex; align-items:center; gap:16px; margin-bottom:8px;">
+                    <label style="font-size:13px; color:#555; cursor:pointer; user-select:none;">
+                        <input type="checkbox" id="ekFilterOpen" onchange="window.ekFilterOpen=this.checked; renderPurchasePositions();" style="margin-right:4px;">
+                        Nur offene
+                    </label>
+                    <span style="font-size:11px; color:#999;" id="ekSortInfo"></span>
+                </div>
                 <div class="positions-table-wrapper">
                     <table>
                         <thead>
                             <tr>
                                 <th style="width:30px;"></th>
-                                <th>Lieferant</th>
+                                <th onclick="window.sortEkBy('supplier')" style="cursor:pointer; user-select:none;" title="Sortieren nach Lieferant">Lieferant <span id="ekSort_supplier"></span></th>
                                 <th>Menge</th>
                                 <th>Beschreibung</th>
-                                <th>Gewerk</th>
+                                <th onclick="window.sortEkBy('trade')" style="cursor:pointer; user-select:none;" title="Sortieren nach Gewerk">Gewerk <span id="ekSort_trade"></span></th>
                                 <th>Typ</th>
-                                <th>Status</th>
+                                <th onclick="window.sortEkBy('status')" style="cursor:pointer; user-select:none;" title="Sortieren nach Status">Status <span id="ekSort_status"></span></th>
                                 <th style="width:90px;">Zuständig</th>
                                 <th style="width:60px;">Lief.-KW</th>
                                 <th class="number-cell">Einzelpreis</th>
@@ -2121,11 +2128,21 @@
                 <button class="modal-close" onclick="closeMultiPositionDialog()">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="form-group" style="margin-bottom: 20px;">
-                    <label for="multiSupplier">Lieferant *</label>
-                    <input type="text" id="multiSupplier" placeholder="Lieferantenname" style="width: 100%;">
+                <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom: 20px; background:#f8f9fa; padding:12px; border-radius:6px;">
+                    <div class="form-group" style="flex:2; min-width:180px; margin:0;">
+                        <label for="multiSupplier">Lieferant *</label>
+                        <input type="text" id="multiSupplier" placeholder="Lieferantenname" style="width: 100%;">
+                    </div>
+                    <div class="form-group" style="flex:1; min-width:140px; margin:0;">
+                        <label for="multiStatus">Status</label>
+                        <select id="multiStatus" style="width:100%;"></select>
+                    </div>
+                    <div class="form-group" style="flex:1; min-width:140px; margin:0;">
+                        <label for="multiAssignedTo">Zuständig</label>
+                        <select id="multiAssignedTo" style="width:100%;"></select>
+                    </div>
                 </div>
-                
+
                 <div id="multiPositionList"></div>
                 
                 <button onclick="addMultiPositionRow()" class="btn-secondary btn-small">➕ Weitere Position hinzufügen</button>
@@ -2754,7 +2771,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.10';
+        const APP_VERSION = 'v1.6.11';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -4260,9 +4277,19 @@ function applyPermissions() {
             updateTradeTable();
         }
         
+        window.sortEkBy = function(field) {
+            if (window.ekSortField === field) {
+                window.ekSortDir = window.ekSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                window.ekSortField = field;
+                window.ekSortDir = 'asc';
+            }
+            renderPurchasePositions();
+        };
+
         function renderPurchasePositions() {
             const tbody = document.getElementById('purchaseTable');
-            
+
             if (currentProject.purchasePositions.length === 0) {
                 tbody.innerHTML = `
                     <tr>
@@ -4273,8 +4300,55 @@ function applyPermissions() {
                 `;
                 return;
             }
-            
-            tbody.innerHTML = currentProject.purchasePositions.map((pos, index) => {
+
+            // Build index map for sort+filter then render by original indices
+            const filterOpen = window.ekFilterOpen || false;
+            const sortField = window.ekSortField || null;
+            const sortDir = window.ekSortDir || 'asc';
+
+            // Create indexed list
+            let indexedPositions = currentProject.purchasePositions.map((pos, index) => ({ pos, index }));
+
+            // Apply filter
+            if (filterOpen) {
+                indexedPositions = indexedPositions.filter(({ pos }) => (pos.status || 'open') === 'open');
+            }
+
+            // Apply sort
+            if (sortField) {
+                indexedPositions.sort((a, b) => {
+                    let va = (a.pos[sortField] || '').toLowerCase();
+                    let vb = (b.pos[sortField] || '').toLowerCase();
+                    if (sortField === 'status') {
+                        const order = PURCHASE_STATUS.map(s => s.id);
+                        va = order.indexOf(a.pos.status || 'open');
+                        vb = order.indexOf(b.pos.status || 'open');
+                        return sortDir === 'asc' ? va - vb : vb - va;
+                    }
+                    return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+                });
+            }
+
+            // Update sort indicators
+            ['supplier','trade','status'].forEach(f => {
+                const el = document.getElementById('ekSort_' + f);
+                if (el) el.textContent = sortField === f ? (sortDir === 'asc' ? '▲' : '▼') : '↕';
+            });
+
+            // Filter info
+            const infoEl = document.getElementById('ekSortInfo');
+            if (infoEl && filterOpen && indexedPositions.length < currentProject.purchasePositions.length) {
+                infoEl.textContent = `${indexedPositions.length} von ${currentProject.purchasePositions.length} angezeigt`;
+            } else if (infoEl) {
+                infoEl.textContent = '';
+            }
+
+            if (indexedPositions.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:40px; color:#999;">Keine offenen EK-Positionen vorhanden.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = indexedPositions.map(({ pos, index }) => {
                 const sortedTrades = [...currentProject.trades].sort();
                 const statusObj = PURCHASE_STATUS.find(s => s.id === (pos.status || 'open')) || PURCHASE_STATUS[0];
                 const statusOptions = PURCHASE_STATUS.map(s =>
@@ -4382,6 +4456,14 @@ function applyPermissions() {
             multiPositions = [createEmptyMultiPosition()];
             window.multiPositions = multiPositions;
             document.getElementById('multiSupplier').value = '';
+            // Populate Status dropdown
+            const statusSel = document.getElementById('multiStatus');
+            statusSel.innerHTML = PURCHASE_STATUS.map(s => `<option value="${s.id}">${s.label}</option>`).join('');
+            statusSel.value = 'open';
+            // Populate Zuständig dropdown
+            const assignSel = document.getElementById('multiAssignedTo');
+            assignSel.innerHTML = TEAM_MEMBERS.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+            assignSel.value = 'unassigned';
             renderMultiPositionList();
             document.getElementById('multiPositionModal').classList.add('active');
         }
@@ -4465,20 +4547,22 @@ function applyPermissions() {
     
     function saveMultiPositions() {
         const supplier = document.getElementById('multiSupplier').value.trim();
-        
+        const batchStatus = document.getElementById('multiStatus').value || 'open';
+        const batchAssignedTo = document.getElementById('multiAssignedTo').value || 'unassigned';
+
         if (!supplier) {
             showMessage('Lieferant erforderlich', 'error');
             return;
         }
-        
+
         const positions = window.multiPositions || [];
         let validPositions = 0;
-        
+
         positions.forEach(pos => {
             if (!pos.description || isNaN(pos.quantity) || isNaN(pos.unitPrice)) {
                 return;
             }
-            
+
             const position = {
                 id: `purchase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 supplier: supplier,
@@ -4489,8 +4573,8 @@ function applyPermissions() {
                 totalPrice: pos.quantity * pos.unitPrice,
                 type: pos.type,
                 trade: pos.trade,
-                status: 'open',
-                assignedTo: 'unassigned'
+                status: batchStatus,
+                assignedTo: batchAssignedTo
             };
             
             currentProject.purchasePositions.push(position);
