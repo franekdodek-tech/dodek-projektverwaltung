@@ -730,6 +730,44 @@
             font-size: 12px;
             color: #666;
         }
+
+        /* BOM-EK Stückliste Styles */
+        .ek-vk-header td {
+            background: #e8f0f8;
+            font-weight: 600;
+            color: #1a3a5c;
+            border-top: 2px solid #366092;
+            cursor: pointer;
+            user-select: none;
+        }
+        .ek-vk-header td:first-child {
+            padding-left: 8px;
+        }
+        .ek-vk-header .collapse-arrow {
+            display: inline-block;
+            width: 16px;
+            font-size: 11px;
+            transition: transform 0.15s;
+        }
+        .ek-vk-header.collapsed .collapse-arrow {
+            transform: rotate(-90deg);
+        }
+        .ek-child-row td {
+            background: #fafcff;
+        }
+        .ek-child-row td:first-child {
+            padding-left: 28px;
+            font-size: 11px;
+            color: #888;
+        }
+        .ek-unlinked-header td {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #666;
+            border-top: 1px dashed #ccc;
+            cursor: pointer;
+            user-select: none;
+        }
         
         .trade-management {
             background: #f8f9fa;
@@ -1777,12 +1815,12 @@
             </div>
             
             <div class="trade-summary">
-                <h3>Gewerk-Übersicht (Verkauf / Einkauf)</h3>
+                <h3>VK-Positions-Übersicht (Verkauf / Einkauf)</h3>
                 <div class="trade-table">
                     <table>
                         <thead>
                             <tr>
-                                <th>Gewerk</th>
+                                <th>VK-Position</th>
                                 <th class="number-cell">Verkauf</th>
                                 <th class="number-cell">Einkauf</th>
                                 <th class="number-cell">DB absolut</th>
@@ -1917,8 +1955,10 @@
                             <input type="number" id="newPurchaseUnitPrice" step="0.01" value="0" required>
                         </div>
                         <div class="form-group">
-                            <label for="newPurchaseTrade">Gewerk</label>
-                            <select id="newPurchaseTrade"></select>
+                            <label for="newPurchaseVkLink">VK-Position</label>
+                            <select id="newPurchaseVkLink">
+                                <option value="">-- Nicht zugeordnet --</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label for="newPurchaseType">Typ</label>
@@ -1947,12 +1987,11 @@
                         <thead>
                             <tr>
                                 <th style="width:30px;"></th>
-                                <th onclick="window.sortEkBy('supplier')" style="cursor:pointer; user-select:none;" title="Sortieren nach Lieferant">Lieferant <span id="ekSort_supplier"></span></th>
+                                <th>Lieferant</th>
                                 <th>Menge</th>
                                 <th>Beschreibung</th>
-                                <th onclick="window.sortEkBy('trade')" style="cursor:pointer; user-select:none;" title="Sortieren nach Gewerk">Gewerk <span id="ekSort_trade"></span></th>
                                 <th>Typ</th>
-                                <th onclick="window.sortEkBy('status')" style="cursor:pointer; user-select:none;" title="Sortieren nach Status">Status <span id="ekSort_status"></span></th>
+                                <th>Status</th>
                                 <th style="width:90px;">Zuständig</th>
                                 <th style="width:60px;">Lief.-KW</th>
                                 <th class="number-cell">Einzelpreis</th>
@@ -2771,7 +2810,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.11';
+        const APP_VERSION = 'v1.6.12';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -3659,6 +3698,7 @@ function applyPermissions() {
                                         <th>Kunde</th>
                                         <th>Projektbezeichnung</th>
                                         <th>KW Lieferung</th>
+                                        <th style="width:32px;" title="EK-Status Ampel">🚦</th>
                                         <th class="number-cell">Verkauf</th>
                                         <th class="number-cell">Einkauf</th>
                                         <th class="number-cell">DB</th>
@@ -3711,12 +3751,28 @@ function applyPermissions() {
                     statusClass = 'status-ab';
                 }
                 
+                // Ampelsystem: nur wenn Rechnung NICHT gesetzt
+                let ampel = '';
+                if (!hasInvoice && (project.purchasePositions || []).length > 0) {
+                    const ekStati = (project.purchasePositions || []).map(p => p.status || 'open');
+                    const allDone = ekStati.every(s => s === 'delivered' || s === 'stock' || s === 'done');
+                    const anyOpen = ekStati.some(s => s === 'open');
+                    if (allDone) {
+                        ampel = '<span title="Alle EK geliefert/Lager" style="font-size:14px;">🟢</span>';
+                    } else if (anyOpen) {
+                        ampel = '<span title="Mind. eine EK-Position offen" style="font-size:14px;">🔴</span>';
+                    } else {
+                        ampel = '<span title="Mind. eine EK-Position bestellt/bestätigt" style="font-size:14px;">🟡</span>';
+                    }
+                }
+
                 return `
                     <tr class="${statusClass}" onclick="openProject('${projectNumber}')">
                         <td><span class="project-number">${project.projectNumber}</span></td>
                         <td>${project.customer}</td>
                         <td>${project.projectName ? `<span class="project-designation">${project.projectName}</span>` : ''}</td>
                         <td>${kwDisplay}</td>
+                        <td style="text-align:center; width:32px;">${ampel}</td>
                         <td class="number-cell">${formatCurrency(totalSales)}</td>
                         <td class="number-cell">${formatCurrency(totalPurchase)}</td>
                         <td class="number-cell" style="color: ${margin >= 0 ? '#28a745' : '#dc3545'}">${formatCurrency(margin)}</td>
@@ -4075,27 +4131,35 @@ function applyPermissions() {
         }
         
         function updateTradeSelects() {
-            const selects = [
-                document.getElementById('newSalesTrade'),
-                document.getElementById('newPurchaseTrade')
-            ];
-            
-            selects.forEach(select => {
-                const currentValue = select.value;
-                
+            // VK-Gewerk-Select (bleibt im VK-Formular)
+            const vkTradeSelect = document.getElementById('newSalesTrade');
+            if (vkTradeSelect) {
+                const currentValue = vkTradeSelect.value;
                 if (currentProject.trades.length === 0) {
-                    select.innerHTML = '<option value="">Kein Gewerk</option>';
+                    vkTradeSelect.innerHTML = '<option value="">Kein Gewerk</option>';
                 } else {
                     const sortedTrades = [...currentProject.trades].sort();
-                    select.innerHTML = sortedTrades.map(trade => 
+                    vkTradeSelect.innerHTML = '<option value="">Kein Gewerk</option>' + sortedTrades.map(trade =>
                         `<option value="${trade}">${trade}</option>`
                     ).join('');
-                    
                     if (currentValue && currentProject.trades.includes(currentValue)) {
-                        select.value = currentValue;
+                        vkTradeSelect.value = currentValue;
                     }
                 }
-            });
+            }
+            // VK-Positions-Dropdown im EK-Formular aktualisieren
+            updateVkLinkSelect();
+        }
+
+        function updateVkLinkSelect() {
+            const sel = document.getElementById('newPurchaseVkLink');
+            if (!sel) return;
+            const currentValue = sel.value;
+            sel.innerHTML = '<option value="">-- Nicht zugeordnet --</option>' +
+                (currentProject.salesPositions || []).map(vkPos =>
+                    `<option value="${vkPos.id}">${vkPos.description ? vkPos.description.substring(0, 50) : '(ohne Bezeichnung)'}</option>`
+                ).join('');
+            if (currentValue) sel.value = currentValue;
         }
         
         function addSalesPosition() {
@@ -4139,7 +4203,7 @@ function applyPermissions() {
             if (salesArticleId && articleDatabase[salesArticleId]) {
                 const selectedArticle = articleDatabase[salesArticleId];
                 if (selectedArticle.bom && selectedArticle.bom.length > 0) {
-                    showBOMImportDialog(selectedArticle);
+                    showBOMImportDialog(selectedArticle, quantity, position.id);
                 }
             }
             
@@ -4267,7 +4331,7 @@ function applyPermissions() {
                 unitPrice: unitPrice,
                 totalPrice: quantity * unitPrice,
                 type: document.getElementById('newPurchaseType').value,
-                trade: document.getElementById('newPurchaseTrade').value || '',
+                vkPositionId: document.getElementById('newPurchaseVkLink').value || '',
                 status: 'open',
                 assignedTo: 'unassigned',
                 deliveryDate: ''
@@ -4289,15 +4353,88 @@ function applyPermissions() {
             updateTradeTable();
         }
         
-        window.sortEkBy = function(field) {
-            if (window.ekSortField === field) {
-                window.ekSortDir = window.ekSortDir === 'asc' ? 'desc' : 'asc';
-            } else {
-                window.ekSortField = field;
-                window.ekSortDir = 'asc';
-            }
+        // Einklapp-Status der VK-Gruppen in der EK-BOM-Ansicht
+        if (!window.ekBomCollapsed) window.ekBomCollapsed = {};
+
+        window.toggleEkVkGroup = function(vkId) {
+            window.ekBomCollapsed[vkId] = !window.ekBomCollapsed[vkId];
             renderPurchasePositions();
         };
+
+        function getEkAmpel(ekPositions) {
+            if (!ekPositions || ekPositions.length === 0) return '';
+            const stati = ekPositions.map(p => p.status || 'open');
+            const allDone = stati.every(s => s === 'delivered' || s === 'stock' || s === 'done');
+            const anyOpen = stati.some(s => s === 'open');
+            if (allDone) return '<span title="Alle EK geliefert/Lager" style="font-size:13px;">🟢</span>';
+            if (anyOpen) return '<span title="Mind. eine EK-Position offen" style="font-size:13px;">🔴</span>';
+            return '<span title="Mind. eine EK-Position bestellt/bestätigt" style="font-size:13px;">🟡</span>';
+        }
+
+        function renderEkRow(pos, index) {
+            const statusObj = PURCHASE_STATUS.find(s => s.id === (pos.status || 'open')) || PURCHASE_STATUS[0];
+            const statusOptions = PURCHASE_STATUS.map(s =>
+                `<option value="${s.id}" ${(pos.status || 'open') === s.id ? 'selected' : ''}>${s.label}</option>`
+            ).join('');
+            const memberOptions = TEAM_MEMBERS.map(m =>
+                `<option value="${m.id}" ${(pos.assignedTo || 'unassigned') === m.id ? 'selected' : ''}>${m.name}</option>`
+            ).join('');
+            return `
+            <tr class="ek-child-row">
+                <td title="Pos. ${index + 1}">↳</td>
+                <td class="editable-cell">
+                    <textarea class="auto-grow" oninput="autoGrow(this)" onfocus="autoGrow(this)"
+                           onchange="updatePurchasePosition(${index}, 'supplier', this.value)">${pos.supplier || ''}</textarea>
+                </td>
+                <td class="editable-cell number-cell">
+                    <input type="number" step="0.01" value="${pos.quantity}"
+                           onchange="updatePurchasePosition(${index}, 'quantity', parseFloat(this.value))" style="width: 70px;">
+                </td>
+                <td class="editable-cell">
+                    <textarea class="auto-grow" oninput="autoGrow(this)" onfocus="autoGrow(this)"
+                           onchange="updatePurchasePosition(${index}, 'description', this.value)" style="min-width: 180px;">${pos.description}</textarea>
+                </td>
+                <td class="editable-cell">
+                    <select onchange="updatePurchasePosition(${index}, 'type', this.value)">
+                        <option value="material" ${pos.type === 'material' ? 'selected' : ''}>Material</option>
+                        <option value="hour" ${pos.type === 'hour' ? 'selected' : ''}>Stunden</option>
+                        <option value="shipping" ${pos.type === 'shipping' ? 'selected' : ''}>Versand</option>
+                        <option value="kilometer" ${pos.type === 'kilometer' ? 'selected' : ''}>Kilometer</option>
+                        <option value="other" ${pos.type === 'other' ? 'selected' : ''}>Sonstiges</option>
+                    </select>
+                </td>
+                <td class="editable-cell">
+                    <select onchange="updatePurchasePosition(${index}, 'status', this.value)"
+                            style="font-weight: 600; color: ${statusObj.color}; border-color: ${statusObj.color};">
+                        ${statusOptions}
+                    </select>
+                </td>
+                <td class="editable-cell" style="width:90px;">
+                    <select onchange="updatePurchasePosition(${index}, 'assignedTo', this.value)" style="font-size:12px;">
+                        ${memberOptions}
+                    </select>
+                </td>
+                <td style="width:80px; white-space:nowrap;">
+                    <input type="date" id="ekDate_${index}" value="${pos.deliveryDate || ''}"
+                           onchange="updatePurchasePosition(${index}, 'deliveryDate', this.value)"
+                           style="position:absolute; opacity:0; width:0; height:0;">
+                    <button onclick="document.getElementById('ekDate_${index}').showPicker ? document.getElementById('ekDate_${index}').showPicker() : document.getElementById('ekDate_${index}').click()"
+                            style="background:none; border:none; cursor:pointer; font-size:15px; vertical-align:middle;" title="Liefertermin wählen">📅</button>
+                    <span style="font-size:11px;color:${pos.deliveryDate ? '#366092' : '#ccc'};font-weight:${pos.deliveryDate ? '600' : 'normal'};vertical-align:middle;">
+                        ${pos.deliveryDate ? `KW ${getWeekNumber(new Date(pos.deliveryDate))}` : '—'}
+                    </span>
+                </td>
+                <td class="number-cell editable-cell">
+                    <input type="number" step="0.01" value="${pos.unitPrice}"
+                           onchange="updatePurchasePosition(${index}, 'unitPrice', parseFloat(this.value))"
+                           style="width: 80px; text-align: right;">
+                </td>
+                <td class="number-cell"><strong>${formatCurrency(pos.totalPrice)}</strong></td>
+                <td class="action-cell">
+                    <button onclick="deletePurchasePosition(${index})" class="btn-danger btn-small">Löschen</button>
+                </td>
+            </tr>`;
+        }
 
         function renderPurchasePositions() {
             const tbody = document.getElementById('purchaseTable');
@@ -4305,133 +4442,108 @@ function applyPermissions() {
             if (currentProject.purchasePositions.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="12" style="text-align: center; padding: 40px; color: #999;">
+                        <td colspan="11" style="text-align: center; padding: 40px; color: #999;">
                             Keine Einkaufspositionen vorhanden. Fügen Sie oben eine Position hinzu.
                         </td>
                     </tr>
                 `;
+                updateSectionTotals();
                 return;
             }
 
-            // Build index map for sort+filter then render by original indices
             const filterOpen = window.ekFilterOpen === true;
-            const sortField = window.ekSortField || null;
-            const sortDir = window.ekSortDir || 'asc';
 
-            // Create indexed list
-            let indexedPositions = currentProject.purchasePositions.map((pos, index) => ({ pos, index }));
+            // Hilfsfunktion: Ampel-Status berechnen
+            // VK-Positionen als Gruppen, EK-Positionen darunter
+            const rows = [];
 
-            // Apply filter
-            if (filterOpen) {
-                indexedPositions = indexedPositions.filter(({ pos }) => (pos.status || 'open') === 'open');
-            }
+            // Alle VK-Positionen als Gruppen
+            currentProject.salesPositions.forEach((vkPos) => {
+                const vkId = vkPos.id;
+                // EK-Positionen dieser VK-Position (mit originalem Index)
+                let ekChildren = currentProject.purchasePositions
+                    .map((p, i) => ({ pos: p, index: i }))
+                    .filter(({ pos }) => pos.vkPositionId === vkId);
 
-            // Apply sort
-            if (sortField) {
-                indexedPositions.sort((a, b) => {
-                    let va = (a.pos[sortField] || '').toLowerCase();
-                    let vb = (b.pos[sortField] || '').toLowerCase();
-                    if (sortField === 'status') {
-                        const order = PURCHASE_STATUS.map(s => s.id);
-                        va = order.indexOf(a.pos.status || 'open');
-                        vb = order.indexOf(b.pos.status || 'open');
-                        return sortDir === 'asc' ? va - vb : vb - va;
-                    }
-                    return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-                });
-            }
+                if (filterOpen) {
+                    ekChildren = ekChildren.filter(({ pos }) => (pos.status || 'open') === 'open');
+                }
 
-            // Update sort indicators
-            ['supplier','trade','status'].forEach(f => {
-                const el = document.getElementById('ekSort_' + f);
-                if (el) el.textContent = sortField === f ? (sortDir === 'asc' ? '▲' : '▼') : '↕';
+                // VK-Gruppe nur zeigen wenn EK-Kinder vorhanden (oder keine Filter-Einschränkung)
+                const allEkForVk = currentProject.purchasePositions.filter(p => p.vkPositionId === vkId);
+                if (allEkForVk.length === 0) return; // keine EK-Positionen → Gruppe weglassen
+
+                const isCollapsed = !!window.ekBomCollapsed[vkId];
+                const ampel = getEkAmpel(allEkForVk);
+                const ekSum = allEkForVk.reduce((s, p) => s + p.totalPrice, 0);
+
+                rows.push(`<tr class="ek-vk-header${isCollapsed ? ' collapsed' : ''}" onclick="window.toggleEkVkGroup('${vkId}')">
+                    <td colspan="9" style="padding-left:8px;">
+                        <span class="collapse-arrow">${isCollapsed ? '▶' : '▼'}</span>
+                        ${ampel}
+                        <strong>${vkPos.description}</strong>
+                        <span style="font-size:11px; color:#555; margin-left:8px;">(${vkPos.quantity}× ${formatCurrency(vkPos.unitPrice)} VK)</span>
+                        <span style="font-size:11px; color:#888; margin-left:8px;">${ekChildren.length}${filterOpen && ekChildren.length < allEkForVk.length ? '/' + allEkForVk.length : ''} EK-Pos.</span>
+                    </td>
+                    <td class="number-cell" style="font-weight:600;">${formatCurrency(ekSum)}</td>
+                    <td></td>
+                </tr>`);
+
+                if (!isCollapsed) {
+                    ekChildren.forEach(({ pos, index }) => {
+                        rows.push(renderEkRow(pos, index));
+                    });
+                }
             });
 
-            // Filter info
+            // Nicht verknüpfte EK-Positionen (kein vkPositionId oder ungültige ID)
+            const validVkIds = new Set(currentProject.salesPositions.map(p => p.id));
+            let unlinked = currentProject.purchasePositions
+                .map((p, i) => ({ pos: p, index: i }))
+                .filter(({ pos }) => !pos.vkPositionId || !validVkIds.has(pos.vkPositionId));
+
+            if (filterOpen) {
+                unlinked = unlinked.filter(({ pos }) => (pos.status || 'open') === 'open');
+            }
+
+            if (unlinked.length > 0) {
+                const unlinkedId = '__unlinked__';
+                const isCollapsed = !!window.ekBomCollapsed[unlinkedId];
+                const ampel = getEkAmpel(unlinked.map(u => u.pos));
+                const ekSum = unlinked.reduce((s, { pos }) => s + pos.totalPrice, 0);
+
+                rows.push(`<tr class="ek-unlinked-header${isCollapsed ? ' collapsed' : ''}" onclick="window.toggleEkVkGroup('${unlinkedId}')">
+                    <td colspan="9" style="padding-left:8px;">
+                        <span class="collapse-arrow">${isCollapsed ? '▶' : '▼'}</span>
+                        ${ampel}
+                        <em>Nicht zugeordnet</em>
+                        <span style="font-size:11px; color:#888; margin-left:8px;">${unlinked.length} EK-Pos.</span>
+                    </td>
+                    <td class="number-cell" style="font-weight:600;">${formatCurrency(ekSum)}</td>
+                    <td></td>
+                </tr>`);
+
+                if (!isCollapsed) {
+                    unlinked.forEach(({ pos, index }) => {
+                        rows.push(renderEkRow(pos, index));
+                    });
+                }
+            }
+
+            if (rows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:40px; color:#999;">Keine offenen EK-Positionen vorhanden.</td></tr>`;
+            } else {
+                tbody.innerHTML = rows.join('');
+            }
+
+            // Filter-Info
             const infoEl = document.getElementById('ekSortInfo');
-            if (infoEl && filterOpen && indexedPositions.length < currentProject.purchasePositions.length) {
-                infoEl.textContent = `${indexedPositions.length} von ${currentProject.purchasePositions.length} angezeigt`;
-            } else if (infoEl) {
-                infoEl.textContent = '';
+            if (infoEl) {
+                const total = currentProject.purchasePositions.length;
+                const shown = currentProject.purchasePositions.filter(p => !filterOpen || (p.status || 'open') === 'open').length;
+                infoEl.textContent = (filterOpen && shown < total) ? `${shown} von ${total} angezeigt` : '';
             }
 
-            if (indexedPositions.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:40px; color:#999;">Keine offenen EK-Positionen vorhanden.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = indexedPositions.map(({ pos, index }) => {
-                const sortedTrades = [...currentProject.trades].sort();
-                const statusObj = PURCHASE_STATUS.find(s => s.id === (pos.status || 'open')) || PURCHASE_STATUS[0];
-                const statusOptions = PURCHASE_STATUS.map(s =>
-                    `<option value="${s.id}" ${(pos.status || 'open') === s.id ? 'selected' : ''}>${s.label}</option>`
-                ).join('');
-                const memberOptions = TEAM_MEMBERS.map(m =>
-                    `<option value="${m.id}" ${(pos.assignedTo || 'unassigned') === m.id ? 'selected' : ''}>${m.name}</option>`
-                ).join('');
-                return `
-                <tr draggable="true">
-                    <td class="drag-handle" title="Ziehen zum Sortieren">⠿</td>
-                    <td class="editable-cell">
-                        <textarea class="auto-grow" oninput="autoGrow(this)" onfocus="autoGrow(this)"
-                               onchange="updatePurchasePosition(${index}, 'supplier', this.value)">${pos.supplier || ''}</textarea>
-                    </td>
-                    <td class="editable-cell number-cell">
-                        <input type="number" step="0.01" value="${pos.quantity}" 
-                               onchange="updatePurchasePosition(${index}, 'quantity', parseFloat(this.value))" style="width: 80px;">
-                    </td>
-                    <td class="editable-cell">
-                        <textarea class="auto-grow" oninput="autoGrow(this)" onfocus="autoGrow(this)"
-                               onchange="updatePurchasePosition(${index}, 'description', this.value)" style="min-width: 200px;">${pos.description}</textarea>
-                    </td>
-                    <td class="editable-cell">
-                        <select onchange="updatePurchasePosition(${index}, 'trade', this.value)">
-                            <option value="">Kein Gewerk</option>
-                            ${sortedTrades.map(t => `<option value="${t}" ${pos.trade === t ? 'selected' : ''}>${t}</option>`).join('')}
-                        </select>
-                    </td>
-                    <td class="editable-cell">
-                        <select onchange="updatePurchasePosition(${index}, 'type', this.value)">
-                            <option value="material" ${pos.type === 'material' ? 'selected' : ''}>Material</option>
-                            <option value="hour" ${pos.type === 'hour' ? 'selected' : ''}>Stunden</option>
-                            <option value="shipping" ${pos.type === 'shipping' ? 'selected' : ''}>Versand</option>
-                            <option value="kilometer" ${pos.type === 'kilometer' ? 'selected' : ''}>Kilometer</option>
-                            <option value="other" ${pos.type === 'other' ? 'selected' : ''}>Sonstiges</option>
-                        </select>
-                    </td>
-                    <td class="editable-cell">
-                        <select onchange="updatePurchasePosition(${index}, 'status', this.value)"
-                                style="font-weight: 600; color: ${statusObj.color}; border-color: ${statusObj.color};">
-                            ${statusOptions}
-                        </select>
-                    </td>
-                    <td class="editable-cell" style="width:90px;">
-                        <select onchange="updatePurchasePosition(${index}, 'assignedTo', this.value)" style="font-size:12px;">
-                            ${memberOptions}
-                        </select>
-                    </td>
-                    <td style="width:80px; white-space:nowrap;">
-                        <input type="date" id="ekDate_${index}" value="${pos.deliveryDate || ''}"
-                               onchange="updatePurchasePosition(${index}, 'deliveryDate', this.value)"
-                               style="position:absolute; opacity:0; width:0; height:0;">
-                        <button onclick="document.getElementById('ekDate_${index}').showPicker ? document.getElementById('ekDate_${index}').showPicker() : document.getElementById('ekDate_${index}').click()"
-                                style="background:none; border:none; cursor:pointer; font-size:15px; vertical-align:middle;" title="Liefertermin wählen">📅</button>
-                        <span style="font-size:11px;color:${pos.deliveryDate ? '#366092' : '#ccc'};font-weight:${pos.deliveryDate ? '600' : 'normal'};vertical-align:middle;">
-                            ${pos.deliveryDate ? `KW ${getWeekNumber(new Date(pos.deliveryDate))}` : '—'}
-                        </span>
-                    </td>
-                    <td class="number-cell editable-cell">
-                        <input type="number" step="0.01" value="${pos.unitPrice}"
-                               onchange="updatePurchasePosition(${index}, 'unitPrice', parseFloat(this.value))"
-                               style="width: 90px; text-align: right;">
-                    </td>
-                    <td class="number-cell"><strong>${formatCurrency(pos.totalPrice)}</strong></td>
-                    <td class="action-cell">
-                        <button onclick="deletePurchasePosition(${index})" class="btn-danger btn-small">Löschen</button>
-                    </td>
-                </tr>
-            `}).join('');
-            initDragAndDrop('purchaseTable', currentProject.purchasePositions, renderPurchasePositions);
             autoGrowAll();
             updateSectionTotals();
         }
@@ -4460,11 +4572,6 @@ function applyPermissions() {
         }
         
         function openMultiPositionDialog() {
-            if (currentProject.trades.length === 0) {
-                showMessage('Bitte fügen Sie zuerst mindestens ein Gewerk hinzu', 'error');
-                return;
-            }
-            
             multiPositions = [createEmptyMultiPosition()];
             window.multiPositions = multiPositions;
             document.getElementById('multiSupplier').value = '';
@@ -4489,7 +4596,7 @@ function applyPermissions() {
                 description: '',
                 quantity: 1,
                 unitPrice: 0,
-                trade: currentProject.trades.length > 0 ? currentProject.trades[0] : '',
+                vkPositionId: '',
                 type: 'material'
             };
         }
@@ -4510,8 +4617,6 @@ function applyPermissions() {
         
         function renderMultiPositionList() {
             const list = document.getElementById('multiPositionList');
-            const sortedTrades = [...currentProject.trades].sort();
-            
             list.innerHTML = multiPositions.map((pos, index) => `
                 <div class="multi-position-item">
                     <div class="multi-position-item-header">
@@ -4536,14 +4641,16 @@ function applyPermissions() {
                                    onchange="window.multiPositions[${index}].unitPrice = parseFloat(this.value)">
                         </div>
                         <div class="form-group">
-                            <label>Gewerk</label>
-                            <select onchange="window.multiPositions[${index}].trade = this.value">
-                            <option value="">Kein Gewerk</option>
-                            ${sortedTrades.map(t => `<option value="${t}" ${pos.trade === t ? 'selected' : ''}>${t}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Typ</label>
+                            <label>VK-Position</label>
+                            <select onchange="window.multiPositions[${index}].vkPositionId = this.value">
+                                <option value="">-- Nicht zugeordnet --</option>
+                                ${(currentProject.salesPositions || []).map(vkPos =>
+                                    `<option value="${vkPos.id}" ${pos.vkPositionId === vkPos.id ? 'selected' : ''}>${(vkPos.description || '').substring(0, 40)}</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Typ</label>
                         <select onchange="window.multiPositions[${index}].type = this.value">
                             <option value="material" ${pos.type === 'material' ? 'selected' : ''}>Material</option>
                             <option value="hour" ${pos.type === 'hour' ? 'selected' : ''}>Stunden</option>
@@ -4584,7 +4691,7 @@ function applyPermissions() {
                 unitPrice: pos.unitPrice,
                 totalPrice: pos.quantity * pos.unitPrice,
                 type: pos.type,
-                trade: pos.trade,
+                vkPositionId: pos.vkPositionId || '',
                 status: batchStatus,
                 assignedTo: batchAssignedTo
             };
@@ -4630,88 +4737,66 @@ function applyPermissions() {
     
     function updateTradeTable() {
         const tbody = document.getElementById('tradeTable');
-        
-        if (currentProject.trades.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #999;">Keine Gewerke definiert</td></tr>';
+        const salesPositions = currentProject.salesPositions || [];
+        const purchasePositions = currentProject.purchasePositions || [];
+
+        if (salesPositions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #999;">Keine VK-Positionen vorhanden</td></tr>';
             return;
         }
-        
-        const salesByTrade = {};
-        const purchaseByTrade = {};
-        const salesByType = {};
-        const purchaseByType = {};
-        
-        const sortedTrades = [...currentProject.trades].sort();
-        
-        sortedTrades.forEach(trade => {
-            salesByTrade[trade] = 0;
-            purchaseByTrade[trade] = 0;
-            salesByType[trade] = {};
-            purchaseByType[trade] = {};
+
+        // EK-Summen je VK-Position
+        const purchaseByVk = {};
+        purchasePositions.forEach(pos => {
+            const vid = pos.vkPositionId || '__unlinked__';
+            purchaseByVk[vid] = (purchaseByVk[vid] || 0) + (pos.totalPrice || 0);
         });
-        
-        currentProject.salesPositions.forEach(pos => {
-            if (pos.trade) {
-                salesByTrade[pos.trade] = (salesByTrade[pos.trade] || 0) + pos.totalPrice;
-                salesByType[pos.trade][pos.type] = (salesByType[pos.trade][pos.type] || 0) + pos.totalPrice;
-            }
-        });
-        
-        currentProject.purchasePositions.forEach(pos => {
-            if (pos.trade) {
-                purchaseByTrade[pos.trade] = (purchaseByTrade[pos.trade] || 0) + pos.totalPrice;
-                purchaseByType[pos.trade][pos.type] = (purchaseByType[pos.trade][pos.type] || 0) + pos.totalPrice;
-            }
-        });
-        
-        tbody.innerHTML = sortedTrades.map(trade => {
-            const sales = salesByTrade[trade] || 0;
-            const purchase = purchaseByTrade[trade] || 0;
+
+        const totalSales = salesPositions.reduce((s, p) => s + (p.totalPrice || 0), 0);
+        const totalPurchase = purchasePositions.reduce((s, p) => s + (p.totalPrice || 0), 0);
+        const totalDb = totalSales - totalPurchase;
+        const totalDbPct = totalSales > 0 ? (totalDb / totalSales * 100) : 0;
+
+        let rows = salesPositions.map(vkPos => {
+            const sales = vkPos.totalPrice || 0;
+            const purchase = purchaseByVk[vkPos.id] || 0;
             const db = sales - purchase;
-            const dbPercent = sales > 0 ? (db / sales * 100) : 0;
-            
-            const salesTypes = salesByType[trade] || {};
-            const purchaseTypes = purchaseByType[trade] || {};
-            const allTypes = new Set([...Object.keys(salesTypes), ...Object.keys(purchaseTypes)]);
-            
-            let typeBreakdown = '';
-            if (allTypes.size > 0) {
-                typeBreakdown = '<div class="trade-breakdown">';
-                allTypes.forEach(type => {
-                    const saleType = salesTypes[type] || 0;
-                    const purchaseType = purchaseTypes[type] || 0;
-                    if (saleType > 0 || purchaseType > 0) {
-                        typeBreakdown += `${getTypeLabel(type)}: Verkauf ${formatCurrency(saleType)}, Einkauf ${formatCurrency(purchaseType)}<br>`;
-                    }
-                });
-                typeBreakdown += '</div>';
-            }
-            
+            const dbPct = sales > 0 ? (db / sales * 100) : 0;
+            const label = (vkPos.description || '').substring(0, 60) || '(ohne Bezeichnung)';
             return `
                 <tr>
-                    <td>
-                        <strong>${trade}</strong>
-                        ${typeBreakdown}
-                    </td>
+                    <td><strong>${label}</strong></td>
                     <td class="number-cell">${formatCurrency(sales)}</td>
                     <td class="number-cell">${formatCurrency(purchase)}</td>
                     <td class="number-cell" style="color: ${db < 0 ? '#dc3545' : '#28a745'}">${formatCurrency(db)}</td>
-                    <td class="number-cell" style="color: ${db < 0 ? '#dc3545' : '#28a745'}">${dbPercent.toFixed(1)}%</td>
-                </tr>
-            `;
-        }).join('') + `
-            <tr style="font-weight: bold; background: #f8f9fa;">
+                    <td class="number-cell" style="color: ${db < 0 ? '#dc3545' : '#28a745'}">${dbPct.toFixed(1)}%</td>
+                </tr>`;
+        }).join('');
+
+        // Nicht zugeordnete EK-Positionen
+        const unlinkedPurchase = purchaseByVk['__unlinked__'] || 0;
+        if (unlinkedPurchase > 0) {
+            const db = 0 - unlinkedPurchase;
+            rows += `
+                <tr style="color: #999;">
+                    <td><em>Nicht zugeordnet</em></td>
+                    <td class="number-cell">–</td>
+                    <td class="number-cell">${formatCurrency(unlinkedPurchase)}</td>
+                    <td class="number-cell" style="color: #dc3545;">${formatCurrency(db)}</td>
+                    <td class="number-cell" style="color: #dc3545;">–</td>
+                </tr>`;
+        }
+
+        rows += `
+            <tr style="font-weight: bold; background: #f8f9fa; border-top: 2px solid #dee2e6;">
                 <td>GESAMT</td>
-                <td class="number-cell">${formatCurrency(currentProject.salesPositions.reduce((s, p) => s + p.totalPrice, 0))}</td>
-                <td class="number-cell">${formatCurrency(currentProject.purchasePositions.reduce((s, p) => s + p.totalPrice, 0))}</td>
-                <td class="number-cell" style="color: ${(currentProject.salesPositions.reduce((s, p) => s + p.totalPrice, 0) - currentProject.purchasePositions.reduce((s, p) => s + p.totalPrice, 0)) < 0 ? '#dc3545' : '#28a745'}">
-                    ${formatCurrency(currentProject.salesPositions.reduce((s, p) => s + p.totalPrice, 0) - currentProject.purchasePositions.reduce((s, p) => s + p.totalPrice, 0))}
-                </td>
-                <td class="number-cell" style="color: ${(currentProject.salesPositions.reduce((s, p) => s + p.totalPrice, 0) - currentProject.purchasePositions.reduce((s, p) => s + p.totalPrice, 0)) < 0 ? '#dc3545' : '#28a745'}">
-                    ${(((currentProject.salesPositions.reduce((s, p) => s + p.totalPrice, 0) - currentProject.purchasePositions.reduce((s, p) => s + p.totalPrice, 0)) / currentProject.salesPositions.reduce((s, p) => s + p.totalPrice, 0)) * 100).toFixed(1)}%
-                </td>
-            </tr>
-        `;
+                <td class="number-cell">${formatCurrency(totalSales)}</td>
+                <td class="number-cell">${formatCurrency(totalPurchase)}</td>
+                <td class="number-cell" style="color: ${totalDb < 0 ? '#dc3545' : '#28a745'}">${formatCurrency(totalDb)}</td>
+                <td class="number-cell" style="color: ${totalDb < 0 ? '#dc3545' : '#28a745'}">${totalDbPct.toFixed(1)}%</td>
+            </tr>`;
+
+        tbody.innerHTML = rows;
     }
     
     async function saveProject() {
@@ -7026,18 +7111,28 @@ function applyPermissions() {
         // ========== BOM IMPORT DIALOG ==========
 
         let _pendingBOMArticle = null;
+        let _pendingBOMVkQuantity = 1;
+        let _pendingBOMVkPositionId = '';
 
-        function showBOMImportDialog(article) {
+        function showBOMImportDialog(article, vkQuantity, vkPositionId) {
             _pendingBOMArticle = article;
+            _pendingBOMVkQuantity = vkQuantity || 1;
+            _pendingBOMVkPositionId = vkPositionId || '';
+            const qty = _pendingBOMVkQuantity;
             document.getElementById('bomImportTitle').textContent = `Komponenten für "${article.name}" übernehmen?`;
 
-            const bomTotal = article.bom.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-            let listHTML = `<strong>Stückliste (${article.bom.length} Komponenten, EK gesamt: ${formatCurrency(bomTotal)})</strong><br><br>`;
+            const bomTotal = article.bom.reduce((sum, item) => sum + (item.quantity * qty * item.price), 0);
+            const qtyHint = qty !== 1 ? ` × ${qty} VK-Stück` : '';
+            let listHTML = `<strong>Stückliste (${article.bom.length} Komponenten${qtyHint}, EK gesamt: ${formatCurrency(bomTotal)})</strong><br><br>`;
             article.bom.forEach(item => {
+                const totalQty = item.quantity * qty;
                 listHTML += `• `;
                 if (item.supplier) listHTML += `<em>${item.supplier}</em>: `;
                 if (item.supplierArticleNumber) listHTML += `[${item.supplierArticleNumber}] `;
-                listHTML += `${item.name} — ${item.quantity}× ${formatCurrency(item.price)} = <strong>${formatCurrency(item.quantity * item.price)}</strong><br>`;
+                listHTML += `${item.name} — `;
+                if (qty !== 1) listHTML += `${item.quantity}×${qty} = <strong>${totalQty}×</strong>`;
+                else listHTML += `${totalQty}×`;
+                listHTML += ` ${formatCurrency(item.price)} = <strong>${formatCurrency(totalQty * item.price)}</strong><br>`;
             });
             document.getElementById('bomImportList').innerHTML = listHTML;
             document.getElementById('bomImportModal').classList.add('active');
@@ -7053,19 +7148,21 @@ function applyPermissions() {
         async function confirmBOMImport() {
             if (!_pendingBOMArticle) return;
             const article = _pendingBOMArticle;
+            const vkQty = _pendingBOMVkQuantity || 1;
 
             article.bom.forEach(bomItem => {
                 if (bomItem.name && bomItem.name.trim() !== '') {
+                    const totalQty = bomItem.quantity * vkQty;
                     const position = {
                         id: `purchase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                         supplier: bomItem.supplier || '',
                         supplierArticleNumber: bomItem.supplierArticleNumber || '',
                         description: bomItem.name,
-                        quantity: bomItem.quantity,
+                        quantity: totalQty,
                         unitPrice: bomItem.price,
-                        totalPrice: bomItem.quantity * bomItem.price,
+                        totalPrice: totalQty * bomItem.price,
                         type: article.type || 'material',
-                        trade: article.trade || '',
+                        vkPositionId: _pendingBOMVkPositionId || '',
                         status: 'open',
                         assignedTo: 'unassigned'
                     };
