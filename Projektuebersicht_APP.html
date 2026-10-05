@@ -712,25 +712,6 @@
             margin-top: 15px;
         }
         
-        .trade-summary {
-            background: white;
-            padding: 20px;
-            border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        
-        .trade-table {
-            margin-top: 15px;
-        }
-        
-        .trade-breakdown {
-            margin-top: 10px;
-            padding-left: 20px;
-            font-size: 12px;
-            color: #666;
-        }
-
         /* BOM-EK Stückliste Styles */
         .ek-vk-header td {
             background: #e8f0f8;
@@ -767,60 +748,6 @@
             border-top: 1px dashed #ccc;
             cursor: pointer;
             user-select: none;
-        }
-        
-        .trade-management {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
-        
-        .trade-management h4 {
-            margin-bottom: 10px;
-            color: #366092;
-        }
-        
-        .trade-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .trade-tag {
-            background: white;
-            padding: 8px 12px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .trade-tag button {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 2px 6px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 11px;
-        }
-        
-        .trade-tag button:hover {
-            background: #c82333;
-        }
-        
-        .add-trade-form {
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-        }
-        
-        .add-trade-form input {
-            flex: 1;
-            max-width: 300px;
         }
         
         /* Modal */
@@ -1212,20 +1139,6 @@
             </div>
             
             <div class="stats-section">
-                <h3 style="margin-bottom: 15px; color: #366092;">Gewerke-Analyse</h3>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <h4>Umsatz pro Gewerk</h4>
-                        <div id="gewerkeUmsatz"></div>
-                    </div>
-                    <div class="stat-card">
-                        <h4>Deckungsbeitrag pro Gewerk</h4>
-                        <div id="gewerkeDB"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="stats-section">
                 <h3 style="margin-bottom: 15px; color: #366092;">Zeitliche Auswertung</h3>
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -1291,7 +1204,6 @@
                                 <th>Kunde</th>
                                 <th>Lieferant</th>
                                 <th>Beschreibung</th>
-                                <th>Gewerk</th>
                                 <th class="number-cell">Gesamtpreis</th>
                                 <th>Status</th>
                                 <th>Zuständig</th>
@@ -1455,12 +1367,6 @@
                                 <label>EK-Preis (€)</label>
                                 <input type="number" id="newQuoteUnitPrice" value="0" step="0.01" min="0">
                             </div>
-                            <div style="min-width:110px;">
-                                <label>Gewerk</label>
-                                <select id="newQuoteTrade">
-                                    <option value="">-- Kein Gewerk --</option>
-                                </select>
-                            </div>
                             <div style="padding-bottom:1px;">
                                 <button onclick="addQuotePosition()" class="btn-success">+ Hinzufügen</button>
                             </div>
@@ -1472,7 +1378,6 @@
                             <thead>
                                 <tr>
                                     <th>Beschreibung</th>
-                                    <th>Gewerk</th>
                                     <th style="min-width:80px;">Stückliste</th>
                                     <th class="number-cell" style="min-width:60px;">Menge</th>
                                     <th class="number-cell" style="min-width:80px;">EK/St.</th>
@@ -1653,22 +1558,6 @@
                 </div>
             </div>
 
-            <!-- Standard-Gewerke -->
-            <div class="positions-section" style="margin-bottom: 20px;">
-                <div class="section-header"><h3>🔧 Standard-Gewerke</h3></div>
-                <div style="padding: 20px;">
-                    <div id="settingsTradeList" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px;"></div>
-                    <div style="display:flex; gap:10px; align-items:flex-end;">
-                        <div>
-                            <label>Neues Gewerk</label>
-                            <input type="text" id="newSettingsTrade" placeholder="z.B. Sonderanfertigung" style="width:220px;">
-                        </div>
-                        <button onclick="addSettingsTrade()" class="btn-success">+ Hinzufügen</button>
-                    </div>
-                    <button onclick="saveSettingsTrades()" class="btn-secondary" style="margin-top:15px;">💾 Gewerke speichern</button>
-                </div>
-            </div>
-
             <!-- Kalkulationsfaktoren -->
             <div class="positions-section" style="margin-bottom: 20px;">
                 <div class="section-header"><h3>🧮 Kalkulations-Faktoren (Standard)</h3></div>
@@ -1768,26 +1657,6 @@
                     </div>
                 </div>
                 
-                <div class="trade-management">
-                    <h4>Gewerke verwalten</h4>
-                    <div class="trade-list" id="tradeList"></div>
-                    
-                    <!-- Standardgewerke als Buttons -->
-                    <div style="margin-bottom: 12px;">
-                        <label style="display: block; margin-bottom: 8px; font-size: 13px; color: #555;">Schnellauswahl:</label>
-                        <div id="defaultTradeButtons" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
-                    </div>
-
-                    <!-- Freitext für Sonderfälle -->
-                    <div class="add-trade-form">
-                        <div class="form-group" style="flex: 1; max-width: 300px;">
-                            <label for="newTradeName">Sondergewerk hinzufügen</label>
-                            <input type="text" id="newTradeName" placeholder="z.B. Sonderanfertigung">
-                        </div>
-                        <button onclick="addTrade()" class="btn-success">+ Hinzufügen</button>
-                    </div>
-                </div>
-                
                 <div class="project-actions">
                     <button onclick="saveProject()">💾 Speichern</button>
                     <button onclick="showView('dashboard')" class="btn-secondary">⬅️ Zurück zur Übersicht</button>
@@ -1869,10 +1738,6 @@
                             <input type="number" id="newSalesUnitPrice" step="0.01" value="0" required>
                         </div>
                         <div class="form-group">
-                            <label for="newSalesTrade">Gewerk</label>
-                            <select id="newSalesTrade"></select>
-                        </div>
-                        <div class="form-group">
                             <label for="newSalesType">Typ</label>
                             <select id="newSalesType">
                                 <option value="material">Material</option>
@@ -1893,7 +1758,6 @@
                                 <th style="width:30px;"></th>
                                 <th>Menge</th>
                                 <th>Beschreibung</th>
-                                <th>Gewerk</th>
                                 <th>Typ</th>
                                 <th class="number-cell">Einzelpreis</th>
                                 <th class="number-cell">Gesamtpreis</th>
@@ -1902,7 +1766,7 @@
                         </thead>
                         <tbody id="salesTable">
                             <tr>
-                                <td colspan="7" style="text-align: center; padding: 40px; color: #999;">
+                                <td colspan="6" style="text-align: center; padding: 40px; color: #999;">
                                     Keine Verkaufspositionen vorhanden. Fügen Sie oben eine Position hinzu.
                                 </td>
                             </tr>
@@ -1960,16 +1824,6 @@
                                 <option value="">-- Nicht zugeordnet --</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label for="newPurchaseType">Typ</label>
-                            <select id="newPurchaseType">
-                                <option value="material">Material</option>
-                                <option value="hour">Stunden</option>
-                                <option value="shipping">Versand</option>
-                                <option value="kilometer">Kilometer</option>
-                                <option value="other">Sonstiges</option>
-                            </select>
-                        </div>
                     </div>
                     <button onclick="addPurchasePosition()" class="btn-success">Einkaufsposition hinzufügen</button>
                     <button onclick="openMultiPositionDialog()" class="btn-secondary" style="margin-left:8px;">➕ Mehrere Positionen</button>
@@ -1990,7 +1844,7 @@
                                 <th>Lieferant</th>
                                 <th>Menge</th>
                                 <th>Beschreibung</th>
-                                <th>Typ</th>
+                                <th>VK-Position</th>
                                 <th>Status</th>
                                 <th style="width:90px;">Zuständig</th>
                                 <th style="width:60px;">Lief.-KW</th>
@@ -2132,10 +1986,6 @@
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="articleTrade">Gewerk</label>
-                        <input type="text" id="articleTrade" placeholder="z.B. Filteranlage">
-                    </div>
-                    <div class="form-group">
                         <label for="articleType">Typ</label>
                         <select id="articleType">
                             <option value="material">Material</option>
@@ -2221,7 +2071,6 @@ function applyPermissions() {
                 disable('button[onclick="createNewProject()"]');
                 disable('button[onclick="addSalesPosition()"]');
                 disable('button[onclick="addPurchasePosition()"]');
-                disable('button[onclick="addTrade()"]');
                 disable('button[onclick="addTask()"]');
                 disable('button[onclick="addStockItem()"]');
                 disable('button[onclick="saveArticle()"]');
@@ -2810,7 +2659,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.12';
+        const APP_VERSION = 'v1.6.13';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -2974,7 +2823,6 @@ function applyPermissions() {
                         <div class="article-card-info"><strong>ID:</strong> ${articleId}</div>
                         <div class="article-card-info"><strong>Einkauf:</strong> ${formatCurrency(article.purchasePrice)}${bomCount > 0 ? ' <span style="color: #28a745;">(aus BOM)</span>' : ''}</div>
                         <div class="article-card-info"><strong>Verkauf:</strong> ${formatCurrency(article.salesPrice)} <span style="color: #28a745;">(+${article.margin}%)</span></div>
-                        ${article.trade ? `<div class="article-card-info"><strong>Gewerk:</strong> ${article.trade}</div>` : ''}
                         ${bomCount > 0 ? `<div class="article-card-info" style="color: #28a745;"><strong>Stückliste:</strong> ${bomCount} Komponenten</div>` : ''}
                         ${suppliersHTML}
                         <div class="article-card-actions">
@@ -2997,7 +2845,6 @@ function applyPermissions() {
                 document.getElementById('articleId').disabled = false;
                 document.getElementById('articleName').value = article.name;
                 document.getElementById('articleMargin').value = article.margin;
-                document.getElementById('articleTrade').value = article.trade || '';
                 document.getElementById('articleType').value = article.type || 'material';
                 document.getElementById('articleDescription').value = article.description || '';
                 currentBOM = article.bom || []; window.currentBOM = currentBOM;
@@ -3008,7 +2855,6 @@ function applyPermissions() {
                 document.getElementById('articleId').disabled = false;
                 document.getElementById('articleName').value = '';
                 document.getElementById('articleMargin').value = '50';
-                document.getElementById('articleTrade').value = '';
                 document.getElementById('articleType').value = 'material';
                 document.getElementById('articleDescription').value = '';
             }
@@ -3170,7 +3016,6 @@ function applyPermissions() {
                 purchasePrice: parseFloat(document.getElementById('articlePurchasePrice').value) || 0,
                 margin: parseFloat(document.getElementById('articleMargin').value) || 0,
                 salesPrice: parseFloat(document.getElementById('articleSalesPrice').value) || 0,
-                trade: document.getElementById('articleTrade').value.trim(),
                 type: document.getElementById('articleType').value,
                 description: document.getElementById('articleDescription').value.trim(),
                 bom: currentBOM.filter(item => item.name.trim() !== '')
@@ -3254,9 +3099,6 @@ function applyPermissions() {
             
             document.getElementById('newSalesDescription').value = article.name;
             document.getElementById('newSalesUnitPrice').value = article.salesPrice;
-            if (article.trade) {
-                document.getElementById('newSalesTrade').value = article.trade;
-            }
             document.getElementById('newSalesType').value = article.type;
             
             let infoHTML = `<div class="price-calc">📦 Artikel: ${article.name} | EK: ${formatCurrency(article.purchasePrice)} | VK: ${formatCurrency(article.salesPrice)} (+${article.margin}%)</div>`;
@@ -3313,17 +3155,16 @@ function applyPermissions() {
                             unitPrice: bomItem.price,
                             totalPrice: bomItem.quantity * bomItem.price,
                             type: article.type || 'material',
-                            trade: article.trade || '',
                             status: 'open',
                             assignedTo: 'unassigned',
                             deliveryDate: ''
                         };
-                        
+
                         currentProject.purchasePositions.push(position);
                         addedCount++;
                     }
                 });
-                
+
                 // Views aktualisieren
                 renderPurchasePositions();
                 updateSummary();
@@ -3347,11 +3188,6 @@ function applyPermissions() {
                 // Kein BOM vorhanden - alte Logik (manuelles Befüllen)
                 document.getElementById('newPurchaseDescription').value = article.name;
                 document.getElementById('newPurchaseUnitPrice').value = article.purchasePrice;
-                
-                if (article.trade) {
-                    document.getElementById('newPurchaseTrade').value = article.trade;
-                }
-                document.getElementById('newPurchaseType').value = article.type;
                 
                 let infoHTML = `<div class="price-calc">📦 Artikel: ${article.name} | EK: ${formatCurrency(article.purchasePrice)}</div>`;
                 infoHTML += `<div class="bom-warning">⚠️ Dieser Artikel hat keine Stückliste. Bitte manuell hinzufügen.</div>`;
@@ -3838,7 +3674,6 @@ function applyPermissions() {
                 projectName: '',
                 orderNumber: '',
                 deliveryDate: '',
-                trades: [],
                 salesPositions: [],
                 purchasePositions: [],
                 tasks: [],
@@ -3847,16 +3682,14 @@ function applyPermissions() {
                 hasDelivered: false,
                 hasPostCalc: false
             };
-            
+
             document.getElementById('projectNumber').value = '';
             document.getElementById('customer').value = '';
             document.getElementById('projectName').value = '';
             document.getElementById('orderNumber').value = '';
             document.getElementById('deliveryDate').value = '';
             document.getElementById('deliveryWeek').textContent = '';
-            
-            renderTradeList();
-            updateTradeSelects();
+
             updateArticleSelects();
             renderSalesPositions();
             renderPurchasePositions();
@@ -3891,7 +3724,6 @@ function applyPermissions() {
                 projectName: '',
                 orderNumber: '',
                 deliveryDate: '',
-                trades: [...(source.trades || [])],
                 salesPositions: copiedSales,
                 purchasePositions: copiedPurchase,
                 tasks: [],
@@ -3908,8 +3740,6 @@ function applyPermissions() {
             document.getElementById('deliveryDate').value = '';
             document.getElementById('deliveryWeek').textContent = '';
 
-            renderTradeList();
-            updateTradeSelects();
             updateArticleSelects();
             renderSalesPositions();
             renderPurchasePositions();
@@ -3929,7 +3759,6 @@ function applyPermissions() {
             if (!currentProject.projectName) currentProject.projectName = '';
             if (!currentProject.orderNumber) currentProject.orderNumber = '';
             if (!currentProject.deliveryDate) currentProject.deliveryDate = '';
-            if (!currentProject.trades) currentProject.trades = [];
             if (currentProject.hasAB === undefined) currentProject.hasAB = false;
             if (currentProject.hasInvoice === undefined) currentProject.hasInvoice = false;
             if (currentProject.hasDelivered === undefined) currentProject.hasDelivered = false;
@@ -3957,14 +3786,12 @@ function applyPermissions() {
             document.getElementById('deliveryDate').value = currentProject.deliveryDate;
             
             updateDeliveryWeek();
-            renderTradeList();
-            updateTradeSelects();
             updateArticleSelects();
             renderSalesPositions();
             renderPurchasePositions();
             updateSummary();
             updateTradeTable();
-            
+
             showView('editor');
         }
         
@@ -4037,117 +3864,9 @@ function applyPermissions() {
             showMessage(`Projekt abgeschlossen: ${count} EK-Position(en) aktualisiert`, 'success');
         }
         
-        // ========== REST OF THE CODE CONTINUES WITH TRADES, POSITIONS, ETC. ==========
-        // (Der Rest des Codes bleibt identisch zu vorher, ich spare mir die Wiederholung)
-        
-        function renderTradeList() {
-            const list = document.getElementById('tradeList');
-            
-            if (currentProject.trades.length === 0) {
-                list.innerHTML = '<p style="color: #999; font-size: 13px;">Keine Gewerke vorhanden. Bitte unten auswählen oder eintragen.</p>';
-            } else {
-                const sortedTrades = [...currentProject.trades].sort();
-                list.innerHTML = sortedTrades.map((trade) => {
-                    const index = currentProject.trades.indexOf(trade);
-                    return `
-                        <div class="trade-tag">
-                            <span>${trade}</span>
-                            <button onclick="removeTrade(${index})" title="Gewerk entfernen">×</button>
-                        </div>
-                    `;
-                }).join('');
-            }
+        // ========== POSITIONS, ETC. ==========
 
-            // Schnellauswahl-Buttons rendern — bereits gesetzte ausgegraut
-            const btnContainer = document.getElementById('defaultTradeButtons');
-            if (btnContainer) {
-                btnContainer.innerHTML = DEFAULT_TRADES.map(trade => {
-                    const active = currentProject.trades.includes(trade);
-                    return `<button 
-                        onclick="addTradeByName('${trade}')"
-                        style="padding: 5px 12px; font-size: 12px; border-radius: 15px; border: 1px solid ${active ? '#28a745' : '#366092'}; 
-                               background: ${active ? '#28a745' : 'white'}; color: ${active ? 'white' : '#366092'}; 
-                               cursor: ${active ? 'default' : 'pointer'};"
-                        ${active ? 'disabled' : ''}
-                        title="${active ? 'Bereits hinzugefügt' : 'Klicken zum Hinzufügen'}"
-                    >${trade}</button>`;
-                }).join('');
-            }
-        }
-
-        function addTradeByName(tradeName) {
-            if (currentProject.trades.includes(tradeName)) return;
-            currentProject.trades.push(tradeName);
-            renderTradeList();
-            updateTradeSelects();
-            updateTradeTable();
-        }
-
-        window.addTradeByName = addTradeByName;
-        
-        function addTrade() {
-            const tradeName = document.getElementById('newTradeName').value.trim();
-            
-            if (!tradeName) {
-                showMessage('Gewerksbezeichnung erforderlich', 'error');
-                return;
-            }
-            
-            if (currentProject.trades.includes(tradeName)) {
-                showMessage('Gewerk existiert bereits', 'error');
-                return;
-            }
-            
-            currentProject.trades.push(tradeName);
-            document.getElementById('newTradeName').value = '';
-            
-            renderTradeList();
-            updateTradeSelects();
-            updateTradeTable();
-            showMessage('Gewerk hinzugefügt', 'success');
-        }
-        
-        function removeTrade(index) {
-            const trade = currentProject.trades[index];
-            
-            const usedInSales = currentProject.salesPositions.some(p => p.trade === trade);
-            const usedInPurchase = currentProject.purchasePositions.some(p => p.trade === trade);
-            
-            if (usedInSales || usedInPurchase) {
-                showMessage('Gewerk wird noch verwendet und kann nicht gelöscht werden', 'error');
-                return;
-            }
-            
-            if (!confirm(`Gewerk "${trade}" wirklich entfernen?`)) {
-                return;
-            }
-            
-            currentProject.trades.splice(index, 1);
-            
-            renderTradeList();
-            updateTradeSelects();
-            updateTradeTable();
-            showMessage('Gewerk entfernt', 'success');
-        }
-        
         function updateTradeSelects() {
-            // VK-Gewerk-Select (bleibt im VK-Formular)
-            const vkTradeSelect = document.getElementById('newSalesTrade');
-            if (vkTradeSelect) {
-                const currentValue = vkTradeSelect.value;
-                if (currentProject.trades.length === 0) {
-                    vkTradeSelect.innerHTML = '<option value="">Kein Gewerk</option>';
-                } else {
-                    const sortedTrades = [...currentProject.trades].sort();
-                    vkTradeSelect.innerHTML = '<option value="">Kein Gewerk</option>' + sortedTrades.map(trade =>
-                        `<option value="${trade}">${trade}</option>`
-                    ).join('');
-                    if (currentValue && currentProject.trades.includes(currentValue)) {
-                        vkTradeSelect.value = currentValue;
-                    }
-                }
-            }
-            // VK-Positions-Dropdown im EK-Formular aktualisieren
             updateVkLinkSelect();
         }
 
@@ -4192,8 +3911,7 @@ function applyPermissions() {
                 quantity: quantity,
                 unitPrice: unitPrice,
                 totalPrice: quantity * unitPrice,
-                type: document.getElementById('newSalesType').value,
-                trade: document.getElementById('newSalesTrade').value || ''
+                type: document.getElementById('newSalesType').value
             };
             
             currentProject.salesPositions.push(position);
@@ -4221,11 +3939,11 @@ function applyPermissions() {
         
         function renderSalesPositions() {
             const tbody = document.getElementById('salesTable');
-            
+
             if (currentProject.salesPositions.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px; color: #999;">
+                        <td colspan="6" style="text-align: center; padding: 40px; color: #999;">
                             Keine Verkaufspositionen vorhanden. Fügen Sie oben eine Position hinzu.
                         </td>
                     </tr>
@@ -4234,22 +3952,15 @@ function applyPermissions() {
             }
             
             tbody.innerHTML = currentProject.salesPositions.map((pos, index) => {
-                const sortedTrades = [...currentProject.trades].sort();
                 return `
                 <tr draggable="true">
                     <td class="drag-handle" title="Ziehen zum Sortieren">⠿</td>
                     <td class="editable-cell number-cell">
-                        <input type="number" step="0.01" value="${pos.quantity}" 
+                        <input type="number" step="0.01" value="${pos.quantity}"
                                onchange="updateSalesPosition(${index}, 'quantity', parseFloat(this.value))" style="width: 80px;">
                     </td>
                     <td class="editable-cell">
                         <textarea class="auto-grow" oninput="autoGrow(this)" onfocus="autoGrow(this)" onchange="updateSalesPosition(${index}, 'description', this.value)" style="min-width:200px;">${pos.description}</textarea>
-                    </td>
-                    <td class="editable-cell">
-                        <select onchange="updateSalesPosition(${index}, 'trade', this.value)">
-                            <option value="">Kein Gewerk</option>
-                            ${sortedTrades.map(t => `<option value="${t}" ${pos.trade === t ? 'selected' : ''}>${t}</option>`).join('')}
-                        </select>
                     </td>
                     <td class="editable-cell">
                         <select onchange="updateSalesPosition(${index}, 'type', this.value)">
@@ -4330,7 +4041,6 @@ function applyPermissions() {
                 quantity: quantity,
                 unitPrice: unitPrice,
                 totalPrice: quantity * unitPrice,
-                type: document.getElementById('newPurchaseType').value,
                 vkPositionId: document.getElementById('newPurchaseVkLink').value || '',
                 status: 'open',
                 assignedTo: 'unassigned',
@@ -4395,12 +4105,11 @@ function applyPermissions() {
                            onchange="updatePurchasePosition(${index}, 'description', this.value)" style="min-width: 180px;">${pos.description}</textarea>
                 </td>
                 <td class="editable-cell">
-                    <select onchange="updatePurchasePosition(${index}, 'type', this.value)">
-                        <option value="material" ${pos.type === 'material' ? 'selected' : ''}>Material</option>
-                        <option value="hour" ${pos.type === 'hour' ? 'selected' : ''}>Stunden</option>
-                        <option value="shipping" ${pos.type === 'shipping' ? 'selected' : ''}>Versand</option>
-                        <option value="kilometer" ${pos.type === 'kilometer' ? 'selected' : ''}>Kilometer</option>
-                        <option value="other" ${pos.type === 'other' ? 'selected' : ''}>Sonstiges</option>
+                    <select onchange="updatePurchasePosition(${index}, 'vkPositionId', this.value)" style="font-size:11px; max-width:140px;">
+                        <option value="">— nicht zugeordnet —</option>
+                        ${(currentProject.salesPositions || []).map(vkPos =>
+                            `<option value="${vkPos.id}" ${(pos.vkPositionId || '') === vkPos.id ? 'selected' : ''}>${(vkPos.description || '').substring(0, 30)}</option>`
+                        ).join('')}
                     </select>
                 </td>
                 <td class="editable-cell">
@@ -4596,8 +4305,7 @@ function applyPermissions() {
                 description: '',
                 quantity: 1,
                 unitPrice: 0,
-                vkPositionId: '',
-                type: 'material'
+                vkPositionId: ''
             };
         }
         
@@ -4649,16 +4357,6 @@ function applyPermissions() {
                                 ).join('')}
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label>Typ</label>
-                        <select onchange="window.multiPositions[${index}].type = this.value">
-                            <option value="material" ${pos.type === 'material' ? 'selected' : ''}>Material</option>
-                            <option value="hour" ${pos.type === 'hour' ? 'selected' : ''}>Stunden</option>
-                            <option value="shipping" ${pos.type === 'shipping' ? 'selected' : ''}>Versand</option>
-                            <option value="kilometer" ${pos.type === 'kilometer' ? 'selected' : ''}>Kilometer</option>
-                            <option value="other" ${pos.type === 'other' ? 'selected' : ''}>Sonstiges</option>
-                        </select>
-                    </div>
                 </div>
             </div>
         `).join('');
@@ -4690,7 +4388,6 @@ function applyPermissions() {
                 quantity: pos.quantity,
                 unitPrice: pos.unitPrice,
                 totalPrice: pos.quantity * pos.unitPrice,
-                type: pos.type,
                 vkPositionId: pos.vkPositionId || '',
                 status: batchStatus,
                 assignedTo: batchAssignedTo
@@ -4883,48 +4580,11 @@ function applyPermissions() {
                     </div>
                 </div>
 
-                ${p.trades && p.trades.length > 0 ? `
-                <h2>Gewerke-Übersicht</h2>
-                <table class="trade-table">
-                    <thead>
-                        <tr>
-                            <th>Gewerk</th>
-                            <th class="right">VK</th>
-                            <th class="right">EK</th>
-                            <th class="right">DB</th>
-                            <th class="right">DB %</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${[...p.trades].sort().map(trade => {
-                            const vk = p.salesPositions.filter(pos => pos.trade === trade).reduce((s, pos) => s + pos.totalPrice, 0);
-                            const ek = p.purchasePositions.filter(pos => pos.trade === trade).reduce((s, pos) => s + pos.totalPrice, 0);
-                            const tdb = vk - ek;
-                            const tdbPct = vk > 0 ? (tdb / vk * 100) : 0;
-                            return `<tr>
-                                <td>${trade}</td>
-                                <td class="right">${formatCurrency(vk)}</td>
-                                <td class="right">${formatCurrency(ek)}</td>
-                                <td class="right">${formatCurrency(tdb)}</td>
-                                <td class="right">${tdbPct.toFixed(1)}%</td>
-                            </tr>`;
-                        }).join('')}
-                        <tr style="background:#f0f4ff;font-weight:bold;">
-                            <td>GESAMT</td>
-                            <td class="right">${formatCurrency(totalVK)}</td>
-                            <td class="right">${formatCurrency(totalEK)}</td>
-                            <td class="right">${formatCurrency(db)}</td>
-                            <td class="right">${dbPct.toFixed(1)}%</td>
-                        </tr>
-                    </tbody>
-                </table>` : ''}
-
                 <h2>Verkaufspositionen</h2>
                 <table>
                     <thead>
                         <tr>
                             <th>Beschreibung</th>
-                            <th>Gewerk</th>
                             <th class="right">Menge</th>
                             <th class="right">Einzelpreis</th>
                             <th class="right">Gesamtpreis</th>
@@ -4934,13 +4594,12 @@ function applyPermissions() {
                         ${p.salesPositions.map(pos => `
                         <tr>
                             <td>${pos.description}</td>
-                            <td>${pos.trade || '—'}</td>
                             <td class="right">${pos.quantity}</td>
                             <td class="right">${formatCurrency(pos.unitPrice)}</td>
                             <td class="right"><strong>${formatCurrency(pos.totalPrice)}</strong></td>
                         </tr>`).join('')}
                         <tr style="background:#f0f4ff;">
-                            <td colspan="4"><strong>Gesamt VK</strong></td>
+                            <td colspan="3"><strong>Gesamt VK</strong></td>
                             <td class="right"><strong>${formatCurrency(totalVK)}</strong></td>
                         </tr>
                     </tbody>
@@ -4952,7 +4611,6 @@ function applyPermissions() {
                         <tr>
                             <th>Lieferant</th>
                             <th>Beschreibung</th>
-                            <th>Gewerk</th>
                             <th class="right">Menge</th>
                             <th class="right">Einzelpreis</th>
                             <th class="right">Gesamtpreis</th>
@@ -4963,13 +4621,12 @@ function applyPermissions() {
                         <tr>
                             <td>${pos.supplier || '—'}</td>
                             <td>${pos.description}</td>
-                            <td>${pos.trade || '—'}</td>
                             <td class="right">${pos.quantity}</td>
                             <td class="right">${formatCurrency(pos.unitPrice)}</td>
                             <td class="right"><strong>${formatCurrency(pos.totalPrice)}</strong></td>
                         </tr>`).join('')}
                         <tr style="background:#fff0f0;">
-                            <td colspan="5"><strong>Gesamt EK</strong></td>
+                            <td colspan="4"><strong>Gesamt EK</strong></td>
                             <td class="right"><strong>${formatCurrency(totalEK)}</strong></td>
                         </tr>
                     </tbody>
@@ -4991,84 +4648,41 @@ function applyPermissions() {
         const wb = XLSX.utils.book_new();
         
         const salesData = [
-            ['Menge', 'Beschreibung', 'Gewerk', 'Typ', 'Einzelpreis', 'Gesamtpreis']
+            ['Menge', 'Beschreibung', 'Typ', 'Einzelpreis', 'Gesamtpreis']
         ];
-        
+
         currentProject.salesPositions.forEach(pos => {
             salesData.push([
                 pos.quantity,
                 pos.description,
-                pos.trade || 'Kein Gewerk',
                 getTypeLabel(pos.type),
                 pos.unitPrice,
                 pos.totalPrice
             ]);
         });
-        
+
         const wsSales = XLSX.utils.aoa_to_sheet(salesData);
         XLSX.utils.book_append_sheet(wb, wsSales, 'Verkauf');
-        
+
         const purchaseData = [
-            ['Lieferant', 'Menge', 'Beschreibung', 'Gewerk', 'Typ', 'Einzelpreis', 'Gesamtpreis']
+            ['Lieferant', 'Menge', 'Beschreibung', 'VK-Position', 'Einzelpreis', 'Gesamtpreis']
         ];
-        
+
         currentProject.purchasePositions.forEach(pos => {
+            const vkPos = (currentProject.salesPositions || []).find(vk => vk.id === pos.vkPositionId);
             purchaseData.push([
                 pos.supplier,
                 pos.quantity,
                 pos.description,
-                pos.trade || 'Kein Gewerk',
-                getTypeLabel(pos.type),
+                vkPos ? (vkPos.description || '').substring(0, 50) : 'Nicht zugeordnet',
                 pos.unitPrice,
                 pos.totalPrice
             ]);
         });
-        
+
         const wsPurchase = XLSX.utils.aoa_to_sheet(purchaseData);
         XLSX.utils.book_append_sheet(wb, wsPurchase, 'Einkauf');
-        
-        const sortedTrades = [...currentProject.trades].sort();
-        const salesByTrade = {};
-        const purchaseByTrade = {};
-        
-        sortedTrades.forEach(trade => {
-            salesByTrade[trade] = 0;
-            purchaseByTrade[trade] = 0;
-        });
-        
-        currentProject.salesPositions.forEach(pos => {
-            if (pos.trade) {
-                salesByTrade[pos.trade] = (salesByTrade[pos.trade] || 0) + pos.totalPrice;
-            }
-        });
-        
-        currentProject.purchasePositions.forEach(pos => {
-            if (pos.trade) {
-                purchaseByTrade[pos.trade] = (purchaseByTrade[pos.trade] || 0) + pos.totalPrice;
-            }
-        });
-        
-        const tradeData = [['Gewerk', 'Verkauf', 'Einkauf', 'DB absolut', 'DB %']];
-        
-        sortedTrades.forEach(trade => {
-            const sales = salesByTrade[trade] || 0;
-            const purchase = purchaseByTrade[trade] || 0;
-            const db = sales - purchase;
-            const dbPercent = sales > 0 ? (db / sales * 100) : 0;
-            
-            tradeData.push([trade, sales, purchase, db, dbPercent]);
-        });
-        
-        const totalSales = currentProject.salesPositions.reduce((s, p) => s + p.totalPrice, 0);
-        const totalPurchase = currentProject.purchasePositions.reduce((s, p) => s + p.totalPrice, 0);
-        const totalDb = totalSales - totalPurchase;
-        const totalDbPercent = totalSales > 0 ? (totalDb / totalSales * 100) : 0;
-        
-        tradeData.push(['GESAMT', totalSales, totalPurchase, totalDb, totalDbPercent]);
-        
-        const wsTrade = XLSX.utils.aoa_to_sheet(tradeData);
-        XLSX.utils.book_append_sheet(wb, wsTrade, 'Gewerke');
-        
+
         XLSX.writeFile(wb, `Nachkalkulation_${currentProject.projectNumber}.xlsx`);
         showMessage('Excel exportiert', 'success');
     }
@@ -5394,7 +5008,6 @@ function applyPermissions() {
                     <td>${project.customer}</td>
                     <td>${pos.supplier || '—'}</td>
                     <td>${pos.description}</td>
-                    <td>${pos.trade || '—'}</td>
                     <td class="number-cell">${formatCurrency(pos.totalPrice)}</td>
                     <td><span style="font-weight:600;color:${statusObj.color};">${statusObj.label}</span></td>
                     <td>${memberObj.name}</td>
@@ -5492,7 +5105,6 @@ function applyPermissions() {
         updateStatsYearFilter();
         renderProjectStats();
         renderCustomerStats();
-        renderGewerkeStats();
         renderTimeStats();
     }
 
@@ -5651,66 +5263,6 @@ function applyPermissions() {
         `).join('');
     }
 
-    function renderGewerkeStats() {
-        const gewerkeData = {};
-        
-        const filteredProjects = getFilteredProjects();
-        
-        filteredProjects.forEach(project => {
-
-            project.salesPositions.forEach(pos => {
-                if (pos.trade) {
-                    if (!gewerkeData[pos.trade]) {
-                        gewerkeData[pos.trade] = { sales: 0, purchase: 0 };
-                    }
-                    gewerkeData[pos.trade].sales += pos.totalPrice;
-                }
-            });
-            
-            project.purchasePositions.forEach(pos => {
-                if (pos.trade) {
-                    if (!gewerkeData[pos.trade]) {
-                        gewerkeData[pos.trade] = { sales: 0, purchase: 0 };
-                    }
-                    gewerkeData[pos.trade].purchase += pos.totalPrice;
-                }
-            });
-        });
-        
-        // Umsatz pro Gewerk
-        const sortedBySales = Object.entries(gewerkeData)
-            .sort((a, b) => b[1].sales - a[1].sales);
-        
-        document.getElementById('gewerkeUmsatz').innerHTML = sortedBySales.map(item => {
-            const [trade, data] = item;
-            return `
-                <div class="stat-row">
-                    <span class="stat-label">${trade}</span>
-                    <span class="stat-value">${formatCurrency(data.sales)}</span>
-                </div>
-            `;
-        }).join('') || '<p style="color: #999;">Keine Gewerke-Daten verfügbar</p>';
-        
-        // DB pro Gewerk
-        const sortedByDB = Object.entries(gewerkeData)
-            .map(item => {
-                const [trade, data] = item;
-                return [trade, data.sales - data.purchase];
-            })
-            .sort((a, b) => b[1] - a[1]);
-        
-        document.getElementById('gewerkeDB').innerHTML = sortedByDB.map(item => {
-            const [trade, db] = item;
-            const color = db >= 0 ? '#28a745' : '#dc3545';
-            return `
-                <div class="stat-row">
-                    <span class="stat-label">${trade}</span>
-                    <span class="stat-value" style="color: ${color}">${formatCurrency(db)}</span>
-                </div>
-            `;
-        }).join('') || '<p style="color: #999;">Keine Gewerke-Daten verfügbar</p>';
-    }
-
     function renderTimeStats() {
         const selectedYear = document.getElementById('statsYearFilter').value;
         const currentYear = selectedYear === 'all' ? new Date().getFullYear() : parseInt(selectedYear);
@@ -5800,8 +5352,6 @@ function applyPermissions() {
         window.addPurchasePosition = addPurchasePosition;
         window.deletePurchasePosition = deletePurchasePosition;
         window.updatePurchasePosition = updatePurchasePosition;
-        window.addTrade = addTrade;
-        window.removeTrade = removeTrade;
         window.toggleYear = toggleYear;
         window.toggleAB = toggleAB;
         window.toggleInvoice = toggleInvoice;
@@ -5997,17 +5547,6 @@ function applyPermissions() {
                 select.appendChild(opt);
             });
 
-            // Gewerk-Select befüllen
-            const tradeSelect = document.getElementById('newQuoteTrade');
-            if (tradeSelect) {
-                tradeSelect.innerHTML = '<option value="">-- Kein Gewerk --</option>';
-                DEFAULT_TRADES.forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t;
-                    opt.textContent = t;
-                    tradeSelect.appendChild(opt);
-                });
-            }
         }
 
         function fillQuoteFromArticle() {
@@ -6096,7 +5635,6 @@ function applyPermissions() {
 
             const quantity  = parseFloat(document.getElementById('newQuoteQuantity').value) || 1;
             const unitPrice = parseFloat(document.getElementById('newQuoteUnitPrice').value) || 0;
-            const trade     = document.getElementById('newQuoteTrade').value || '';
             const supplier  = document.getElementById('newQuoteSupplier').value.trim();
 
             // BOM aus Artikelstamm übernehmen falls vorhanden
@@ -6120,7 +5658,6 @@ function applyPermissions() {
                 quantity,
                 unitPrice: bom.length > 0 ? 0 : unitPrice, // wird aus BOM berechnet
                 totalEK: 0,
-                trade,
                 bom
             });
 
@@ -6226,12 +5763,6 @@ function applyPermissions() {
                                onchange="updateQuotePosition(${index}, 'description', this.value)"
                                style="min-width:200px;">${pos.description}</textarea>
                     </td>
-                    <td class="editable-cell">
-                        <select onchange="updateQuotePosition(${index}, 'trade', this.value)">
-                            <option value="">—</option>
-                            ${DEFAULT_TRADES.map(t => `<option value="${t}" ${pos.trade === t ? 'selected' : ''}>${t}</option>`).join('')}
-                        </select>
-                    </td>
                     <td class="editable-cell" style="white-space:nowrap;">
                         <button onclick="importBOMFromArticle(${index})" class="btn-secondary btn-small" title="Stückliste aus Artikelstamm importieren" style="font-size:11px;">📋</button>
                         <button onclick="addQuoteBOMItem(${index})" class="btn-secondary btn-small" title="Komponente hinzufügen" style="font-size:11px;">+</button>
@@ -6271,7 +5802,7 @@ function applyPermissions() {
                     </td>
                 </tr>
                 ${bomRows}
-                ${hasBOM ? `<tr style="background:#f0f4ff;"><td colspan="11" style="padding:4px 6px 8px 30px;font-size:11px;color:#366092;">
+                ${hasBOM ? `<tr style="background:#f0f4ff;"><td colspan="10" style="padding:4px 6px 8px 30px;font-size:11px;color:#366092;">
                     EK gesamt (BOM × ${pos.quantity}×): <strong>${formatCurrency(pos.totalEK)}</strong>
                 </td></tr>` : ''}`;
             }).join('');
@@ -6436,7 +5967,6 @@ function applyPermissions() {
                 quantity: pos.quantity,
                 unitPrice: pos.totalEK * endcustomer / (pos.quantity || 1),
                 totalPrice: pos.totalEK * endcustomer,
-                trade: pos.trade || '',
                 type: 'material'
             }));
 
@@ -6452,7 +5982,6 @@ function applyPermissions() {
                             quantity: comp.quantity * (pos.quantity || 1),
                             unitPrice: comp.unitPrice,
                             totalPrice: comp.quantity * (pos.quantity || 1) * comp.unitPrice,
-                            trade: pos.trade || '',
                             type: 'material',
                             status: 'open',
                             assignedTo: 'unassigned',
@@ -6467,7 +5996,6 @@ function applyPermissions() {
                         quantity: pos.quantity,
                         unitPrice: pos.unitPrice,
                         totalPrice: pos.totalEK,
-                        trade: pos.trade || '',
                         type: 'material',
                         status: 'open',
                         assignedTo: 'unassigned',
@@ -6476,16 +6004,12 @@ function applyPermissions() {
                 }
             });
 
-            // Gewerke aus Positionen ableiten
-            const trades = [...new Set(q.positions.map(p => p.trade).filter(t => t))];
-
             window.currentProject = currentProject = {
                 projectNumber: '',
                 customer: q.customer || '',
                 projectName: q.title || '',
                 orderNumber: '',
                 deliveryDate: '',
-                trades,
                 salesPositions,
                 purchasePositions,
                 tasks: [],
@@ -6502,8 +6026,6 @@ function applyPermissions() {
             document.getElementById('deliveryDate').value = '';
             document.getElementById('deliveryWeek').textContent = '';
 
-            renderTradeList();
-            updateTradeSelects();
             updateArticleSelects();
             renderSalesPositions();
             renderPurchasePositions();
@@ -6565,7 +6087,6 @@ function applyPermissions() {
                         <thead>
                             <tr>
                                 <th>Beschreibung</th>
-                                <th>Gewerk</th>
                                 <th class="number">Menge</th>
                                 <th class="number">EK/Stück</th>
                                 <th class="number">EK gesamt</th>
@@ -6597,7 +6118,6 @@ function applyPermissions() {
                                 return `
                                 <tr>
                                     <td><strong>${pos.description}</strong></td>
-                                    <td>${pos.trade || '—'}</td>
                                     <td class="number">${qty}</td>
                                     <td class="number">${hasBOM ? '<em>BOM</em>' : ekUnit.toFixed(2) + ' €'}</td>
                                     <td class="number">${pos.totalEK.toFixed(2)} €</td>
@@ -6950,15 +6470,6 @@ function applyPermissions() {
                         </tbody></table>`;
             }
 
-            // Gewerke rendern
-            const tradeList = document.getElementById('settingsTradeList');
-            if (tradeList) {
-                tradeList.innerHTML = DEFAULT_TRADES.map((t, i) => `
-                    <div style="display:flex;align-items:center;gap:4px;background:#f0f4ff;padding:4px 10px;border-radius:15px;font-size:12px;">
-                        <span>${t}</span>
-                        <button onclick="removeSettingsTrade(${i})" style="background:none;border:none;cursor:pointer;color:#dc3545;font-size:14px;line-height:1;">×</button>
-                    </div>`).join('');
-            }
 
             // Faktoren befüllen
             const cache = window.settingsCache?.quote_factors?.value;
@@ -7073,25 +6584,6 @@ function applyPermissions() {
             showMessage('Team-Mitglieder gespeichert', 'success');
         }
 
-        function addSettingsTrade() {
-            const val = document.getElementById('newSettingsTrade').value.trim();
-            if (!val) return;
-            if (DEFAULT_TRADES.includes(val)) { showMessage('Gewerk bereits vorhanden', 'error'); return; }
-            DEFAULT_TRADES.push(val);
-            document.getElementById('newSettingsTrade').value = '';
-            renderSettingsView();
-        }
-
-        function removeSettingsTrade(index) {
-            DEFAULT_TRADES.splice(index, 1);
-            renderSettingsView();
-        }
-
-        async function saveSettingsTrades() {
-            await saveSetting('default_trades', [...DEFAULT_TRADES]);
-            showMessage('Gewerke gespeichert', 'success');
-        }
-
         async function saveSettingsFactors() {
             const reseller    = parseFloat(document.getElementById('settingsFactorReseller').value) || 1.30;
             const endcustomer = parseFloat(document.getElementById('settingsFactorEndcustomer').value) || 1.60;
@@ -7102,9 +6594,6 @@ function applyPermissions() {
         window.addSettingsMember    = addSettingsMember;
         window.removeSettingsMember = removeSettingsMember;
         window.saveSettingsTeam     = saveSettingsTeam;
-        window.addSettingsTrade     = addSettingsTrade;
-        window.removeSettingsTrade  = removeSettingsTrade;
-        window.saveSettingsTrades   = saveSettingsTrades;
         window.saveSettingsFactors  = saveSettingsFactors;
         window.renderSettingsView   = renderSettingsView;
 
