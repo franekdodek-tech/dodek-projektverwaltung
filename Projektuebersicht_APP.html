@@ -137,6 +137,101 @@
             padding: 5px 0;
         }
 
+        .filter-summary-bar {
+            display: none;
+            background: #eef3fb;
+            border: 1px solid #c5d5ea;
+            border-radius: 4px;
+            padding: 8px 14px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            color: #2a4d73;
+            gap: 18px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-summary-bar.visible {
+            display: flex;
+        }
+        .filter-summary-bar .fsb-label {
+            font-weight: 700;
+            margin-right: 4px;
+        }
+        .filter-summary-bar .fsb-item {
+            white-space: nowrap;
+        }
+        .filter-summary-bar .fsb-db-pos { color: #1a7a3c; font-weight: 600; }
+        .filter-summary-bar .fsb-db-neg { color: #c0392b; font-weight: 600; }
+
+        /* Positions-Suche Statistik */
+        .pos-search-box {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .pos-search-box input[type="text"] {
+            flex: 1;
+            min-width: 260px;
+            padding: 9px 14px;
+            border: 2px solid #366092;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .pos-search-box input:focus { outline: none; border-color: #2a4d73; }
+        .pos-search-box select {
+            padding: 9px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .pos-search-results table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .pos-search-results th {
+            background: #f0f4fb;
+            color: #366092;
+            padding: 7px 10px;
+            text-align: left;
+            border-bottom: 2px solid #c5d5ea;
+            white-space: nowrap;
+        }
+        .pos-search-results td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+        .pos-search-results tr:hover td { background: #f8fafd; }
+        .pos-search-results .badge-vk {
+            background: #e8f0fe; color: #1a56a8;
+            font-size: 11px; font-weight: 700;
+            padding: 2px 6px; border-radius: 10px;
+        }
+        .pos-search-results .badge-ek {
+            background: #fff3e0; color: #c07000;
+            font-size: 11px; font-weight: 700;
+            padding: 2px 6px; border-radius: 10px;
+        }
+        .pos-search-results .pos-summary {
+            margin-top: 12px;
+            padding: 8px 12px;
+            background: #f0f4fb;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #2a4d73;
+        }
+        .pos-search-empty {
+            color: #999;
+            font-size: 13px;
+            padding: 20px 0;
+            text-align: center;
+        }
+
         .year-filter {
             display: flex;
             gap: 8px;
@@ -1098,7 +1193,14 @@
             </div>
 
             <div class="search-results" id="searchResults"></div>
-            
+            <div class="filter-summary-bar" id="filterSummaryBar">
+                <span class="fsb-label">🔍 Gefiltert:</span>
+                <span class="fsb-item" id="fsbProjects"></span>
+                <span class="fsb-item">VK: <strong id="fsbVK"></strong></span>
+                <span class="fsb-item">EK: <strong id="fsbEK"></strong></span>
+                <span class="fsb-item">DB: <strong id="fsbDB"></strong> (<strong id="fsbDBPct"></strong>)</span>
+            </div>
+
             <div id="projectListContainer"></div>
         </div>
        
@@ -1153,6 +1255,24 @@
                         <h4>Auftragseingang pro Monat</h4>
                         <div id="monthlyOrders"></div>
                     </div>
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <h3 style="margin-bottom: 15px; color: #366092;">🔍 Positions-Suche</h3>
+                <div class="pos-search-box">
+                    <input type="text" id="posSearchInput" placeholder="z.B. UVV-Prüfung, Filterpatronen, Lieferant..." oninput="performPositionSearch()">
+                    <select id="posSearchType" onchange="performPositionSearch()">
+                        <option value="all">VK + EK</option>
+                        <option value="vk">Nur VK</option>
+                        <option value="ek">Nur EK</option>
+                    </select>
+                    <select id="posSearchYear" onchange="performPositionSearch()">
+                        <option value="all">Alle Jahre</option>
+                    </select>
+                </div>
+                <div class="pos-search-results" id="posSearchResults">
+                    <div class="pos-search-empty">Suchbegriff eingeben um Positionen projektübergreifend zu suchen.</div>
                 </div>
             </div>
         </div>
@@ -2659,7 +2779,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.13';
+        const APP_VERSION = 'v1.6.14';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -4834,22 +4954,23 @@ function applyPermissions() {
         const rows = document.querySelectorAll('.project-list tbody tr:not(.empty-state)');
         let visibleCount = 0;
         const totalCount = rows.length;
-        
+
         if (searchTerm === '') {
             rows.forEach(row => row.classList.remove('search-hidden'));
             document.getElementById('searchResults').textContent = '';
+            updateFilterSummary();
             return;
         }
-        
+
         rows.forEach(row => {
             const projectNumber = row.cells[0]?.textContent.toLowerCase() || '';
             const customer = row.cells[1]?.textContent.toLowerCase() || '';
             const projectName = row.cells[2]?.textContent.toLowerCase() || '';
-            
+
             const projectNum = row.cells[0]?.textContent.trim();
             const project = window.allProjects[projectNum];
             let positionsMatch = false;
-            
+
             if (project) {
                 if (project.salesPositions) {
                     positionsMatch = project.salesPositions.some(pos =>
@@ -4869,12 +4990,12 @@ function applyPermissions() {
                     );
                 }
             }
-            
+
             const matches = projectNumber.includes(searchTerm) ||
                             customer.includes(searchTerm) ||
                             projectName.includes(searchTerm) ||
                             positionsMatch;
-            
+
             if (matches) {
                 row.classList.remove('search-hidden');
                 visibleCount++;
@@ -4882,9 +5003,63 @@ function applyPermissions() {
                 row.classList.add('search-hidden');
             }
         });
-        
+
         document.getElementById('searchResults').textContent =
             `${visibleCount} von ${totalCount} Projekten gefunden`;
+        updateFilterSummary();
+    }
+
+    function updateFilterSummary() {
+        const bar = document.getElementById('filterSummaryBar');
+        if (!bar) return;
+
+        // Alle sichtbaren Projekt-Rows einsammeln
+        const rows = document.querySelectorAll('.project-list tbody tr:not(.empty-state)');
+        let totalVK = 0, totalEK = 0, count = 0;
+
+        rows.forEach(row => {
+            const isHidden = row.classList.contains('search-hidden') ||
+                             row.classList.contains('status-filter-hidden');
+            // Prüfe auch ob die übergeordnete year-group ausgeblendet ist
+            const yearGroup = row.closest('.project-list');
+            const yearHidden = yearGroup && yearGroup.style.display === 'none';
+            if (isHidden || yearHidden) return;
+
+            const projectNum = row.cells[0]?.textContent.trim();
+            const project = window.allProjects?.[projectNum];
+            if (!project) return;
+
+            totalVK += project.salesPositions.reduce((s, p) => s + (p.totalPrice || 0), 0);
+            totalEK += project.purchasePositions.reduce((s, p) => s + (p.totalPrice || 0), 0);
+            count++;
+        });
+
+        // Prüfe ob irgendein Filter aktiv ist
+        const searchTerm = document.getElementById('searchInput')?.value.trim() || '';
+        const yearVal = document.getElementById('yearFilter')?.value || 'all';
+        const statusVal = document.getElementById('statusFilter')?.value || 'all';
+        const isFiltered = searchTerm !== '' || yearVal !== 'all' || statusVal !== 'all';
+
+        if (!isFiltered) {
+            bar.classList.remove('visible');
+            return;
+        }
+
+        const db = totalVK - totalEK;
+        const dbPct = totalVK > 0 ? (db / totalVK * 100).toFixed(1) : '0.0';
+
+        document.getElementById('fsbProjects').textContent = `${count} Projekt${count !== 1 ? 'e' : ''}`;
+        document.getElementById('fsbVK').textContent = formatCurrency(totalVK);
+        document.getElementById('fsbEK').textContent = formatCurrency(totalEK);
+
+        const dbEl = document.getElementById('fsbDB');
+        const dbPctEl = document.getElementById('fsbDBPct');
+        dbEl.textContent = formatCurrency(db);
+        dbPctEl.textContent = `${dbPct}%`;
+        dbEl.className = db >= 0 ? 'fsb-db-pos' : 'fsb-db-neg';
+        dbPctEl.className = db >= 0 ? 'fsb-db-pos' : 'fsb-db-neg';
+
+        bar.classList.add('visible');
     }
 
 
@@ -4931,6 +5106,8 @@ function applyPermissions() {
             else if (statusFilter === 'postcalc')  match = cls.includes('status-postcalc');
             row.classList.toggle('status-filter-hidden', !match);
         });
+
+        updateFilterSummary();
     }
 
     // ========== AUFGABENLISTE ==========
@@ -5110,23 +5287,145 @@ function applyPermissions() {
 
     function updateStatsYearFilter() {
         const yearSet = new Set();
-        
+
         Object.keys(window.allProjects).forEach(projectNumber => {
             const year = getYearFromProjectNumber(projectNumber);
             if (year) yearSet.add(year);
         });
-        
+
         const years = Array.from(yearSet).sort((a, b) => a - b);
+        const optionsHTML = '<option value="all">Alle Jahre</option>' +
+            years.map(year => `<option value="${year}">${year}</option>`).join('');
+
         const select = document.getElementById('statsYearFilter');
         const currentValue = select.value;
-        
-        select.innerHTML = '<option value="all">Alle Jahre</option>' + 
-            years.map(year => `<option value="${year}">${year}</option>`).join('');
-        
-        // Wert wiederherstellen wenn möglich
+        select.innerHTML = optionsHTML;
         if (currentValue && (currentValue === 'all' || years.includes(parseInt(currentValue)))) {
             select.value = currentValue;
         }
+
+        // Auch Positions-Such-Jahresfilter befüllen
+        const posYearSel = document.getElementById('posSearchYear');
+        if (posYearSel) {
+            const posCurrentVal = posYearSel.value;
+            posYearSel.innerHTML = optionsHTML;
+            if (posCurrentVal && (posCurrentVal === 'all' || years.includes(parseInt(posCurrentVal)))) {
+                posYearSel.value = posCurrentVal;
+            }
+        }
+    }
+
+    function performPositionSearch() {
+        const term = (document.getElementById('posSearchInput')?.value || '').toLowerCase().trim();
+        const typeFilter = document.getElementById('posSearchType')?.value || 'all';
+        const yearFilter = document.getElementById('posSearchYear')?.value || 'all';
+        const container = document.getElementById('posSearchResults');
+        if (!container) return;
+
+        if (term === '') {
+            container.innerHTML = '<div class="pos-search-empty">Suchbegriff eingeben um Positionen projektübergreifend zu suchen.</div>';
+            return;
+        }
+
+        const hits = [];
+
+        Object.values(window.allProjects || {}).forEach(project => {
+            const year = getYearFromProjectNumber(project.projectNumber);
+            if (yearFilter !== 'all' && String(year) !== yearFilter) return;
+
+            if (typeFilter !== 'ek') {
+                (project.salesPositions || []).forEach(pos => {
+                    if ((pos.description || '').toLowerCase().includes(term)) {
+                        hits.push({
+                            type: 'VK',
+                            projectNumber: project.projectNumber,
+                            customer: project.customerName || project.customer || '—',
+                            description: pos.description || '',
+                            supplier: '',
+                            quantity: pos.quantity || 0,
+                            unitPrice: pos.unitPrice || 0,
+                            totalPrice: pos.totalPrice || 0
+                        });
+                    }
+                });
+            }
+
+            if (typeFilter !== 'vk') {
+                (project.purchasePositions || []).forEach(pos => {
+                    const descMatch = (pos.description || '').toLowerCase().includes(term);
+                    const supplierMatch = (pos.supplier || '').toLowerCase().includes(term);
+                    const artNumMatch = (pos.supplierArticleNumber || '').toLowerCase().includes(term);
+                    if (descMatch || supplierMatch || artNumMatch) {
+                        hits.push({
+                            type: 'EK',
+                            projectNumber: project.projectNumber,
+                            customer: project.customerName || project.customer || '—',
+                            description: pos.description || '',
+                            supplier: pos.supplier || '',
+                            quantity: pos.quantity || 0,
+                            unitPrice: pos.unitPrice || 0,
+                            totalPrice: pos.totalPrice || 0
+                        });
+                    }
+                });
+            }
+        });
+
+        if (hits.length === 0) {
+            container.innerHTML = `<div class="pos-search-empty">Keine Treffer für „${term}".</div>`;
+            return;
+        }
+
+        // Sortierung: Projektnummer, dann VK vor EK
+        hits.sort((a, b) => {
+            if (a.projectNumber !== b.projectNumber) return a.projectNumber.localeCompare(b.projectNumber);
+            return a.type === 'VK' ? -1 : 1;
+        });
+
+        // Summen berechnen
+        let sumVK = 0, sumEK = 0;
+        hits.forEach(h => { if (h.type === 'VK') sumVK += h.totalPrice; else sumEK += h.totalPrice; });
+        const vkHits = hits.filter(h => h.type === 'VK').length;
+        const ekHits = hits.filter(h => h.type === 'EK').length;
+        const projectNrs = new Set(hits.map(h => h.projectNumber));
+
+        const rows = hits.map(h => `
+            <tr>
+                <td><span class="badge-${h.type.toLowerCase()}">${h.type}</span></td>
+                <td style="font-weight:600; white-space:nowrap;">${h.projectNumber}</td>
+                <td>${h.customer}</td>
+                <td>${h.description}</td>
+                ${typeFilter !== 'vk' ? `<td style="color:#888;font-size:12px;">${h.supplier}</td>` : ''}
+                <td class="number-cell">${h.quantity}</td>
+                <td class="number-cell">${formatCurrency(h.unitPrice)}</td>
+                <td class="number-cell"><strong>${formatCurrency(h.totalPrice)}</strong></td>
+            </tr>
+        `).join('');
+
+        const supplierCol = typeFilter !== 'vk' ? '<th>Lieferant</th>' : '';
+
+        container.innerHTML = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Typ</th>
+                        <th>Projekt</th>
+                        <th>Kunde</th>
+                        <th>Beschreibung</th>
+                        ${supplierCol}
+                        <th class="number-cell">Menge</th>
+                        <th class="number-cell">Einzelpreis</th>
+                        <th class="number-cell">Gesamt</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+            <div class="pos-summary">
+                <strong>${hits.length} Treffer</strong> in <strong>${projectNrs.size} Projekten</strong>
+                ${vkHits > 0 ? ` · VK: ${vkHits}× = <strong>${formatCurrency(sumVK)}</strong>` : ''}
+                ${ekHits > 0 ? ` · EK: ${ekHits}× = <strong>${formatCurrency(sumEK)}</strong>` : ''}
+            </div>
+        `;
     }
 
     function getFilteredProjects() {
@@ -5382,9 +5681,11 @@ function applyPermissions() {
         window.clearAllArticles = clearAllArticles;
         window.applyYearFilter = applyYearFilter;
         window.updateYearFilter = updateYearFilter;
+        window.updateFilterSummary = updateFilterSummary;
         window.renderDashboard = renderDashboard;
         window.getYearFromProjectNumber = getYearFromProjectNumber;
         window.performSearch = performSearch;
+        window.performPositionSearch = performPositionSearch;
         window.fillPurchaseFromArticle = typeof fillPurchaseFromArticle !== 'undefined' ? fillPurchaseFromArticle : null;
         window.fillSalesFromArticle = typeof fillSalesFromArticle !== 'undefined' ? fillSalesFromArticle : null;
         window.loadArticleBackup = typeof loadArticleBackup !== 'undefined' ? loadArticleBackup : null;
