@@ -1106,6 +1106,126 @@
             /* Hauptseite nicht drucken — bitte den 🖨️ Button verwenden */
             body > * { display: none !important; }
         }
+
+        /* ===== CONTACTS ===== */
+        .contacts-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .contact-table-wrapper {
+            overflow-x: auto;
+        }
+
+        .contact-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .contact-table thead th {
+            background: #366092;
+            color: white;
+            padding: 10px 10px;
+            text-align: left;
+            white-space: nowrap;
+            font-weight: 600;
+        }
+
+        .contact-table tbody tr {
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .contact-table tbody tr:hover {
+            background: #f0f5fb;
+        }
+
+        .contact-table td {
+            padding: 9px 10px;
+            vertical-align: middle;
+        }
+
+        .contact-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge-kunde { background: #d4edda; color: #155724; }
+        .badge-lieferant { background: #cce5ff; color: #004085; }
+        .badge-both { background: #fff3cd; color: #856404; }
+        .badge-aktiv { background: #d4edda; color: #155724; }
+        .badge-inaktiv { background: #f8d7da; color: #721c24; }
+
+        .contact-actions {
+            display: flex;
+            gap: 5px;
+            justify-content: flex-end;
+        }
+
+        .contact-modal-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px 20px;
+        }
+
+        .contact-modal-body .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .contact-field label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 4px;
+        }
+
+        .contact-field input,
+        .contact-field select,
+        .contact-field textarea {
+            width: 100%;
+            padding: 7px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .contact-field textarea {
+            resize: vertical;
+            min-height: 70px;
+        }
+
+        .contact-persons-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr auto;
+            gap: 6px;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .contact-persons-row input {
+            padding: 5px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 12px;
+            width: 100%;
+        }
+
+        #contactsEmptyState {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
 </style>
 </head>
 <body>
@@ -1154,6 +1274,7 @@
             <button onclick="showView('stock')">📦 Lager</button>
             <button onclick="showView('quotes')">🧮 Kalkulation</button>
             <button onclick="showView('editor')" id="editorButton" style="display: none;">📝 Projekt bearbeiten</button>
+            <button onclick="showView('contacts')">👥 Kontakte</button>
             <button onclick="showView('articles')">📦 Artikelstamm</button>
             <button onclick="showView('tools')">🛠️ Tools</button>
             <button onclick="showView('settings')" id="settingsBtn" style="display:none;">⚙️ Einstellungen</button>
@@ -1747,6 +1868,139 @@
             <div id="articleGrid" class="article-grid"></div>
         </div>
         
+        <!-- CONTACTS VIEW -->
+        <div id="contactsView" class="view">
+            <div style="background: white; padding: 20px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <h2 style="margin:0;">👥 Kontakte</h2>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <input type="text" id="contactSearchInput" placeholder="Name, Nummer, Ort suchen..." oninput="renderContacts()" style="padding:7px 12px; border:1px solid #ccc; border-radius:4px; font-size:13px; width:220px;">
+                        <select id="contactTypeFilter" onchange="renderContacts()" style="padding:7px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+                            <option value="all">Alle Typen</option>
+                            <option value="Kunde">Kunden</option>
+                            <option value="Lieferant">Lieferanten</option>
+                            <option value="Kunde & Lieferant">Kunde & Lieferant</option>
+                        </select>
+                        <select id="contactStatusFilter" onchange="renderContacts()" style="padding:7px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+                            <option value="all">Alle Status</option>
+                            <option value="Aktiv">Aktiv</option>
+                            <option value="Inaktiv">Inaktiv</option>
+                            <option value="Gesperrt">Gesperrt</option>
+                        </select>
+                        <button onclick="openContactModal()" class="btn-success">➕ Neuer Kontakt</button>
+                        <button onclick="loadContactsFromSharePoint()" class="btn-secondary" title="Neu laden">🔄</button>
+                    </div>
+                </div>
+            </div>
+            <div id="contactListContainer"></div>
+        </div>
+
+        <!-- CONTACT MODAL -->
+        <div id="contactModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto;">
+            <div style="background:white; max-width:700px; margin:40px auto; border-radius:6px; padding:30px; position:relative;">
+                <button onclick="closeContactModal()" style="position:absolute; top:15px; right:15px; background:none; border:none; font-size:22px; cursor:pointer; color:#666;">✕</button>
+                <h3 id="contactModalTitle" style="margin-bottom:20px; color:#366092;">Neuer Kontakt</h3>
+                <input type="hidden" id="contactModalId">
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label>Name / Firmenbezeichnung *</label>
+                        <input type="text" id="cm_name" placeholder="z.B. Musterfirma GmbH">
+                    </div>
+                    <div class="form-group">
+                        <label>Kontaktnummer</label>
+                        <input type="text" id="cm_contactNumber" placeholder="z.B. 104164">
+                    </div>
+                    <div class="form-group">
+                        <label>Typ *</label>
+                        <select id="cm_contactType">
+                            <option value="Kunde">Kunde</option>
+                            <option value="Lieferant">Lieferant</option>
+                            <option value="Kunde & Lieferant">Kunde & Lieferant</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Art</label>
+                        <select id="cm_art">
+                            <option value="Firma">Firma</option>
+                            <option value="Privat">Privat</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Status *</label>
+                        <select id="cm_status">
+                            <option value="Aktiv">Aktiv</option>
+                            <option value="Inaktiv">Inaktiv</option>
+                            <option value="Gesperrt">Gesperrt</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label>Straße</label>
+                        <input type="text" id="cm_street" placeholder="Musterstraße 1">
+                    </div>
+                    <div class="form-group">
+                        <label>PLZ</label>
+                        <input type="text" id="cm_postalCode" placeholder="88410">
+                    </div>
+                    <div class="form-group">
+                        <label>Ort</label>
+                        <input type="text" id="cm_city" placeholder="Bad Wurzach">
+                    </div>
+                    <div class="form-group">
+                        <label>Land</label>
+                        <input type="text" id="cm_country" value="Deutschland">
+                    </div>
+                    <div class="form-group">
+                        <label>Telefon</label>
+                        <input type="text" id="cm_phone" placeholder="+49 7564 ...">
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label>E-Mail</label>
+                        <input type="email" id="cm_email" placeholder="info@firma.de">
+                    </div>
+                    <div class="form-group">
+                        <label>Zahlungskonditionen</label>
+                        <input type="text" id="cm_paymentTerms" placeholder="30 Tage netto">
+                    </div>
+                    <div class="form-group">
+                        <label>Kategorie</label>
+                        <select id="cm_category">
+                            <option value="">— keine —</option>
+                            <option value="Mechanik">Mechanik</option>
+                            <option value="Elektrik">Elektrik</option>
+                            <option value="Einkauf">Einkauf</option>
+                            <option value="Geschäftsführung">Geschäftsführung</option>
+                            <option value="Instandhaltung">Instandhaltung</option>
+                            <option value="Produktion">Produktion</option>
+                            <option value="Sonstiges">Sonstiges</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label>Tags</label>
+                        <input type="text" id="cm_tags" placeholder="kommagetrennt, z.B. Stammkunde, Süddeutschland">
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label>Notizen</label>
+                        <textarea id="cm_notes" rows="3" placeholder="Interne Bemerkungen..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Ansprechpartner -->
+                <div style="margin-top:20px; border-top:1px solid #e0e0e0; padding-top:16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <h4 style="margin:0; color:#366092;">Ansprechpartner</h4>
+                        <button onclick="addContactPerson()" class="btn-secondary" style="font-size:12px; padding:4px 10px;">➕ Hinzufügen</button>
+                    </div>
+                    <div id="contactPersonsList"></div>
+                </div>
+
+                <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px; border-top:1px solid #e0e0e0; padding-top:16px;">
+                    <button onclick="closeContactModal()" class="btn-secondary">Abbrechen</button>
+                    <button id="contactSaveBtn" onclick="saveContact()" class="btn-success">💾 Speichern</button>
+                </div>
+            </div>
+        </div>
+
         <!-- EDITOR VIEW -->
         <div id="editorView" class="view">
             <div class="project-header">
@@ -2279,7 +2533,8 @@ function applyPermissions() {
             guidArticles: '26a0bbca-31bf-4a0d-8bd2-abe07d614725',
             guidStock:    'df491bc5-f23b-493a-a8d0-37a15024cf29',
             guidQuotes:   '39105ce6-473c-4af0-bab0-68659edcbed3',
-            guidSettings: '89b9fdeb-6907-4cfc-a1f5-2bc8bc0bdbe2'
+            guidSettings: '89b9fdeb-6907-4cfc-a1f5-2bc8bc0bdbe2',
+            guidContacts: '3D2F7AE7-A6DE-4F84-A1EB-6FC7DDDDB70F'
         };
 
 
@@ -2708,7 +2963,306 @@ function applyPermissions() {
 
         window.loadSettingsFromSharePoint = loadSettingsFromSharePoint;
         window.saveSetting = saveSetting;
-        window.applySettings = applySettings;        // Auto-wachsende Textarea
+        window.applySettings = applySettings;
+
+        // ========== SHAREPOINT KONTAKTE ==========
+
+        window.contactDatabase = {};
+
+        async function loadContactsFromSharePoint() {
+            try {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidContacts}')/items?$select=Id,Title,ContactNumber,ContactType,Art,Street,PostalCode,City,Country,Phone,Email,ContactPersons,Category,PaymentTerms,Notes,Status,Tags&$top=500`;
+                const data = await spFetch(url);
+                window.contactDatabase = {};
+                (data.value || []).forEach(item => {
+                    try {
+                        let contactPersons = [];
+                        if (item.ContactPersons) {
+                            try { contactPersons = JSON.parse(item.ContactPersons); } catch(e) {}
+                        }
+                        const contact = {
+                            _spId:          item.Id,
+                            id:             item.Id,
+                            name:           item.Title || '',
+                            contactNumber:  item.ContactNumber || '',
+                            contactType:    item.ContactType || 'Kunde',
+                            art:            item.Art || 'Firma',
+                            street:         item.Street || '',
+                            postalCode:     item.PostalCode || '',
+                            city:           item.City || '',
+                            country:        item.Country || 'Deutschland',
+                            phone:          item.Phone || '',
+                            email:          item.Email || '',
+                            contactPersons: contactPersons,
+                            category:       item.Category || '',
+                            paymentTerms:   item.PaymentTerms || '',
+                            notes:          item.Notes || '',
+                            status:         item.Status || 'Aktiv',
+                            tags:           item.Tags || ''
+                        };
+                        window.contactDatabase[item.Id] = contact;
+                    } catch(e) {
+                        console.error('Fehler beim Parsen von Kontakt', item.Id, e);
+                    }
+                });
+                console.log('Kontakte geladen:', Object.keys(window.contactDatabase).length);
+                if (document.getElementById('contactsView')?.classList.contains('active')) {
+                    renderContacts();
+                }
+            } catch(e) {
+                console.error('Fehler beim Laden der Kontakte:', e);
+            }
+        }
+
+        async function saveContactToSharePoint(contact) {
+            let categoryVal = contact.category || '';
+            // SharePoint Mehrfachauswahl: Array → kommagetrennt
+            if (Array.isArray(categoryVal)) categoryVal = categoryVal.join(', ');
+            const payload = {
+                Title:          contact.name,
+                ContactNumber:  contact.contactNumber || '',
+                ContactType:    contact.contactType || 'Kunde',
+                Art:            contact.art || 'Firma',
+                Street:         contact.street || '',
+                PostalCode:     contact.postalCode || '',
+                City:           contact.city || '',
+                Country:        contact.country || 'Deutschland',
+                Phone:          contact.phone || '',
+                Email:          contact.email || '',
+                ContactPersons: JSON.stringify(contact.contactPersons || []),
+                Category:       categoryVal,
+                PaymentTerms:   contact.paymentTerms || '',
+                Notes:          contact.notes || '',
+                Status:         contact.status || 'Aktiv',
+                Tags:           contact.tags || ''
+            };
+            if (contact._spId) {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidContacts}')/items(${contact._spId})`;
+                await spFetch(url, {
+                    method: 'PATCH',
+                    headers: { 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidContacts}')/items`;
+                const result = await spFetch(url, { method: 'POST', body: JSON.stringify(payload) });
+                contact._spId = result.id;
+                contact.id = result.id;
+                window.contactDatabase[contact.id] = contact;
+            }
+        }
+
+        async function deleteContactFromSharePoint(spId) {
+            if (!spId) return;
+            const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidContacts}')/items(${spId})`;
+            await spFetch(url, { method: 'DELETE', headers: { 'IF-MATCH': '*' } });
+        }
+
+        window.loadContactsFromSharePoint = loadContactsFromSharePoint;
+        window.saveContactToSharePoint = saveContactToSharePoint;
+        window.deleteContactFromSharePoint = deleteContactFromSharePoint;
+
+        // ===== CONTACTS UI =====
+
+        function renderContacts() {
+            const search = (document.getElementById('contactSearchInput')?.value || '').toLowerCase();
+            const typeFilter = document.getElementById('contactTypeFilter')?.value || 'all';
+            const statusFilter = document.getElementById('contactStatusFilter')?.value || 'all';
+
+            const contacts = Object.values(window.contactDatabase || {}).filter(c => {
+                const matchType = typeFilter === 'all'
+                    || (typeFilter === 'Kunde' && (c.contactType === 'Kunde' || c.contactType === 'Kunde & Lieferant'))
+                    || (typeFilter === 'Lieferant' && (c.contactType === 'Lieferant' || c.contactType === 'Kunde & Lieferant'))
+                    || (typeFilter === 'Kunde & Lieferant' && c.contactType === 'Kunde & Lieferant');
+                const matchStatus = statusFilter === 'all' || c.status === statusFilter;
+                const matchSearch = !search
+                    || (c.name || '').toLowerCase().includes(search)
+                    || (c.contactNumber || '').toLowerCase().includes(search)
+                    || (c.city || '').toLowerCase().includes(search)
+                    || (c.email || '').toLowerCase().includes(search);
+                return matchType && matchStatus && matchSearch;
+            });
+
+            contacts.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+
+            const container = document.getElementById('contactListContainer');
+            if (!container) return;
+
+            if (contacts.length === 0) {
+                container.innerHTML = '<div id="contactsEmptyState">😶 Keine Kontakte gefunden</div>';
+                return;
+            }
+
+            const rows = contacts.map(c => {
+                const typeBadge = c.contactType === 'Kunde' ? `<span class="contact-badge badge-kunde">Kunde</span>`
+                    : c.contactType === 'Lieferant' ? `<span class="contact-badge badge-lieferant">Lieferant</span>`
+                    : `<span class="contact-badge badge-both">Kunde &amp; Lieferant</span>`;
+                const statusBadge = c.status === 'Aktiv'
+                    ? `<span class="contact-badge badge-aktiv">Aktiv</span>`
+                    : `<span class="contact-badge badge-inaktiv">Inaktiv</span>`;
+                return `<tr onclick="openContactModal(${c.id})">
+                    <td>${escapeHtml(c.contactNumber || '')}</td>
+                    <td><strong>${escapeHtml(c.name || '')}</strong></td>
+                    <td>${typeBadge}</td>
+                    <td>${escapeHtml(c.city || '')}</td>
+                    <td>${escapeHtml(c.phone || '')}</td>
+                    <td>${escapeHtml(c.email || '')}</td>
+                    <td>${statusBadge}</td>
+                    <td class="contact-actions" onclick="event.stopPropagation()">
+                        <button class="btn-secondary" style="font-size:11px;padding:3px 8px" onclick="openContactModal(${c.id})">✏️</button>
+                        <button class="btn-danger" style="font-size:11px;padding:3px 8px" onclick="confirmDeleteContact(${c.id})">🗑️</button>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            container.innerHTML = `<div class="contact-table-wrapper">
+                <table class="contact-table">
+                    <thead><tr>
+                        <th>Nr.</th><th>Name</th><th>Typ</th><th>Ort</th><th>Telefon</th><th>E-Mail</th><th>Status</th><th></th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function openContactModal(contactId) {
+            const modal = document.getElementById('contactModal');
+            const isNew = !contactId;
+            document.getElementById('contactModalTitle').textContent = isNew ? 'Neuer Kontakt' : 'Kontakt bearbeiten';
+            document.getElementById('contactModalId').value = contactId || '';
+
+            const c = isNew ? {} : (window.contactDatabase[contactId] || {});
+            document.getElementById('cm_name').value = c.name || '';
+            document.getElementById('cm_contactNumber').value = c.contactNumber || '';
+            document.getElementById('cm_contactType').value = c.contactType || 'Kunde';
+            document.getElementById('cm_art').value = c.art || 'Firma';
+            document.getElementById('cm_status').value = c.status || 'Aktiv';
+            document.getElementById('cm_street').value = c.street || '';
+            document.getElementById('cm_postalCode').value = c.postalCode || '';
+            document.getElementById('cm_city').value = c.city || '';
+            document.getElementById('cm_country').value = c.country || 'Deutschland';
+            document.getElementById('cm_phone').value = c.phone || '';
+            document.getElementById('cm_email').value = c.email || '';
+            document.getElementById('cm_paymentTerms').value = c.paymentTerms || '';
+            document.getElementById('cm_category').value = c.category || '';
+            document.getElementById('cm_tags').value = c.tags || '';
+            document.getElementById('cm_notes').value = c.notes || '';
+
+            renderContactPersonsList(c.contactPersons || []);
+            modal.style.display = 'flex';
+        }
+
+        function closeContactModal() {
+            document.getElementById('contactModal').style.display = 'none';
+        }
+
+        function renderContactPersonsList(persons) {
+            const container = document.getElementById('contactPersonsList');
+            if (!container) return;
+            window._contactPersonsTemp = persons.map(p => ({...p}));
+            redrawContactPersonsRows();
+        }
+
+        function redrawContactPersonsRows() {
+            const container = document.getElementById('contactPersonsList');
+            if (!container) return;
+            const persons = window._contactPersonsTemp || [];
+            container.innerHTML = persons.map((p, i) => `
+                <div class="contact-persons-row">
+                    <input type="text" placeholder="Name" value="${escapeHtml(p.name||'')}" oninput="updateContactPerson(${i},'name',this.value)">
+                    <input type="text" placeholder="Position" value="${escapeHtml(p.role||'')}" oninput="updateContactPerson(${i},'role',this.value)">
+                    <input type="text" placeholder="Telefon" value="${escapeHtml(p.phone||'')}" oninput="updateContactPerson(${i},'phone',this.value)">
+                    <input type="email" placeholder="E-Mail" value="${escapeHtml(p.email||'')}" oninput="updateContactPerson(${i},'email',this.value)">
+                    <button class="btn-danger" style="padding:4px 8px;font-size:12px" onclick="removeContactPerson(${i})">✕</button>
+                </div>`).join('');
+        }
+
+        function updateContactPerson(index, field, value) {
+            if (!window._contactPersonsTemp) return;
+            if (window._contactPersonsTemp[index]) window._contactPersonsTemp[index][field] = value;
+        }
+
+        function addContactPerson() {
+            if (!window._contactPersonsTemp) window._contactPersonsTemp = [];
+            window._contactPersonsTemp.push({ name: '', role: '', phone: '', email: '' });
+            redrawContactPersonsRows();
+        }
+
+        function removeContactPerson(index) {
+            if (!window._contactPersonsTemp) return;
+            window._contactPersonsTemp.splice(index, 1);
+            redrawContactPersonsRows();
+        }
+
+        async function saveContact() {
+            const id = document.getElementById('contactModalId').value;
+            const existing = id ? (window.contactDatabase[id] || {}) : {};
+
+            const contact = {
+                ...existing,
+                name: document.getElementById('cm_name').value.trim(),
+                contactNumber: document.getElementById('cm_contactNumber').value.trim(),
+                contactType: document.getElementById('cm_contactType').value,
+                art: document.getElementById('cm_art').value,
+                status: document.getElementById('cm_status').value,
+                street: document.getElementById('cm_street').value.trim(),
+                postalCode: document.getElementById('cm_postalCode').value.trim(),
+                city: document.getElementById('cm_city').value.trim(),
+                country: document.getElementById('cm_country').value.trim(),
+                phone: document.getElementById('cm_phone').value.trim(),
+                email: document.getElementById('cm_email').value.trim(),
+                paymentTerms: document.getElementById('cm_paymentTerms').value.trim(),
+                category: document.getElementById('cm_category').value.trim(),
+                tags: document.getElementById('cm_tags').value.trim(),
+                notes: document.getElementById('cm_notes').value.trim(),
+                contactPersons: window._contactPersonsTemp || []
+            };
+
+            if (!contact.name) { alert('Bitte einen Namen eingeben.'); return; }
+
+            const saveBtn = document.getElementById('contactSaveBtn');
+            if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Speichern...'; }
+
+            try {
+                await saveContactToSharePoint(contact);
+                window.contactDatabase[contact.id] = contact;
+                closeContactModal();
+                renderContacts();
+            } catch(e) {
+                alert('Fehler beim Speichern: ' + e.message);
+            } finally {
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Speichern'; }
+            }
+        }
+
+        async function confirmDeleteContact(id) {
+            const c = window.contactDatabase[id];
+            if (!c) return;
+            if (!confirm(`Kontakt "${c.name}" wirklich löschen?`)) return;
+            try {
+                await deleteContactFromSharePoint(c._spId);
+                delete window.contactDatabase[id];
+                renderContacts();
+            } catch(e) {
+                alert('Fehler beim Löschen: ' + e.message);
+            }
+        }
+
+        window.renderContacts = renderContacts;
+        window.openContactModal = openContactModal;
+        window.closeContactModal = closeContactModal;
+        window.addContactPerson = addContactPerson;
+        window.removeContactPerson = removeContactPerson;
+        window.updateContactPerson = updateContactPerson;
+        window.saveContact = saveContact;
+        window.confirmDeleteContact = confirmDeleteContact;
+
+        // Auto-wachsende Textarea
         function autoGrow(el) {
             el.style.height = '30px';
             el.style.height = el.scrollHeight + 'px';
@@ -2769,6 +3323,7 @@ function applyPermissions() {
             await loadStockFromSharePoint();
             await loadQuotesFromSharePoint();
             await loadSettingsFromSharePoint();
+            await loadContactsFromSharePoint();
 
             applyPermissions();
         }
@@ -2779,7 +3334,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.14';
+        const APP_VERSION = 'v1.6.15';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -3558,6 +4113,10 @@ function applyPermissions() {
                 document.getElementById('editorButton').style.display = 'none';
                 renderQuoteList();
                 updateQuoteArticleSelect();
+            } else if (viewName === 'contacts') {
+                document.getElementById('contactsView').classList.add('active');
+                document.getElementById('editorButton').style.display = 'none';
+                renderContacts();
             } else if (viewName === 'settings') {
                 document.getElementById('settingsView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
