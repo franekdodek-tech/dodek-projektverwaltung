@@ -3003,7 +3003,7 @@ function applyPermissions() {
 
         async function loadContactsFromSharePoint() {
             try {
-                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidContacts}')/items?$select=Id,Title,ContactNumber,ContactType,Art,Street,PostalCode,City,Country,Phone,Email,ContactPersons,Category,PaymentTerms,Notes,Status,Tags&$top=500`;
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidContacts}')/items?$select=Id,Title,Title0,ContactType,Art,Street,PostalCode,City,Country,Phone,Email,ContactPersons,Category,PaymentTerms,Notes,Status,Tags&$top=500`;
                 const data = await spFetch(url);
                 window.contactDatabase = {};
                 (data.value || []).forEach(item => {
@@ -3016,7 +3016,7 @@ function applyPermissions() {
                             _spId:          item.Id,
                             id:             item.Id,
                             name:           item.Title || '',
-                            contactNumber:  item.ContactNumber || '',
+                            contactNumber:  item.Title0 || '',
                             contactType:    item.ContactType || 'Kunde',
                             art:            item.Art || 'Firma',
                             street:         item.Street || '',
@@ -3052,7 +3052,7 @@ function applyPermissions() {
             if (Array.isArray(categoryVal)) categoryVal = categoryVal.join(', ');
             const payload = {
                 Title:          contact.name,
-                ContactNumber:  contact.contactNumber || '',
+                Title0:  contact.contactNumber || '',
                 ContactType:    contact.contactType || 'Kunde',
                 Art:            contact.art || 'Firma',
                 Street:         contact.street || '',
