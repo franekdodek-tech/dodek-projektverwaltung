@@ -3047,15 +3047,14 @@ function applyPermissions() {
         }
 
         async function saveContactToSharePoint(contact) {
-            // SharePoint FieldMultiChoice erwartet { results: [...] }
+            // SharePoint FieldMultiChoice: reines JSON-Array ["Wert1","Wert2"]
             let categoryRaw = contact.category || '';
-            let categoryArr = [];
+            let categoryVal = [];
             if (Array.isArray(categoryRaw)) {
-                categoryArr = categoryRaw.filter(v => v);
+                categoryVal = categoryRaw.filter(v => v);
             } else if (typeof categoryRaw === 'string' && categoryRaw.trim()) {
-                categoryArr = categoryRaw.split(',').map(s => s.trim()).filter(v => v);
+                categoryVal = categoryRaw.split(',').map(s => s.trim()).filter(v => v);
             }
-            const categoryVal = { results: categoryArr };
             const payload = {
                 Title:          contact.name,
                 Title0:  contact.contactNumber || '',
@@ -3074,6 +3073,7 @@ function applyPermissions() {
                 Status:         contact.status || 'Aktiv',
                 Tags:           contact.tags || ''
             };
+            console.log('saveContact payload:', JSON.stringify(payload, null, 2));
             if (contact._spId) {
                 const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidContacts}')/items(${contact._spId})`;
                 await spFetch(url, {
@@ -3553,7 +3553,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.17';
+        const APP_VERSION = 'v1.6.18';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
