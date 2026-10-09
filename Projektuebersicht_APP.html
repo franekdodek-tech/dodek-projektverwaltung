@@ -2044,7 +2044,8 @@
                     </div>
                     <div class="form-group">
                         <label for="customer">Kunde *</label>
-                        <input type="text" id="customer" placeholder="Kundenname" required>
+                        <input type="text" id="customer" list="customerSuggestions" placeholder="Kundenname eingeben oder auswählen" required autocomplete="off">
+                        <datalist id="customerSuggestions"></datalist>
                     </div>
                     <div class="form-group">
                         <label for="projectName">Projektbezeichnung</label>
@@ -3553,7 +3554,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.18';
+        const APP_VERSION = 'v1.6.19';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -3982,6 +3983,16 @@ function applyPermissions() {
             }
         }
         
+        function updateCustomerSuggestions() {
+            const dl = document.getElementById('customerSuggestions');
+            if (!dl) return;
+            const contacts = Object.values(window.contactDatabase || {})
+                .filter(c => c.contactType === 'Kunde' || c.contactType === 'Kunde & Lieferant')
+                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+            dl.innerHTML = contacts.map(c => `<option value="${c.name}"></option>`).join('');
+        }
+        window.updateCustomerSuggestions = updateCustomerSuggestions;
+
         function fillSalesFromArticle() {
             const articleId = document.getElementById('salesArticleSelect').value;
             if (!articleId) {
@@ -4309,6 +4320,7 @@ function applyPermissions() {
                 document.getElementById('editorButton').style.display = 'inline-block';
                 applyPermissions();
                 updateArticleSelects();
+                updateCustomerSuggestions();
                 window.scrollTo({ top: 0, behavior: 'instant' });
             } else if (viewName === 'articles') {
                 document.getElementById('articlesView').classList.add('active');
