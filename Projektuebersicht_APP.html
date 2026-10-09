@@ -1888,6 +1888,7 @@
                             <option value="Gesperrt">Gesperrt</option>
                         </select>
                         <button onclick="openContactModal()" class="btn-success">➕ Neuer Kontakt</button>
+                        <button onclick="openContactImportModal()" class="btn-secondary">📥 WISO Import</button>
                         <button onclick="loadContactsFromSharePoint()" class="btn-secondary" title="Neu laden">🔄</button>
                     </div>
                 </div>
@@ -1997,6 +1998,37 @@
                 <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px; border-top:1px solid #e0e0e0; padding-top:16px;">
                     <button onclick="closeContactModal()" class="btn-secondary">Abbrechen</button>
                     <button id="contactSaveBtn" onclick="saveContact()" class="btn-success">💾 Speichern</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTACT IMPORT MODAL -->
+        <div id="contactImportModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1001; overflow-y:auto;">
+            <div style="background:white; max-width:650px; margin:60px auto; border-radius:6px; padding:30px; position:relative;">
+                <button onclick="closeContactImportModal()" style="position:absolute; top:15px; right:15px; background:none; border:none; font-size:22px; cursor:pointer; color:#666;">✕</button>
+                <h3 style="margin-bottom:6px; color:#366092;">📥 WISO Import</h3>
+                <p style="font-size:13px; color:#666; margin-bottom:20px;">XLSX-Export aus WISO laden. Bereits vorhandene Kontaktnummern werden übersprungen.</p>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px;">
+                    <div>
+                        <label style="display:block; font-size:12px; font-weight:600; color:#555; margin-bottom:4px;">Kontakttyp</label>
+                        <select id="contactImportType" onchange="renderImportPreview(window._importRows||[])" style="width:100%; padding:7px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+                            <option value="Kunde">Kunden</option>
+                            <option value="Lieferant">Lieferanten</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:12px; font-weight:600; color:#555; margin-bottom:4px;">XLSX-Datei (WISO-Export)</label>
+                        <input type="file" id="contactImportFile" accept=".xlsx,.xls" onchange="handleContactImportFile(event)"
+                            style="width:100%; padding:5px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+                    </div>
+                </div>
+
+                <div id="contactImportPreview" style="min-height:60px; margin-bottom:16px;"></div>
+
+                <div style="display:flex; gap:10px; justify-content:flex-end; border-top:1px solid #e0e0e0; padding-top:16px;">
+                    <button onclick="closeContactImportModal()" class="btn-secondary">Abbrechen</button>
+                    <button id="contactImportStartBtn" onclick="startContactImport()" class="btn-success" disabled>▶ Import starten</button>
                 </div>
             </div>
         </div>
@@ -3262,6 +3294,187 @@ function applyPermissions() {
         window.saveContact = saveContact;
         window.confirmDeleteContact = confirmDeleteContact;
 
+        // ===== CONTACTS IMPORT (WISO XLSX) =====
+
+        function openContactImportModal() {
+            document.getElementById('contactImportModal').style.display = 'flex';
+            document.getElementById('contactImportFile').value = '';
+            document.getElementById('contactImportPreview').innerHTML = '';
+            document.getElementById('contactImportType').value = 'Kunde';
+            window._importRows = [];
+        }
+
+        function closeContactImportModal() {
+            document.getElementById('contactImportModal').style.display = 'none';
+        }
+
+        function handleContactImportFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    // XLSX parsen via SheetJS (falls geladen), sonst Hinweis
+                    if (typeof XLSX === 'undefined') {
+                        document.getElementById('contactImportPreview').innerHTML =
+                            '<p style="color:#dc3545;">⚠️ XLSX-Bibliothek nicht geladen. Seite neu laden.</p>';
+                        return;
+                    }
+                    const wb = XLSX.read(e.target.result, { type: 'array' });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+                    if (!rows.length) {
+                        document.getElementById('contactImportPreview').innerHTML =
+                            '<p style="color:#dc3545;">Keine Daten gefunden.</p>';
+                        return;
+                    }
+                    window._importRows = rows;
+                    renderImportPreview(rows);
+                } catch(e) {
+                    document.getElementById('contactImportPreview').innerHTML =
+                        `<p style="color:#dc3545;">Fehler beim Lesen: ${e.message}</p>`;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function renderImportPreview(rows) {
+            const contactType = document.getElementById('contactImportType').value;
+            const existing = Object.values(window.contactDatabase || {}).map(c => c.contactNumber).filter(Boolean);
+
+            const mapped = rows.map(r => mapWisoRow(r, contactType));
+            const newOnes = mapped.filter(c => !existing.includes(c.contactNumber));
+            const dupes = mapped.filter(c => existing.includes(c.contactNumber));
+
+            let html = `<div style="margin-bottom:10px; font-size:13px;">
+                <strong>${mapped.length} Datensätze</strong> in der Datei —
+                <span style="color:#28a745">${newOnes.length} neu</span>,
+                <span style="color:#856404">${dupes.length} bereits vorhanden (werden übersprungen)</span>
+            </div>`;
+
+            if (newOnes.length > 0) {
+                const preview = newOnes.slice(0, 5);
+                html += `<table style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <thead><tr style="background:#366092; color:white;">
+                        <th style="padding:5px 8px; text-align:left;">Nr.</th>
+                        <th style="padding:5px 8px; text-align:left;">Name</th>
+                        <th style="padding:5px 8px; text-align:left;">Ort</th>
+                        <th style="padding:5px 8px; text-align:left;">E-Mail</th>
+                    </tr></thead><tbody>`;
+                preview.forEach((c, i) => {
+                    html += `<tr style="border-bottom:1px solid #eee; background:${i%2?'#f8f9fa':'white'}">
+                        <td style="padding:5px 8px;">${escapeHtml(c.contactNumber)}</td>
+                        <td style="padding:5px 8px;">${escapeHtml(c.name)}</td>
+                        <td style="padding:5px 8px;">${escapeHtml(c.city)}</td>
+                        <td style="padding:5px 8px;">${escapeHtml(c.email)}</td>
+                    </tr>`;
+                });
+                if (newOnes.length > 5) {
+                    html += `<tr><td colspan="4" style="padding:5px 8px; color:#888; font-style:italic;">… und ${newOnes.length - 5} weitere</td></tr>`;
+                }
+                html += '</tbody></table>';
+            }
+
+            document.getElementById('contactImportPreview').innerHTML = html;
+            document.getElementById('contactImportStartBtn').disabled = newOnes.length === 0;
+        }
+
+        function mapWisoRow(r, contactType) {
+            // Kunden: Kunden-Nr., Art, Name, Nachname, Vorname, Straße, PLZ, Ort, Telefon, E-Mail, Hauptansprechpartner, Rabatt, Gesamtumsatz, Land, Tags, Kundenkategorie
+            // Lieferanten: Lieferanten-Nr., Name, Straße, PLZ, Ort, Telefon, E-Mail, Hauptansprechpartner, Eigene Kd-Nr., Land, Tags
+            const nr = String(r['Kunden-Nr.'] || r['Lieferanten-Nr.'] || '').trim();
+            const art = String(r['Art'] || 'Firma').trim();
+
+            // Bei Art=Person: Vor+Nachname als Firma-Name, kein Ansprechpartner
+            let name = String(r['Name'] || '').trim();
+            if (art === 'Person' || art === 'Privat') {
+                const vn = String(r['Vorname'] || '').trim();
+                const nn = String(r['Nachname'] || '').trim();
+                if (vn || nn) name = [vn, nn].filter(Boolean).join(' ');
+            }
+
+            // Ansprechpartner
+            const apName = String(r['Hauptansprechpartner'] || '').trim();
+            const contactPersons = apName ? [{ name: apName, role: '', phone: '', email: '' }] : [];
+
+            // Notizen: Rabatt + Gesamtumsatz + Eigene Kd-Nr.
+            const notesParts = [];
+            if (r['Rabatt'] && r['Rabatt'] !== 0 && r['Rabatt'] !== '') notesParts.push(`Rabatt: ${r['Rabatt']}%`);
+            if (r['Gesamtumsatz'] && r['Gesamtumsatz'] !== 0 && r['Gesamtumsatz'] !== '') notesParts.push(`Gesamtumsatz: ${r['Gesamtumsatz']} €`);
+            if (r['Eigene Kd-Nr.'] && r['Eigene Kd-Nr.'] !== '') notesParts.push(`Eigene Kd-Nr.: ${r['Eigene Kd-Nr.']}`);
+
+            // Land: 2-Buchstaben ISO → Vollname (häufigste)
+            const landMap = { DE: 'Deutschland', AT: 'Österreich', CH: 'Schweiz', IT: 'Italien', FR: 'Frankreich', NL: 'Niederlande', BE: 'Belgien', PL: 'Polen', CZ: 'Tschechien', HU: 'Ungarn', US: 'USA', GB: 'Großbritannien' };
+            const landRaw = String(r['Land'] || '').trim();
+            const country = landMap[landRaw] || landRaw || 'Deutschland';
+
+            return {
+                contactNumber: nr,
+                name: name,
+                contactType: contactType,
+                art: (art === 'Person' || art === 'Privat') ? 'Privat' : 'Firma',
+                status: 'Aktiv',
+                street: String(r['Straße'] || '').trim(),
+                postalCode: String(r['PLZ'] || '').trim(),
+                city: String(r['Ort'] || '').trim(),
+                country: country,
+                phone: String(r['Telefon'] || '').trim(),
+                email: String(r['E-Mail'] || '').trim(),
+                paymentTerms: '',
+                category: String(r['Kundenkategorie'] || '').trim(),
+                tags: String(r['Tags'] || '').trim(),
+                notes: notesParts.join(' | '),
+                contactPersons: contactPersons
+            };
+        }
+
+        async function startContactImport() {
+            const contactType = document.getElementById('contactImportType').value;
+            const rows = window._importRows || [];
+            if (!rows.length) return;
+
+            const existing = Object.values(window.contactDatabase || {}).map(c => c.contactNumber).filter(Boolean);
+            const toImport = rows.map(r => mapWisoRow(r, contactType)).filter(c => !existing.includes(c.contactNumber));
+
+            if (!toImport.length) return;
+
+            const btn = document.getElementById('contactImportStartBtn');
+            btn.disabled = true;
+            btn.textContent = `Importiere 0 / ${toImport.length}...`;
+
+            let done = 0;
+            let errors = 0;
+            for (const contact of toImport) {
+                try {
+                    await saveContactToSharePoint(contact);
+                    window.contactDatabase[contact.id] = contact;
+                    done++;
+                    btn.textContent = `Importiere ${done} / ${toImport.length}...`;
+                } catch(e) {
+                    console.error('Import-Fehler:', contact.name, e);
+                    errors++;
+                }
+            }
+
+            btn.textContent = '✅ Import abgeschlossen';
+            renderContacts();
+
+            const msg = errors === 0
+                ? `✅ ${done} Kontakte erfolgreich importiert.`
+                : `Import abgeschlossen: ${done} OK, ${errors} Fehler (siehe Konsole).`;
+            document.getElementById('contactImportPreview').innerHTML +=
+                `<div style="margin-top:12px; padding:10px; background:${errors?'#f8d7da':'#d4edda'}; border-radius:4px; font-size:13px;">${msg}</div>`;
+
+            setTimeout(() => closeContactImportModal(), 2000);
+        }
+
+        window.openContactImportModal = openContactImportModal;
+        window.closeContactImportModal = closeContactImportModal;
+        window.handleContactImportFile = handleContactImportFile;
+        window.renderImportPreview = renderImportPreview;
+        window.startContactImport = startContactImport;
+
         // Auto-wachsende Textarea
         function autoGrow(el) {
             el.style.height = '30px';
@@ -3334,7 +3547,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.15';
+        const APP_VERSION = 'v1.6.16';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
