@@ -3047,9 +3047,15 @@ function applyPermissions() {
         }
 
         async function saveContactToSharePoint(contact) {
-            let categoryVal = contact.category || '';
-            // SharePoint Mehrfachauswahl: Array → kommagetrennt
-            if (Array.isArray(categoryVal)) categoryVal = categoryVal.join(', ');
+            // SharePoint FieldMultiChoice erwartet { results: [...] }
+            let categoryRaw = contact.category || '';
+            let categoryArr = [];
+            if (Array.isArray(categoryRaw)) {
+                categoryArr = categoryRaw.filter(v => v);
+            } else if (typeof categoryRaw === 'string' && categoryRaw.trim()) {
+                categoryArr = categoryRaw.split(',').map(s => s.trim()).filter(v => v);
+            }
+            const categoryVal = { results: categoryArr };
             const payload = {
                 Title:          contact.name,
                 Title0:  contact.contactNumber || '',
@@ -3547,7 +3553,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.16';
+        const APP_VERSION = 'v1.6.17';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
