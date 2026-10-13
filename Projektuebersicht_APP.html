@@ -3559,7 +3559,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.20';
+        const APP_VERSION = 'v1.6.21';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -7362,30 +7362,29 @@ function applyPermissions() {
         }
 
         function importBOMFromArticle(posIndex) {
-            // Artikel mit Stückliste zusammenstellen
-            const articlesWithBOM = Object.values(articleDatabase).filter(a => a.bom && a.bom.length > 0);
-            if (articlesWithBOM.length === 0) {
-                showMessage('Keine Artikel mit Stückliste im Stamm gefunden', 'error');
+            const allArticles = Object.values(articleDatabase);
+            if (allArticles.length === 0) {
+                showMessage('Kein Artikelstamm geladen', 'error');
                 return;
             }
 
-            // Modal aufbauen
             const overlay = document.createElement('div');
             overlay.id = 'bomImportOverlay';
-            overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;';
 
             overlay.innerHTML = `
-              <div style="background:#fff;border-radius:10px;padding:24px;width:560px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.25);">
-                <h3 style="margin:0 0 16px;font-size:16px;color:#1a1a2e;">📋 Stückliste aus Artikelstamm importieren</h3>
-                <input type="text" id="bomImportSearch" placeholder="Artikel suchen (Name oder ID)…"
-                  style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;margin-bottom:12px;outline:none;">
-                <div id="bomImportList" style="overflow-y:auto;flex:1;border:1px solid #e5e7eb;border-radius:6px;min-height:120px;max-height:320px;">
-                </div>
-                <div id="bomImportSelected" style="margin-top:12px;font-size:13px;color:#555;min-height:20px;"></div>
-                <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
-                  <button id="bomImportCancel" style="padding:8px 18px;border:1px solid #ddd;border-radius:6px;background:#f5f5f5;cursor:pointer;font-size:14px;">Abbrechen</button>
-                  <button id="bomImportAppend" style="padding:8px 18px;border:1px solid #3498db;border-radius:6px;background:#3498db;color:#fff;cursor:pointer;font-size:14px;" disabled>Anhängen</button>
-                  <button id="bomImportReplace" style="padding:8px 18px;border:1px solid #e74c3c;border-radius:6px;background:#e74c3c;color:#fff;cursor:pointer;font-size:14px;" disabled>Ersetzen</button>
+              <div style="background:#fff;border-radius:10px;padding:24px;width:600px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.3);">
+                <h3 style="margin:0 0 4px;font-size:16px;color:#1a1a2e;">📦 Artikel aus Stamm hinzufügen</h3>
+                <p style="margin:0 0 14px;font-size:12px;color:#888;">Artikel auswählen und als EK-Position einfügen, oder dessen Stückliste übernehmen.</p>
+                <input type="text" id="bomImportSearch" placeholder="Suchen nach Name oder ID…"
+                  style="padding:9px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;margin-bottom:10px;outline:none;width:100%;box-sizing:border-box;">
+                <div id="bomImportList" style="overflow-y:auto;flex:1;border:1px solid #e5e7eb;border-radius:6px;min-height:160px;max-height:340px;"></div>
+                <div id="bomImportSelected" style="margin-top:10px;font-size:13px;color:#2c7be5;min-height:18px;font-weight:500;"></div>
+                <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end;flex-wrap:wrap;">
+                  <button id="bomImportCancel" style="padding:8px 16px;border:1px solid #bbb;border-radius:6px;background:#e0e0e0;color:#333;cursor:pointer;font-size:13px;">Abbrechen</button>
+                  <button id="bomImportAddSingle" style="padding:8px 16px;border:1px solid #27ae60;border-radius:6px;background:#27ae60;color:#fff;cursor:pointer;font-size:13px;" disabled title="Diesen Artikel als eine EK-Position hinzufügen">+ Als Position hinzufügen</button>
+                  <button id="bomImportAppend" style="padding:8px 16px;border:1px solid #3498db;border-radius:6px;background:#3498db;color:#fff;cursor:pointer;font-size:13px;" disabled title="Stückliste dieses Artikels anhängen">📋 BOM anhängen</button>
+                  <button id="bomImportReplace" style="padding:8px 16px;border:1px solid #c0392b;border-radius:6px;background:#c0392b;color:#fff;cursor:pointer;font-size:13px;" disabled title="Bestehende Stückliste durch diese ersetzen">⚠ BOM ersetzen</button>
                 </div>
               </div>`;
 
@@ -7393,76 +7392,119 @@ function applyPermissions() {
 
             let selectedArticleId = null;
 
+            function updateButtons() {
+                const art = selectedArticleId ? articleDatabase[selectedArticleId] : null;
+                const hasBOM = art && art.bom && art.bom.length > 0;
+                document.getElementById('bomImportAddSingle').disabled = !art;
+                document.getElementById('bomImportAppend').disabled = !hasBOM;
+                document.getElementById('bomImportReplace').disabled = !hasBOM;
+            }
+
             function renderList(filter) {
                 const list = document.getElementById('bomImportList');
-                const filtered = articlesWithBOM.filter(a =>
-                    !filter || (a.name || '').toLowerCase().includes(filter.toLowerCase()) || (a.id || '').toLowerCase().includes(filter.toLowerCase())
+                if (!list) return;
+                const f = (filter || '').toLowerCase();
+                const filtered = allArticles.filter(a =>
+                    !f || (a.name || '').toLowerCase().includes(f) || (a.id || '').toLowerCase().includes(f)
                 ).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
 
                 if (filtered.length === 0) {
                     list.innerHTML = '<div style="padding:20px;text-align:center;color:#999;font-size:13px;">Keine Artikel gefunden</div>';
                     return;
                 }
-                list.innerHTML = filtered.map(a => `
-                  <div class="bom-import-item" data-id="${a.id}"
-                    style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;${selectedArticleId === a.id ? 'background:#ebf5fb;' : ''}">
-                    <div>
-                      <div style="font-size:14px;font-weight:500;color:#1a1a2e;">${a.name || a.id}</div>
-                      <div style="font-size:12px;color:#888;">ID: ${a.id} · ${a.bom.length} Komponente(n)</div>
-                    </div>
-                    <span style="font-size:11px;color:#3498db;white-space:nowrap;">${a.bom.length} Pos.</span>
-                  </div>`).join('');
+                list.innerHTML = filtered.map(a => {
+                    const bomCount = (a.bom || []).length;
+                    const isSelected = selectedArticleId === a.id;
+                    const price = a.purchasePrice != null ? Number(a.purchasePrice).toFixed(2).replace('.', ',') + ' €' : '';
+                    return `<div class="bom-import-item" data-id="${a.id}"
+                      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;transition:background .1s;${isSelected ? 'background:#ebf5fb;border-left:3px solid #3498db;' : 'border-left:3px solid transparent;'}">
+                      <div style="min-width:0;">
+                        <div style="font-size:14px;font-weight:500;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.name || a.id}</div>
+                        <div style="font-size:11px;color:#999;margin-top:2px;">ID: ${a.id}${price ? ' · EK: ' + price : ''}${bomCount ? ' · ' + bomCount + ' BOM-Pos.' : ''}</div>
+                      </div>
+                      <div style="display:flex;gap:6px;margin-left:12px;flex-shrink:0;">
+                        ${bomCount ? `<span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:2px 7px;border-radius:10px;">BOM ${bomCount}</span>` : ''}
+                      </div>
+                    </div>`;
+                }).join('');
 
                 list.querySelectorAll('.bom-import-item').forEach(el => {
                     el.addEventListener('click', () => {
                         selectedArticleId = el.dataset.id;
                         const art = articleDatabase[selectedArticleId];
+                        const bomCount = (art.bom || []).length;
                         document.getElementById('bomImportSelected').textContent =
-                            `Ausgewählt: "${art.name}" – ${art.bom.length} Komponente(n)`;
-                        document.getElementById('bomImportAppend').disabled = false;
-                        document.getElementById('bomImportReplace').disabled = false;
+                            `Ausgewählt: „${art.name || art.id}"` + (bomCount ? ` – ${bomCount} BOM-Positionen verfügbar` : ' – kein BOM');
+                        updateButtons();
                         renderList(document.getElementById('bomImportSearch').value);
                     });
                 });
             }
 
             renderList('');
-
             document.getElementById('bomImportSearch').addEventListener('input', e => renderList(e.target.value));
-
             document.getElementById('bomImportCancel').addEventListener('click', () => overlay.remove());
             overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 
-            function doImport(mode) {
+            // Aktion 1: Artikel direkt als eine EK-Position hinzufügen
+            document.getElementById('bomImportAddSingle').addEventListener('click', () => {
                 if (!selectedArticleId) return;
                 const article = articleDatabase[selectedArticleId];
                 if (!article) return;
                 const pos = window.currentQuote.positions[posIndex];
                 if (!pos) return;
+                pos.bom = pos.bom || [];
+                pos.bom.push({
+                    description: article.name || article.id,
+                    supplier: article.supplier || article.defaultSupplier || '',
+                    quantity: 1,
+                    unitPrice: article.purchasePrice || 0
+                });
+                recalcQuotePosition(pos);
+                renderQuotePositions();
+                overlay.remove();
+                showMessage(`„${article.name}" als EK-Position hinzugefügt`, 'success');
+            });
 
+            // Aktion 2: BOM des Artikels anhängen
+            document.getElementById('bomImportAppend').addEventListener('click', () => {
+                if (!selectedArticleId) return;
+                const article = articleDatabase[selectedArticleId];
+                if (!article || !article.bom) return;
+                const pos = window.currentQuote.positions[posIndex];
+                if (!pos) return;
                 const newItems = article.bom.map(item => ({
                     description: item.name || '',
                     supplier: item.supplier || '',
                     quantity: item.quantity || 1,
                     unitPrice: item.price || 0
                 }));
-
-                if (mode === 'replace') {
-                    pos.bom = newItems;
-                } else {
-                    pos.bom = [...(pos.bom || []), ...newItems];
-                }
-
+                pos.bom = [...(pos.bom || []), ...newItems];
                 recalcQuotePosition(pos);
                 renderQuotePositions();
                 overlay.remove();
-                showMessage(`${article.bom.length} Komponenten aus "${article.name}" ${mode === 'replace' ? 'importiert' : 'angehängt'}`, 'success');
-            }
+                showMessage(`${article.bom.length} BOM-Positionen aus „${article.name}" angehängt`, 'success');
+            });
 
-            document.getElementById('bomImportAppend').addEventListener('click', () => doImport('append'));
-            document.getElementById('bomImportReplace').addEventListener('click', () => doImport('replace'));
+            // Aktion 3: BOM ersetzen
+            document.getElementById('bomImportReplace').addEventListener('click', () => {
+                if (!selectedArticleId) return;
+                const article = articleDatabase[selectedArticleId];
+                if (!article || !article.bom) return;
+                const pos = window.currentQuote.positions[posIndex];
+                if (!pos) return;
+                pos.bom = article.bom.map(item => ({
+                    description: item.name || '',
+                    supplier: item.supplier || '',
+                    quantity: item.quantity || 1,
+                    unitPrice: item.price || 0
+                }));
+                recalcQuotePosition(pos);
+                renderQuotePositions();
+                overlay.remove();
+                showMessage(`BOM durch ${article.bom.length} Positionen aus „${article.name}" ersetzt`, 'success');
+            });
 
-            // Fokus auf Suchfeld
             setTimeout(() => document.getElementById('bomImportSearch')?.focus(), 50);
         }
 
