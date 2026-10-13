@@ -3559,7 +3559,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.21';
+        const APP_VERSION = 'v1.6.22';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -7362,7 +7362,7 @@ function applyPermissions() {
         }
 
         function importBOMFromArticle(posIndex) {
-            const allArticles = Object.values(articleDatabase);
+            const allArticles = Object.values(window.articleDatabase || articleDatabase || {});
             if (allArticles.length === 0) {
                 showMessage('Kein Artikelstamm geladen', 'error');
                 return;
@@ -7393,7 +7393,8 @@ function applyPermissions() {
             let selectedArticleId = null;
 
             function updateButtons() {
-                const art = selectedArticleId ? articleDatabase[selectedArticleId] : null;
+                const _db = window.articleDatabase || articleDatabase || {};
+                const art = selectedArticleId ? _db[selectedArticleId] : null;
                 const hasBOM = art && art.bom && art.bom.length > 0;
                 document.getElementById('bomImportAddSingle').disabled = !art;
                 document.getElementById('bomImportAppend').disabled = !hasBOM;
@@ -7431,7 +7432,8 @@ function applyPermissions() {
                 list.querySelectorAll('.bom-import-item').forEach(el => {
                     el.addEventListener('click', () => {
                         selectedArticleId = el.dataset.id;
-                        const art = articleDatabase[selectedArticleId];
+                        const _db = window.articleDatabase || articleDatabase || {};
+                        const art = _db[selectedArticleId];
                         const bomCount = (art.bom || []).length;
                         document.getElementById('bomImportSelected').textContent =
                             `Ausgewählt: „${art.name || art.id}"` + (bomCount ? ` – ${bomCount} BOM-Positionen verfügbar` : ' – kein BOM');
@@ -7449,7 +7451,7 @@ function applyPermissions() {
             // Aktion 1: Artikel direkt als eine EK-Position hinzufügen
             document.getElementById('bomImportAddSingle').addEventListener('click', () => {
                 if (!selectedArticleId) return;
-                const article = articleDatabase[selectedArticleId];
+                const article = (window.articleDatabase || articleDatabase || {})[selectedArticleId];
                 if (!article) return;
                 const pos = window.currentQuote.positions[posIndex];
                 if (!pos) return;
@@ -7469,7 +7471,7 @@ function applyPermissions() {
             // Aktion 2: BOM des Artikels anhängen
             document.getElementById('bomImportAppend').addEventListener('click', () => {
                 if (!selectedArticleId) return;
-                const article = articleDatabase[selectedArticleId];
+                const article = (window.articleDatabase || articleDatabase || {})[selectedArticleId];
                 if (!article || !article.bom) return;
                 const pos = window.currentQuote.positions[posIndex];
                 if (!pos) return;
@@ -7489,7 +7491,7 @@ function applyPermissions() {
             // Aktion 3: BOM ersetzen
             document.getElementById('bomImportReplace').addEventListener('click', () => {
                 if (!selectedArticleId) return;
-                const article = articleDatabase[selectedArticleId];
+                const article = (window.articleDatabase || articleDatabase || {})[selectedArticleId];
                 if (!article || !article.bom) return;
                 const pos = window.currentQuote.positions[posIndex];
                 if (!pos) return;
