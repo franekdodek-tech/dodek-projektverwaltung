@@ -3559,7 +3559,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.22';
+        const APP_VERSION = 'v1.6.23';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -7362,9 +7362,10 @@ function applyPermissions() {
         }
 
         function importBOMFromArticle(posIndex) {
-            const allArticles = Object.values(window.articleDatabase || articleDatabase || {});
+            const _db = window.articleDatabase || (typeof articleDatabase !== 'undefined' ? articleDatabase : null) || {};
+            const allArticles = Object.values(_db);
             if (allArticles.length === 0) {
-                showMessage('Kein Artikelstamm geladen', 'error');
+                (window.showMessage || function(m){ alert(m); })('Kein Artikelstamm geladen – bitte zuerst den Artikelstamm laden.', 'error');
                 return;
             }
 
