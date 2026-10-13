@@ -2236,10 +2236,14 @@
                     <button onclick="openMultiPositionDialog()" class="btn-secondary" style="margin-left:8px;">➕ Mehrere Positionen</button>
                 </div>
                 
-                <div style="display:flex; align-items:center; gap:16px; margin-bottom:8px;">
+                <div style="display:flex; align-items:center; gap:16px; margin-bottom:8px; flex-wrap:wrap;">
                     <label style="font-size:13px; color:#555; cursor:pointer; user-select:none;">
                         <input type="checkbox" id="ekFilterOpen" onchange="window.ekFilterOpen=this.checked; renderPurchasePositions();" style="margin-right:4px;">
                         Nur offene
+                    </label>
+                    <label style="font-size:13px; color:#555; cursor:pointer; user-select:none;">
+                        <input type="checkbox" id="ekGroupBySupplier" onchange="window.ekGroupBySupplier=this.checked; renderPurchasePositions();" style="margin-right:4px;">
+                        Nach Lieferant gruppieren
                     </label>
                     <span style="font-size:11px; color:#999;" id="ekSortInfo"></span>
                 </div>
@@ -2773,6 +2777,7 @@ function applyPermissions() {
                     }
                 });
                 renderArticles();
+                updateArticleSelects();
             } catch (e) {
                 console.error('Fehler beim Laden der Artikel:', e);
             }
@@ -3554,7 +3559,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.19';
+        const APP_VERSION = 'v1.6.20';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5071,10 +5076,68 @@ function applyPermissions() {
             }
 
             const filterOpen = window.ekFilterOpen === true;
+            const groupBySupplier = window.ekGroupBySupplier === true;
 
             // Hilfsfunktion: Ampel-Status berechnen
             // VK-Positionen als Gruppen, EK-Positionen darunter
             const rows = [];
+
+            if (groupBySupplier) {
+                // ── Lieferanten-Gruppierung ────────────────────────────────
+                let allEk = currentProject.purchasePositions.map((p, i) => ({ pos: p, index: i }));
+                if (filterOpen) allEk = allEk.filter(({ pos }) => (pos.status || 'open') === 'open');
+
+                // Lieferanten ermitteln, alphabetisch; leere als "Kein Lieferant" ans Ende
+                const supplierMap = {};
+                allEk.forEach(item => {
+                    const s = (item.pos.supplier || '').trim() || '— Kein Lieferant —';
+                    if (!supplierMap[s]) supplierMap[s] = [];
+                    supplierMap[s].push(item);
+                });
+                const supplierKeys = Object.keys(supplierMap).sort((a, b) => {
+                    if (a === '— Kein Lieferant —') return 1;
+                    if (b === '— Kein Lieferant —') return -1;
+                    return a.localeCompare(b, 'de');
+                });
+
+                supplierKeys.forEach(supplier => {
+                    const items = supplierMap[supplier];
+                    const groupId = 'sup_' + supplier.replace(/\W/g, '_');
+                    const isCollapsed = !!window.ekBomCollapsed[groupId];
+                    const ekSum = items.reduce((s, { pos }) => s + (pos.totalPrice || 0), 0);
+                    const ampel = getEkAmpel(items.map(i => i.pos));
+
+                    rows.push(`<tr class="ek-vk-header${isCollapsed ? ' collapsed' : ''}" onclick="window.toggleEkVkGroup('${groupId}')">
+                        <td colspan="9" style="padding-left:8px;">
+                            <span class="collapse-arrow">${isCollapsed ? '▶' : '▼'}</span>
+                            ${ampel}
+                            <strong>🏭 ${supplier}</strong>
+                            <span style="font-size:11px; color:#888; margin-left:8px;">${items.length} EK-Pos.</span>
+                        </td>
+                        <td class="number-cell" style="font-weight:600;">${formatCurrency(ekSum)}</td>
+                        <td></td>
+                    </tr>`);
+
+                    if (!isCollapsed) {
+                        items.forEach(({ pos, index }) => rows.push(renderEkRow(pos, index)));
+                    }
+                });
+
+                if (rows.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:40px; color:#999;">Keine EK-Positionen vorhanden.</td></tr>`;
+                } else {
+                    tbody.innerHTML = rows.join('');
+                }
+                const infoEl = document.getElementById('ekSortInfo');
+                if (infoEl) {
+                    const total = currentProject.purchasePositions.length;
+                    const shown = allEk.length;
+                    infoEl.textContent = (filterOpen && shown < total) ? `${shown} von ${total} angezeigt` : '';
+                }
+                autoGrowAll();
+                updateSectionTotals();
+                return;
+            }
 
             // Alle VK-Positionen als Gruppen
             currentProject.salesPositions.forEach((vkPos) => {
@@ -5109,6 +5172,15 @@ function applyPermissions() {
                 </tr>`);
 
                 if (!isCollapsed) {
+                    // EK-Positionen innerhalb der VK-Gruppe nach Lieferant sortieren
+                    ekChildren.sort((a, b) => {
+                        const sA = (a.pos.supplier || '').trim();
+                        const sB = (b.pos.supplier || '').trim();
+                        if (!sA && !sB) return 0;
+                        if (!sA) return 1;
+                        if (!sB) return -1;
+                        return sA.localeCompare(sB, 'de');
+                    });
                     ekChildren.forEach(({ pos, index }) => {
                         rows.push(renderEkRow(pos, index));
                     });
@@ -7290,27 +7362,108 @@ function applyPermissions() {
         }
 
         function importBOMFromArticle(posIndex) {
-            const articleId = prompt('Artikel-ID eingeben:');
-            if (!articleId || !articleDatabase[articleId]) {
-                showMessage('Artikel nicht gefunden', 'error');
+            // Artikel mit Stückliste zusammenstellen
+            const articlesWithBOM = Object.values(articleDatabase).filter(a => a.bom && a.bom.length > 0);
+            if (articlesWithBOM.length === 0) {
+                showMessage('Keine Artikel mit Stückliste im Stamm gefunden', 'error');
                 return;
             }
-            const article = articleDatabase[articleId];
-            if (!article.bom || article.bom.length === 0) {
-                showMessage('Dieser Artikel hat keine Stückliste', 'error');
-                return;
+
+            // Modal aufbauen
+            const overlay = document.createElement('div');
+            overlay.id = 'bomImportOverlay';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+
+            overlay.innerHTML = `
+              <div style="background:#fff;border-radius:10px;padding:24px;width:560px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.25);">
+                <h3 style="margin:0 0 16px;font-size:16px;color:#1a1a2e;">📋 Stückliste aus Artikelstamm importieren</h3>
+                <input type="text" id="bomImportSearch" placeholder="Artikel suchen (Name oder ID)…"
+                  style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;margin-bottom:12px;outline:none;">
+                <div id="bomImportList" style="overflow-y:auto;flex:1;border:1px solid #e5e7eb;border-radius:6px;min-height:120px;max-height:320px;">
+                </div>
+                <div id="bomImportSelected" style="margin-top:12px;font-size:13px;color:#555;min-height:20px;"></div>
+                <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+                  <button id="bomImportCancel" style="padding:8px 18px;border:1px solid #ddd;border-radius:6px;background:#f5f5f5;cursor:pointer;font-size:14px;">Abbrechen</button>
+                  <button id="bomImportAppend" style="padding:8px 18px;border:1px solid #3498db;border-radius:6px;background:#3498db;color:#fff;cursor:pointer;font-size:14px;" disabled>Anhängen</button>
+                  <button id="bomImportReplace" style="padding:8px 18px;border:1px solid #e74c3c;border-radius:6px;background:#e74c3c;color:#fff;cursor:pointer;font-size:14px;" disabled>Ersetzen</button>
+                </div>
+              </div>`;
+
+            document.body.appendChild(overlay);
+
+            let selectedArticleId = null;
+
+            function renderList(filter) {
+                const list = document.getElementById('bomImportList');
+                const filtered = articlesWithBOM.filter(a =>
+                    !filter || (a.name || '').toLowerCase().includes(filter.toLowerCase()) || (a.id || '').toLowerCase().includes(filter.toLowerCase())
+                ).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+
+                if (filtered.length === 0) {
+                    list.innerHTML = '<div style="padding:20px;text-align:center;color:#999;font-size:13px;">Keine Artikel gefunden</div>';
+                    return;
+                }
+                list.innerHTML = filtered.map(a => `
+                  <div class="bom-import-item" data-id="${a.id}"
+                    style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;${selectedArticleId === a.id ? 'background:#ebf5fb;' : ''}">
+                    <div>
+                      <div style="font-size:14px;font-weight:500;color:#1a1a2e;">${a.name || a.id}</div>
+                      <div style="font-size:12px;color:#888;">ID: ${a.id} · ${a.bom.length} Komponente(n)</div>
+                    </div>
+                    <span style="font-size:11px;color:#3498db;white-space:nowrap;">${a.bom.length} Pos.</span>
+                  </div>`).join('');
+
+                list.querySelectorAll('.bom-import-item').forEach(el => {
+                    el.addEventListener('click', () => {
+                        selectedArticleId = el.dataset.id;
+                        const art = articleDatabase[selectedArticleId];
+                        document.getElementById('bomImportSelected').textContent =
+                            `Ausgewählt: "${art.name}" – ${art.bom.length} Komponente(n)`;
+                        document.getElementById('bomImportAppend').disabled = false;
+                        document.getElementById('bomImportReplace').disabled = false;
+                        renderList(document.getElementById('bomImportSearch').value);
+                    });
+                });
             }
-            const pos = window.currentQuote.positions[posIndex];
-            if (!pos) return;
-            pos.bom = article.bom.map(item => ({
-                description: item.name || '',
-                supplier: item.supplier || '',
-                quantity: item.quantity || 1,
-                unitPrice: item.price || 0
-            }));
-            recalcQuotePosition(pos);
-            renderQuotePositions();
-            showMessage(`${article.bom.length} Komponenten aus "${article.name}" importiert`, 'success');
+
+            renderList('');
+
+            document.getElementById('bomImportSearch').addEventListener('input', e => renderList(e.target.value));
+
+            document.getElementById('bomImportCancel').addEventListener('click', () => overlay.remove());
+            overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+            function doImport(mode) {
+                if (!selectedArticleId) return;
+                const article = articleDatabase[selectedArticleId];
+                if (!article) return;
+                const pos = window.currentQuote.positions[posIndex];
+                if (!pos) return;
+
+                const newItems = article.bom.map(item => ({
+                    description: item.name || '',
+                    supplier: item.supplier || '',
+                    quantity: item.quantity || 1,
+                    unitPrice: item.price || 0
+                }));
+
+                if (mode === 'replace') {
+                    pos.bom = newItems;
+                } else {
+                    pos.bom = [...(pos.bom || []), ...newItems];
+                }
+
+                recalcQuotePosition(pos);
+                renderQuotePositions();
+                overlay.remove();
+                showMessage(`${article.bom.length} Komponenten aus "${article.name}" ${mode === 'replace' ? 'importiert' : 'angehängt'}`, 'success');
+            }
+
+            document.getElementById('bomImportAppend').addEventListener('click', () => doImport('append'));
+            document.getElementById('bomImportReplace').addEventListener('click', () => doImport('replace'));
+
+            // Fokus auf Suchfeld
+            setTimeout(() => document.getElementById('bomImportSearch')?.focus(), 50);
         }
 
         function copyQuotePosition(index) {
