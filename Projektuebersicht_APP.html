@@ -3559,7 +3559,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.24';
+        const APP_VERSION = 'v1.6.25';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -7580,21 +7580,38 @@ function applyPermissions() {
         function addBOMFromSelect(posIndex, selectEl) {
             const articleId = selectEl.value;
             if (!articleId) return;
+            selectEl.value = '';
             const _db = articleDatabase || window.articleDatabase || {};
             const article = _db[articleId];
-            if (!article) { selectEl.value = ''; return; }
+            if (!article) return;
             const pos = window.currentQuote && window.currentQuote.positions[posIndex];
-            if (!pos) { selectEl.value = ''; return; }
+            if (!pos) return;
             pos.bom = pos.bom || [];
-            pos.bom.push({
-                description: article.name || article.id,
-                supplier: article.supplier || article.defaultSupplier || '',
-                quantity: 1,
-                unitPrice: article.purchasePrice || 0
-            });
+
+            const hasBOM = article.bom && article.bom.length > 0;
+            if (hasBOM) {
+                // BOM des Artikels direkt als EK-Positionen übernehmen
+                const newItems = article.bom.map(item => ({
+                    description: item.name || item.description || '',
+                    supplier: item.supplier || '',
+                    quantity: item.quantity || 1,
+                    unitPrice: item.price != null ? item.price : (item.unitPrice || 0)
+                }));
+                pos.bom = pos.bom.concat(newItems);
+                showMessage('BOM von „' + (article.name || article.id) + '" übernommen (' + newItems.length + ' Positionen)', 'success');
+            } else {
+                // Kein BOM → Artikel selbst als eine EK-Position
+                pos.bom.push({
+                    description: article.name || article.id,
+                    supplier: article.supplier || article.defaultSupplier || '',
+                    quantity: 1,
+                    unitPrice: article.purchasePrice || 0
+                });
+                showMessage('„' + (article.name || article.id) + '" als EK-Position hinzugefügt', 'success');
+            }
+
             recalcQuotePosition(pos);
             renderQuotePositions();
-            showMessage('„' + (article.name || article.id) + '" als EK-Position hinzugefügt', 'success');
         }
         window.addBOMFromSelect = addBOMFromSelect;
 
