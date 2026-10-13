@@ -3559,7 +3559,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.23';
+        const APP_VERSION = 'v1.6.24';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -6927,8 +6927,19 @@ function applyPermissions() {
                                style="min-width:200px;">${pos.description}</textarea>
                     </td>
                     <td class="editable-cell" style="white-space:nowrap;">
-                        <button onclick="importBOMFromArticle(${index})" class="btn-secondary btn-small" title="Stückliste aus Artikelstamm importieren" style="font-size:11px;">📋</button>
-                        <button onclick="addQuoteBOMItem(${index})" class="btn-secondary btn-small" title="Komponente hinzufügen" style="font-size:11px;">+</button>
+                        ${(function(){
+                            const _db = articleDatabase || window.articleDatabase || {};
+                            const arts = Object.values(_db).sort((a,b) => (a.name||'').localeCompare(b.name||'','de'));
+                            if (arts.length === 0) return '';
+                            const opts = arts.map(a => {
+                                const bomInfo = (a.bom && a.bom.length) ? ` [BOM: ${a.bom.length}]` : '';
+                                return `<option value="${a.id}">${a.name || a.id}${bomInfo}</option>`;
+                            }).join('');
+                            return `<select onchange="addBOMFromSelect(${index}, this)" style="font-size:11px;max-width:160px;border:1px solid #ccc;border-radius:4px;padding:2px 4px;cursor:pointer;" title="Artikel aus Stamm als EK-Position hinzufügen">
+                                      <option value="">+ Aus Stamm…</option>${opts}
+                                    </select>`;
+                        })()}
+                        <button onclick="addQuoteBOMItem(${index})" class="btn-secondary btn-small" title="Komponente manuell hinzufügen" style="font-size:11px;">+</button>
                         <button onclick="copyQuotePosition(${index})" class="btn-secondary btn-small" title="Position kopieren" style="font-size:11px;">⧉</button>
                         <button onclick="saveQuotePositionAsArticle(${index})" class="btn-secondary btn-small" title="Als Artikel speichern" style="font-size:11px;">💾</button>
                         ${hasBOM ? `<button onclick="toggleQuoteBOM(${index})" class="btn-secondary btn-small" style="font-size:11px;" title="${bomCollapsed ? 'BOM einblenden' : 'BOM ausblenden'}">${bomCollapsed ? '▶' : '▼'} ${pos.bom.length} Komp.</button>` : ''}
@@ -7565,6 +7576,27 @@ function applyPermissions() {
         window.removeQuoteBOMItem = removeQuoteBOMItem;
         window.updateQuoteBOMItem = updateQuoteBOMItem;
         window.importBOMFromArticle = importBOMFromArticle;
+
+        function addBOMFromSelect(posIndex, selectEl) {
+            const articleId = selectEl.value;
+            if (!articleId) return;
+            const _db = articleDatabase || window.articleDatabase || {};
+            const article = _db[articleId];
+            if (!article) { selectEl.value = ''; return; }
+            const pos = window.currentQuote && window.currentQuote.positions[posIndex];
+            if (!pos) { selectEl.value = ''; return; }
+            pos.bom = pos.bom || [];
+            pos.bom.push({
+                description: article.name || article.id,
+                supplier: article.supplier || article.defaultSupplier || '',
+                quantity: 1,
+                unitPrice: article.purchasePrice || 0
+            });
+            recalcQuotePosition(pos);
+            renderQuotePositions();
+            showMessage('„' + (article.name || article.id) + '" als EK-Position hinzugefügt', 'success');
+        }
+        window.addBOMFromSelect = addBOMFromSelect;
 
         // ========== EINSTELLUNGEN UI ==========
 
