@@ -807,6 +807,16 @@
             margin-top: 15px;
         }
         
+        /* Kalkulation: Positionszeile + BOM-Unterzeilen */
+        .quote-pos-header td {
+            background: #e8f0f8;
+            border-top: 2px solid #366092;
+        }
+        .quote-bom-child td {
+            background: #fafcff;
+            border-top: 1px solid #e2e8f0;
+        }
+
         /* BOM-EK Stückliste Styles */
         .ek-vk-header td {
             background: #e8f0f8;
@@ -3559,7 +3569,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.29';
+        const APP_VERSION = 'v1.6.31';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -6917,32 +6927,26 @@ function applyPermissions() {
                 const bomSorted = hasBOM ? [...pos.bom.map((comp, bi) => ({...comp, _origIdx: bi}))].sort((a, b) =>
                     (a.supplier || '').localeCompare(b.supplier || '', 'de')) : [];
 
-                const bomRows = hasBOM ? (bomCollapsed ? '' : (() => {
-                    let lastSupplier = null;
-                    return bomSorted.map((comp) => {
-                        const bi = comp._origIdx;
-                        const supplier = comp.supplier || '';
-                        let separatorRow = '';
-                        if (supplier !== lastSupplier) {
-                            separatorRow = `<tr style="background:#eef2ff;">
-                                <td colspan="12" style="padding:3px 30px;font-size:11px;font-weight:600;color:#4a5568;letter-spacing:0.03em;">
-                                    ${supplier ? '🏭 ' + supplier : '— kein Lieferant —'}
-                                </td></tr>`;
-                            lastSupplier = supplier;
-                        }
-                        return separatorRow + `
-                <tr style="background:#f8f9fa;">
-                    <td colspan="2" style="padding-left:30px;">
+                const bomRows = hasBOM ? (bomCollapsed ? '' : bomSorted.map((comp) => {
+                    const bi = comp._origIdx;
+                    const supplier = comp.supplier || '';
+                    return `
+                <tr class="quote-bom-child">
+                    <td style="padding-left:8px;font-size:13px;color:#888;vertical-align:middle;" title="${supplier ? supplier : ''}">↳</td>
+                    <td>
+                        <div style="font-size:10px;color:#999;margin-bottom:2px;">Beschreibung</div>
                         <input type="text" value="${comp.description}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'description', this.value)"
                                style="width:100%;font-size:12px;">
                     </td>
                     <td>
+                        <div style="font-size:10px;color:#999;margin-bottom:2px;">Lieferant</div>
                         <input type="text" value="${supplier}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'supplier', this.value)"
                                style="width:100%;font-size:12px;">
                     </td>
                     <td class="number-cell">
+                        <div style="font-size:10px;color:#999;margin-bottom:2px;">Menge</div>
                         <input type="number" step="0.01" value="${comp.quantity}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'quantity', this.value)"
                                style="width:55px;font-size:12px;">
@@ -6967,7 +6971,7 @@ function applyPermissions() {
                         <div style="font-size:10px;color:#999;margin-bottom:2px;">EK/St. netto</div>
                         <input type="number" step="0.01" value="${comp.unitPrice}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'unitPrice', this.value)"
-                               title="EK Einzelpreis (netto). Wird automatisch aus Listenpreis − Rabatt berechnet, sofern angegeben."
+                               title="EK Einzelpreis netto — wird aus Listenpreis − Rabatt berechnet, sofern angegeben."
                                style="width:85px;font-size:12px;${(comp.listPrice != null && comp.listPrice !== '') ? 'background:#f0fdf4;color:#166534;font-weight:600;' : ''}">
                     </td>
                     <td class="number-cell" style="font-size:12px;">${formatCurrency(comp.quantity * comp.unitPrice)}</td>
@@ -6976,11 +6980,10 @@ function applyPermissions() {
                         <button onclick="removeQuoteBOMItem(${index}, ${bi})" class="btn-danger btn-small" style="font-size:11px;">×</button>
                     </td>
                 </tr>`;
-                    }).join('');
-                })()) : '';
+                }).join('')) : '';
 
                 return `
-                <tr>
+                <tr class="quote-pos-header">
                     <td class="editable-cell">
                         <div style="font-size:10px;color:#999;margin-bottom:2px;">Beschreibung</div>
                         <textarea class="auto-grow" oninput="autoGrow(this)" onfocus="autoGrow(this)"
@@ -7057,8 +7060,8 @@ function applyPermissions() {
                     </td>
                 </tr>
                 ${bomRows}
-                ${hasBOM ? `<tr style="background:#f0f4ff;"><td colspan="10" style="padding:4px 6px 8px 30px;font-size:11px;color:#366092;">
-                    EK gesamt (BOM × ${pos.quantity}×): <strong>${formatCurrency(pos.totalEK)}</strong>
+                ${hasBOM && !bomCollapsed ? `<tr><td colspan="11" style="background:#dce8f5;border-bottom:2px solid #366092;padding:3px 8px 4px 28px;font-size:11px;color:#1a3a5c;">
+                    EK gesamt (${pos.bom.length} Komp. × ${pos.quantity}×): <strong>${formatCurrency(pos.totalEK)}</strong>
                 </td></tr>` : ''}`;
             }).join('');
 
