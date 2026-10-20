@@ -3559,7 +3559,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.27';
+        const APP_VERSION = 'v1.6.28';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -6874,6 +6874,18 @@ function applyPermissions() {
             };
         }
 
+        function roundToNearest5(value) {
+            // Rundet auf nächste 5 (z.B. 1612 → 1610, 1612.80 → 1615, 1617.50 → 1615 oder 1620)
+            return Math.round(value / 5) * 5;
+        }
+        window.roundToNearest5 = roundToNearest5;
+
+        function applyRoundedPrice(posIndex, rawValue) {
+            const rounded = roundToNearest5(rawValue);
+            updateQuotePosition(posIndex, 'vkHand', rounded);
+        }
+        window.applyRoundedPrice = applyRoundedPrice;
+
         function renderQuotePositions() {
             const tbody = document.getElementById('quotePositionsTable');
             if (!tbody || !window.currentQuote) return;
@@ -6933,27 +6945,33 @@ function applyPermissions() {
                     <td class="number-cell">
                         <input type="number" step="0.01" value="${comp.quantity}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'quantity', this.value)"
+                               style="width:55px;font-size:12px;">
+                    </td>
+                    <td class="number-cell" style="white-space:nowrap;">
+                        <div style="font-size:10px;color:#999;margin-bottom:2px;">Listenpreis</div>
+                        <input type="number" step="0.01" value="${comp.listPrice != null ? comp.listPrice : ''}"
+                               onchange="updateQuoteBOMItem(${index}, ${bi}, 'listPrice', this.value)"
+                               placeholder="0,00"
+                               title="Listenpreis (Brutto-EK)"
+                               style="width:85px;font-size:12px;">
+                    </td>
+                    <td class="number-cell" style="white-space:nowrap;">
+                        <div style="font-size:10px;color:#999;margin-bottom:2px;">Rabatt %</div>
+                        <input type="number" step="0.1" min="0" max="100" value="${comp.discount != null ? comp.discount : ''}"
+                               onchange="updateQuoteBOMItem(${index}, ${bi}, 'discount', this.value)"
+                               placeholder="0"
+                               title="Rabatt in %"
                                style="width:60px;font-size:12px;">
                     </td>
                     <td class="number-cell" style="white-space:nowrap;">
-                        <input type="number" step="0.01" value="${comp.listPrice != null ? comp.listPrice : ''}"
-                               onchange="updateQuoteBOMItem(${index}, ${bi}, 'listPrice', this.value)"
-                               placeholder="Listenpr."
-                               title="Listenpreis (Brutto-EK)"
-                               style="width:72px;font-size:12px;">
-                        <input type="number" step="0.1" min="0" max="100" value="${comp.discount != null ? comp.discount : ''}"
-                               onchange="updateQuoteBOMItem(${index}, ${bi}, 'discount', this.value)"
-                               placeholder="Rbt%"
-                               title="Rabatt in %"
-                               style="width:48px;font-size:12px;">
-                        <span style="font-size:11px;color:#666;">→</span>
+                        <div style="font-size:10px;color:#999;margin-bottom:2px;">EK/St. netto</div>
                         <input type="number" step="0.01" value="${comp.unitPrice}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'unitPrice', this.value)"
                                title="EK Einzelpreis (netto). Wird automatisch aus Listenpreis − Rabatt berechnet, sofern angegeben."
-                               style="width:72px;font-size:12px;${(comp.listPrice != null && comp.listPrice !== '') ? 'background:#f0fdf4;color:#166534;font-weight:600;' : ''}">
+                               style="width:85px;font-size:12px;${(comp.listPrice != null && comp.listPrice !== '') ? 'background:#f0fdf4;color:#166534;font-weight:600;' : ''}">
                     </td>
                     <td class="number-cell" style="font-size:12px;">${formatCurrency(comp.quantity * comp.unitPrice)}</td>
-                    <td colspan="5"></td>
+                    <td colspan="3"></td>
                     <td class="action-cell">
                         <button onclick="removeQuoteBOMItem(${index}, ${bi})" class="btn-danger btn-small" style="font-size:11px;">×</button>
                     </td>
@@ -7001,11 +7019,13 @@ function applyPermissions() {
                     <td class="number-cell" style="color:#366092;">
                         ${formatCurrency(vkReseller)}
                         <span style="font-size:11px;color:#888;"> (${pos.totalEK > 0 ? ((vkReseller - pos.totalEK) / vkReseller * 100).toFixed(1) : 0}%)</span>
+                        <br><button onclick="applyRoundedPrice(${index}, ${vkReseller})" class="btn-secondary btn-small" title="WV ges. gerundet in Angebotspreis übernehmen (±5)" style="font-size:10px;padding:1px 5px;margin-top:2px;color:#366092;">↗ WV</button>
                     </td>
                     <td class="number-cell" style="color:#28a745;font-size:12px;">${formatCurrency(vkEPerUnit)}</td>
                     <td class="number-cell" style="color:#28a745;">
                         ${formatCurrency(vkEndcustomer)}
                         <span style="font-size:11px;color:#888;"> (${pos.totalEK > 0 ? ((vkEndcustomer - pos.totalEK) / vkEndcustomer * 100).toFixed(1) : 0}%)</span>
+                        <br><button onclick="applyRoundedPrice(${index}, ${vkEndcustomer})" class="btn-secondary btn-small" title="End ges. gerundet in Angebotspreis übernehmen (±5)" style="font-size:10px;padding:1px 5px;margin-top:2px;color:#28a745;">↗ End</button>
                     </td>
                     <td class="number-cell editable-cell">
                         <input type="number" step="0.01" value="${vkHand}"
