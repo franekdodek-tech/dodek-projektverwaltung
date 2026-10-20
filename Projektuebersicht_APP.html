@@ -3572,7 +3572,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.37';
+        const APP_VERSION = 'v1.6.38';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -7317,11 +7317,15 @@ function applyPermissions() {
             const { reseller, endcustomer, discount } = getQuoteFactors();
             const discountFactor = 1 - (discount / 100);
             const positions = q.positions || [];
+
+            // Gerundete Summen: pro Position runden, dann addieren (konsistent mit UI)
             const totalEK    = positions.reduce((s, p) => s + p.totalEK, 0);
-            const totalVKR   = totalEK * reseller * discountFactor;
-            const totalVKE   = totalEK * endcustomer * discountFactor;
+            const totalVKR   = positions.reduce((s, p) => s + roundToQuarter(p.totalEK * reseller * discountFactor), 0);
+            const totalVKE   = positions.reduce((s, p) => s + roundToQuarter(p.totalEK * endcustomer * discountFactor), 0);
             const dbR = totalVKR - totalEK;
             const dbE = totalVKE - totalEK;
+
+            const fmt = v => v.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`
@@ -7337,8 +7341,12 @@ function applyPermissions() {
                         .factors { font-size: 10px; color: #555; margin-bottom: 15px; }
                         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10px; }
                         th { background: #366092; color: white; padding: 5px 6px; text-align: left; }
-                        td { padding: 4px 6px; border-bottom: 1px solid #eee; }
+                        th.number { text-align: right; }
+                        td { padding: 4px 6px; border-bottom: 1px solid #eee; vertical-align: top; }
                         .number { text-align: right; }
+                        .pos-header td { background: #e8f0f8; font-weight: bold; border-top: 2px solid #366092; }
+                        .bom-row td { background: #fafcff; font-size: 9px; color: #555; border-top: 1px solid #e2e8f0; }
+                        .bom-footer td { background: #dce8f5; border-bottom: 2px solid #366092; font-size: 9px; color: #1a3a5c; }
                         .summary { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px; }
                         .summary-box { border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; min-width: 140px; }
                         .summary-label { font-size: 9px; color: #666; }
@@ -7359,55 +7367,66 @@ function applyPermissions() {
                     <table>
                         <thead>
                             <tr>
-                                <th>Beschreibung</th>
+                                <th style="width:28%;">Beschreibung</th>
                                 <th class="number">Menge</th>
-                                <th class="number">EK/Stück</th>
-                                <th class="number">EK gesamt</th>
-                                <th class="number">VK WV/Stück</th>
-                                <th class="number">VK WV gesamt</th>
-                                <th class="number">VK End/Stück</th>
-                                <th class="number">VK End gesamt</th>
-                                <th class="number">VK Hand</th>
+                                <th class="number">EK/St.</th>
+                                <th class="number">EK ges.</th>
+                                <th class="number" style="color:#b8d0ed;">WV/St.</th>
+                                <th class="number" style="color:#b8d0ed;">WV ges.</th>
+                                <th class="number" style="color:#9fd3ae;">End/St.</th>
+                                <th class="number" style="color:#9fd3ae;">End ges.</th>
+                                <th class="number">Angebotspreis</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${positions.map(pos => {
                                 const hasBOM = pos.bom && pos.bom.length > 0;
                                 const qty = pos.quantity || 1;
-                                const vkR = pos.totalEK * reseller * discountFactor;
-                                const vkE = pos.totalEK * endcustomer * discountFactor;
+                                const vkR = roundToQuarter(pos.totalEK * reseller * discountFactor);
+                                const vkE = roundToQuarter(pos.totalEK * endcustomer * discountFactor);
                                 const ekUnit = pos.totalEK / qty;
-                                const vkRUnit = vkR / qty;
-                                const vkEUnit = vkE / qty;
-                                const bomRows = hasBOM ? pos.bom.map(comp => `
-                                <tr style="background:#f9f9f9;font-size:9px;">
-                                    <td style="padding-left:18px;color:#666;">↳ ${comp.description}${comp.supplier ? ` <em>(${comp.supplier})</em>` : ''}</td>
-                                    <td style="color:#666;">—</td>
-                                    <td class="number" style="color:#666;">${comp.quantity}</td>
-                                    <td class="number" style="color:#666;">${comp.unitPrice.toFixed(2)} €</td>
-                                    <td class="number" style="color:#666;">${(comp.quantity * comp.unitPrice).toFixed(2)} €</td>
+                                const vkRUnit = roundToQuarter(vkR / qty);
+                                const vkEUnit = roundToQuarter(vkE / qty);
+                                const bomRows = hasBOM ? pos.bom.map(comp => {
+                                    const hasLP = comp.listPrice != null && comp.listPrice !== '' && comp.listPrice > 0;
+                                    const rabattText = comp.discount != null && comp.discount !== 0
+                                        ? (comp.discount > 0 ? `−${comp.discount}%` : `+${Math.abs(comp.discount)}%`)
+                                        : '';
+                                    return `
+                                <tr class="bom-row">
+                                    <td style="padding-left:16px;">↳ ${comp.description || '—'}${comp.supplier ? ` <em style="color:#999;">(${comp.supplier})</em>` : ''}</td>
+                                    <td class="number">${comp.quantity}</td>
+                                    <td class="number">${hasLP ? `<span style="color:#999;font-size:8px;">${fmt(comp.listPrice)}${rabattText ? ' '+rabattText : ''}<br></span>` : ''}${fmt(comp.unitPrice)}</td>
+                                    <td class="number">${fmt(comp.quantity * comp.unitPrice)}</td>
                                     <td colspan="5"></td>
-                                </tr>`).join('') : '';
+                                </tr>`;
+                                }).join('') : '';
+                                const bomFooter = hasBOM ? `
+                                <tr class="bom-footer">
+                                    <td colspan="9" style="padding-left:16px;">
+                                        EK gesamt (${pos.bom.length} Komp. × ${qty}×): <strong>${fmt(pos.totalEK)}</strong>
+                                    </td>
+                                </tr>` : '';
                                 return `
-                                <tr>
-                                    <td><strong>${pos.description}</strong></td>
+                                <tr class="pos-header">
+                                    <td>${pos.description || '—'}</td>
                                     <td class="number">${qty}</td>
-                                    <td class="number">${hasBOM ? '<em>BOM</em>' : ekUnit.toFixed(2) + ' €'}</td>
-                                    <td class="number">${pos.totalEK.toFixed(2)} €</td>
-                                    <td class="number" style="color:#366092;">${vkRUnit.toFixed(2)} €</td>
-                                    <td class="number" style="color:#366092;">${vkR.toFixed(2)} € <small>(DB: ${pos.totalEK > 0 ? ((vkR-pos.totalEK)/vkR*100).toFixed(1) : 0}%)</small></td>
-                                    <td class="number" style="color:#28a745;">${vkEUnit.toFixed(2)} €</td>
-                                    <td class="number" style="color:#28a745;">${vkE.toFixed(2)} € <small>(DB: ${pos.totalEK > 0 ? ((vkE-pos.totalEK)/vkE*100).toFixed(1) : 0}%)</small></td>
-                                    <td class="number">${pos.vkHand ? parseFloat(pos.vkHand).toFixed(2) + ' €' : '—'}</td>
+                                    <td class="number">${hasBOM ? '<em style="color:#888;font-size:9px;">→ BOM</em>' : fmt(ekUnit)}</td>
+                                    <td class="number">${fmt(pos.totalEK)}</td>
+                                    <td class="number" style="color:#366092;">${fmt(vkRUnit)}</td>
+                                    <td class="number" style="color:#366092;">${fmt(vkR)}<br><small style="color:#888;">(DB: ${pos.totalEK > 0 ? ((vkR-pos.totalEK)/vkR*100).toFixed(1) : 0}%)</small></td>
+                                    <td class="number" style="color:#28a745;">${fmt(vkEUnit)}</td>
+                                    <td class="number" style="color:#28a745;">${fmt(vkE)}<br><small style="color:#888;">(DB: ${pos.totalEK > 0 ? ((vkE-pos.totalEK)/vkE*100).toFixed(1) : 0}%)</small></td>
+                                    <td class="number">${pos.vkHand ? '<strong>' + fmt(parseFloat(pos.vkHand)) + '</strong>' : '—'}</td>
                                 </tr>
-                                ${bomRows}`;
+                                ${bomRows}${bomFooter}`;
                             }).join('')}
                         </tbody>
                     </table>
                     <div class="summary">
                         <div class="summary-box">
                             <div class="summary-label">EK gesamt</div>
-                            <div class="summary-value">${totalEK.toFixed(2)} €</div>
+                            <div class="summary-value">${fmt(totalEK)}</div>
                         </div>
                         ${discount > 0 ? `<div class="summary-box" style="border:1px solid #ffc107;background:#fff8e1;">
                             <div class="summary-label">Projektrabatt</div>
@@ -7415,13 +7434,13 @@ function applyPermissions() {
                         </div>` : ''}
                         <div class="summary-box">
                             <div class="summary-label">VK Wiederverkauf</div>
-                            <div class="summary-value" style="color:#366092;">${totalVKR.toFixed(2)} €</div>
-                            <div class="summary-label">DB: ${dbR.toFixed(2)} € (${totalVKR > 0 ? (dbR/totalVKR*100).toFixed(1) : 0}%)</div>
+                            <div class="summary-value" style="color:#366092;">${fmt(totalVKR)}</div>
+                            <div class="summary-label">DB: ${fmt(dbR)} (${totalVKR > 0 ? (dbR/totalVKR*100).toFixed(1) : 0}%)</div>
                         </div>
                         <div class="summary-box">
                             <div class="summary-label">VK End</div>
-                            <div class="summary-value" style="color:#28a745;">${totalVKE.toFixed(2)} €</div>
-                            <div class="summary-label">DB: ${dbE.toFixed(2)} € (${totalVKE > 0 ? (dbE/totalVKE*100).toFixed(1) : 0}%)</div>
+                            <div class="summary-value" style="color:#28a745;">${fmt(totalVKE)}</div>
+                            <div class="summary-label">DB: ${fmt(dbE)} (${totalVKE > 0 ? (dbE/totalVKE*100).toFixed(1) : 0}%)</div>
                         </div>
                         ${(() => {
                             const totalVKHand = positions.filter(p => p.vkHand).reduce((s, p) => s + (parseFloat(p.vkHand) || 0), 0) * discountFactor;
@@ -7429,9 +7448,9 @@ function applyPermissions() {
                             const dbHand = totalVKHand - totalEK;
                             const dbPctHand = totalEK > 0 ? (dbHand / totalVKHand * 100) : 0;
                             return `<div class="summary-box" style="border:2px solid #fd7e14;">
-                                <div class="summary-label">VK Hand (manuell)</div>
-                                <div class="summary-value" style="color:#fd7e14;">${totalVKHand.toFixed(2)} €</div>
-                                <div class="summary-label">DB: ${dbHand.toFixed(2)} € (${dbPctHand.toFixed(1)}%)</div>
+                                <div class="summary-label">Angebotspreis (manuell)</div>
+                                <div class="summary-value" style="color:#fd7e14;">${fmt(totalVKHand)}</div>
+                                <div class="summary-label">DB: ${fmt(dbHand)} (${dbPctHand.toFixed(1)}%)</div>
                             </div>`;
                         })()}
                     </div>
