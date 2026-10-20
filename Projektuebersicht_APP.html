@@ -816,6 +816,9 @@
             background: #fafcff;
             border-top: 1px solid #e2e8f0;
         }
+        .quote-bom-child td.number-cell input[type="number"] {
+            text-align: right;
+        }
 
         /* BOM-EK Stückliste Styles */
         .ek-vk-header td {
@@ -3569,7 +3572,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.35';
+        const APP_VERSION = 'v1.6.37';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -7470,7 +7473,7 @@ function applyPermissions() {
                 const lp = parseFloat(item.listPrice);
                 const rb = parseFloat(item.discount);
                 if (!isNaN(lp) && lp > 0) {
-                    const rabatt = (!isNaN(rb) && rb > 0) ? rb : 0;
+                    const rabatt = (!isNaN(rb)) ? rb : 0;
                     item.unitPrice = Math.round(lp * (1 - rabatt / 100) * 10000) / 10000;
                 }
             }
