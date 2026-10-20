@@ -3569,7 +3569,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.31';
+        const APP_VERSION = 'v1.6.32';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -6932,12 +6932,14 @@ function applyPermissions() {
                     const supplier = comp.supplier || '';
                     return `
                 <tr class="quote-bom-child">
-                    <td style="padding-left:8px;font-size:13px;color:#888;vertical-align:middle;" title="${supplier ? supplier : ''}">↳</td>
-                    <td>
+                    <td colspan="2" style="padding-left:8px;vertical-align:middle;">
                         <div style="font-size:10px;color:#999;margin-bottom:2px;">Beschreibung</div>
-                        <input type="text" value="${comp.description}"
-                               onchange="updateQuoteBOMItem(${index}, ${bi}, 'description', this.value)"
-                               style="width:100%;font-size:12px;">
+                        <div style="display:flex;align-items:center;gap:4px;">
+                            <span style="font-size:13px;color:#888;flex-shrink:0;" title="${supplier ? supplier : ''}">↳</span>
+                            <input type="text" value="${comp.description}"
+                                   onchange="updateQuoteBOMItem(${index}, ${bi}, 'description', this.value)"
+                                   style="width:100%;font-size:12px;">
+                        </div>
                     </td>
                     <td>
                         <div style="font-size:10px;color:#999;margin-bottom:2px;">Lieferant</div>
@@ -6975,8 +6977,7 @@ function applyPermissions() {
                                style="width:85px;font-size:12px;${(comp.listPrice != null && comp.listPrice !== '') ? 'background:#f0fdf4;color:#166534;font-weight:600;' : ''}">
                     </td>
                     <td class="number-cell" style="font-size:12px;">${formatCurrency(comp.quantity * comp.unitPrice)}</td>
-                    <td colspan="3"></td>
-                    <td class="action-cell">
+                    <td colspan="4" class="action-cell" style="text-align:right;vertical-align:middle;">
                         <button onclick="removeQuoteBOMItem(${index}, ${bi})" class="btn-danger btn-small" style="font-size:11px;">×</button>
                     </td>
                 </tr>`;
@@ -7033,7 +7034,7 @@ function applyPermissions() {
                         <div style="font-size:10px;color:#999;margin-bottom:2px;">WV ges.</div>
                         ${formatCurrency(vkReseller)}
                         <span style="font-size:11px;color:#888;"> (${pos.totalEK > 0 ? ((vkReseller - pos.totalEK) / vkReseller * 100).toFixed(1) : 0}%)</span>
-                        <br><button onclick="applyRoundedPrice(${index}, ${vkReseller})" class="btn-secondary btn-small" title="WV ges. gerundet in Angebotspreis übernehmen (±5)" style="font-size:10px;padding:1px 5px;margin-top:2px;color:#366092;">↗ WV</button>
+                        <br><button onclick="applyRoundedPrice(${index}, ${vkReseller})" class="btn-secondary btn-small" title="WV ges. gerundet in Angebotspreis übernehmen (±5)" style="font-size:10px;padding:1px 5px;margin-top:2px;color:#366092;background:#dce8f5;border-color:#aac4e0;">↗ WV</button>
                     </td>
                     <td class="number-cell" style="color:#28a745;font-size:12px;">
                         <div style="font-size:10px;color:#999;margin-bottom:2px;">End/St.</div>
@@ -7043,7 +7044,7 @@ function applyPermissions() {
                         <div style="font-size:10px;color:#999;margin-bottom:2px;">End ges.</div>
                         ${formatCurrency(vkEndcustomer)}
                         <span style="font-size:11px;color:#888;"> (${pos.totalEK > 0 ? ((vkEndcustomer - pos.totalEK) / vkEndcustomer * 100).toFixed(1) : 0}%)</span>
-                        <br><button onclick="applyRoundedPrice(${index}, ${vkEndcustomer})" class="btn-secondary btn-small" title="End ges. gerundet in Angebotspreis übernehmen (±5)" style="font-size:10px;padding:1px 5px;margin-top:2px;color:#28a745;">↗ End</button>
+                        <br><button onclick="applyRoundedPrice(${index}, ${vkEndcustomer})" class="btn-secondary btn-small" title="End ges. gerundet in Angebotspreis übernehmen (±5)" style="font-size:10px;padding:1px 5px;margin-top:2px;color:#1a7a35;background:#d4edda;border-color:#9fd3ae;">↗ End</button>
                     </td>
                     <td class="number-cell editable-cell">
                         <div style="font-size:10px;color:#999;margin-bottom:2px;">Angebotspreis</div>
