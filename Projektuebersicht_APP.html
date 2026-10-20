@@ -3569,7 +3569,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.33';
+        const APP_VERSION = 'v1.6.34';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -6955,33 +6955,33 @@ function applyPermissions() {
                                style="width:100%;font-size:12px;">
                     </td>
                     <td class="number-cell">
-                        <div style="font-size:10px;color:#999;margin-bottom:2px;">Menge</div>
+                        <div style="font-size:10px;color:#999;margin-bottom:2px;text-align:right;">Menge</div>
                         <input type="number" step="0.01" value="${comp.quantity}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'quantity', this.value)"
-                               style="width:55px;font-size:12px;">
+                               style="width:55px;font-size:12px;text-align:right;">
                     </td>
                     <td class="number-cell" style="white-space:nowrap;">
-                        <div style="font-size:10px;color:#999;margin-bottom:2px;">Listenpreis</div>
+                        <div style="font-size:10px;color:#999;margin-bottom:2px;text-align:right;">Listenpreis</div>
                         <input type="number" step="0.01" value="${comp.listPrice != null ? comp.listPrice : ''}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'listPrice', this.value)"
                                placeholder="0,00"
                                title="Listenpreis (Brutto-EK)"
-                               style="width:85px;font-size:12px;">
+                               style="width:85px;font-size:12px;text-align:right;">
                     </td>
                     <td class="number-cell" style="white-space:nowrap;">
-                        <div style="font-size:10px;color:#999;margin-bottom:2px;">Rabatt %</div>
-                        <input type="number" step="0.1" min="0" max="100" value="${comp.discount != null ? comp.discount : ''}"
+                        <div style="font-size:10px;color:#999;margin-bottom:2px;text-align:right;">Rabatt/Aufpr. %</div>
+                        <input type="number" step="0.1" value="${comp.discount != null ? comp.discount : ''}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'discount', this.value)"
                                placeholder="0"
-                               title="Rabatt in %"
-                               style="width:60px;font-size:12px;">
+                               title="Rabatt in % (negativ = Aufpreis, z.B. −10 = +10%)"
+                               style="width:65px;font-size:12px;text-align:right;">
                     </td>
                     <td class="number-cell" style="white-space:nowrap;">
-                        <div style="font-size:10px;color:#999;margin-bottom:2px;">EK/St. netto</div>
+                        <div style="font-size:10px;color:#999;margin-bottom:2px;text-align:right;">EK/St. netto</div>
                         <input type="number" step="0.01" value="${comp.unitPrice}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'unitPrice', this.value)"
                                title="EK Einzelpreis netto — wird aus Listenpreis − Rabatt berechnet, sofern angegeben."
-                               style="width:85px;font-size:12px;${(comp.listPrice != null && comp.listPrice !== '') ? 'background:#f0fdf4;color:#166534;font-weight:600;' : ''}">
+                               style="width:85px;font-size:12px;text-align:right;${(comp.listPrice != null && comp.listPrice !== '') ? 'background:#f0fdf4;color:#166534;font-weight:600;' : ''}">
                     </td>
                     <td class="number-cell" style="font-size:12px;">${formatCurrency(comp.quantity * comp.unitPrice)}</td>
                     <td colspan="4" class="action-cell" style="text-align:right;vertical-align:middle;">
