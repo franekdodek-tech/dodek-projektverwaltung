@@ -3559,7 +3559,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.26';
+        const APP_VERSION = 'v1.6.27';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -6935,10 +6935,22 @@ function applyPermissions() {
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'quantity', this.value)"
                                style="width:60px;font-size:12px;">
                     </td>
-                    <td class="number-cell">
+                    <td class="number-cell" style="white-space:nowrap;">
+                        <input type="number" step="0.01" value="${comp.listPrice != null ? comp.listPrice : ''}"
+                               onchange="updateQuoteBOMItem(${index}, ${bi}, 'listPrice', this.value)"
+                               placeholder="Listenpr."
+                               title="Listenpreis (Brutto-EK)"
+                               style="width:72px;font-size:12px;">
+                        <input type="number" step="0.1" min="0" max="100" value="${comp.discount != null ? comp.discount : ''}"
+                               onchange="updateQuoteBOMItem(${index}, ${bi}, 'discount', this.value)"
+                               placeholder="Rbt%"
+                               title="Rabatt in %"
+                               style="width:48px;font-size:12px;">
+                        <span style="font-size:11px;color:#666;">→</span>
                         <input type="number" step="0.01" value="${comp.unitPrice}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'unitPrice', this.value)"
-                               style="width:80px;font-size:12px;">
+                               title="EK Einzelpreis (netto). Wird automatisch aus Listenpreis − Rabatt berechnet, sofern angegeben."
+                               style="width:72px;font-size:12px;${(comp.listPrice != null && comp.listPrice !== '') ? 'background:#f0fdf4;color:#166534;font-weight:600;' : ''}">
                     </td>
                     <td class="number-cell" style="font-size:12px;">${formatCurrency(comp.quantity * comp.unitPrice)}</td>
                     <td colspan="5"></td>
@@ -7396,10 +7408,20 @@ function applyPermissions() {
         function updateQuoteBOMItem(posIndex, bomIndex, field, value) {
             const pos = window.currentQuote.positions[posIndex];
             if (!pos || !pos.bom) return;
+            const item = pos.bom[bomIndex];
             if (field === 'description' || field === 'supplier') {
-                pos.bom[bomIndex][field] = value;
+                item[field] = value;
             } else {
-                pos.bom[bomIndex][field] = parseFloat(value) || 0;
+                item[field] = parseFloat(value) || 0;
+            }
+            // Automatische EK-Berechnung aus Listenpreis und Rabatt
+            if (field === 'listPrice' || field === 'discount') {
+                const lp = parseFloat(item.listPrice);
+                const rb = parseFloat(item.discount);
+                if (!isNaN(lp) && lp > 0) {
+                    const rabatt = (!isNaN(rb) && rb > 0) ? rb : 0;
+                    item.unitPrice = Math.round(lp * (1 - rabatt / 100) * 10000) / 10000;
+                }
             }
             recalcQuotePosition(pos);
             renderQuotePositions();
