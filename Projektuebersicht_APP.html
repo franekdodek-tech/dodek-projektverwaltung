@@ -1627,7 +1627,7 @@
                                     <th class="number-cell" style="min-width:100px;">WV ges.</th>
                                     <th class="number-cell" style="min-width:80px;">End/St.</th>
                                     <th class="number-cell" style="min-width:100px;">End ges.</th>
-                                    <th class="number-cell" style="min-width:90px;">VK Hand</th>
+                                    <th class="number-cell" style="min-width:90px;" title="Angebotspreis: Normalerweise WV oder End-Preis. Manuelle Eingabe für Netto-Anpassungen.">Angebotspreis</th>
                                     <th class="action-cell">Aktion</th>
                                 </tr>
                             </thead>
@@ -3559,7 +3559,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.25';
+        const APP_VERSION = 'v1.6.26';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -6843,6 +6843,17 @@ function applyPermissions() {
             renderQuotePositions();
         }
 
+        function moveQuotePosition(index, direction) {
+            const positions = window.currentQuote.positions;
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= positions.length) return;
+            const tmp = positions[index];
+            positions[index] = positions[newIndex];
+            positions[newIndex] = tmp;
+            renderQuotePositions();
+        }
+        window.moveQuotePosition = moveQuotePosition;
+
         function updateQuotePosition(index, field, value) {
             const pos = window.currentQuote.positions[index];
             if (!pos) return;
@@ -6890,7 +6901,24 @@ function applyPermissions() {
 
                 // BOM-Zeilen (klappbar)
                 const bomCollapsed = pos._bomCollapsed || false;
-                const bomRows = hasBOM ? (bomCollapsed ? '' : pos.bom.map((comp, bi) => `
+                // BOM nach Lieferant sortieren (Anzeige-Index bleibt original für onchange)
+                const bomSorted = hasBOM ? [...pos.bom.map((comp, bi) => ({...comp, _origIdx: bi}))].sort((a, b) =>
+                    (a.supplier || '').localeCompare(b.supplier || '', 'de')) : [];
+
+                const bomRows = hasBOM ? (bomCollapsed ? '' : (() => {
+                    let lastSupplier = null;
+                    return bomSorted.map((comp) => {
+                        const bi = comp._origIdx;
+                        const supplier = comp.supplier || '';
+                        let separatorRow = '';
+                        if (supplier !== lastSupplier) {
+                            separatorRow = `<tr style="background:#eef2ff;">
+                                <td colspan="12" style="padding:3px 30px;font-size:11px;font-weight:600;color:#4a5568;letter-spacing:0.03em;">
+                                    ${supplier ? '🏭 ' + supplier : '— kein Lieferant —'}
+                                </td></tr>`;
+                            lastSupplier = supplier;
+                        }
+                        return separatorRow + `
                 <tr style="background:#f8f9fa;">
                     <td colspan="2" style="padding-left:30px;">
                         <input type="text" value="${comp.description}"
@@ -6898,7 +6926,7 @@ function applyPermissions() {
                                style="width:100%;font-size:12px;">
                     </td>
                     <td>
-                        <input type="text" value="${comp.supplier || ''}"
+                        <input type="text" value="${supplier}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'supplier', this.value)"
                                style="width:100%;font-size:12px;">
                     </td>
@@ -6917,7 +6945,9 @@ function applyPermissions() {
                     <td class="action-cell">
                         <button onclick="removeQuoteBOMItem(${index}, ${bi})" class="btn-danger btn-small" style="font-size:11px;">×</button>
                     </td>
-                </tr>`).join('')) : '';
+                </tr>`;
+                    }).join('');
+                })()) : '';
 
                 return `
                 <tr>
@@ -6968,10 +6998,13 @@ function applyPermissions() {
                     <td class="number-cell editable-cell">
                         <input type="number" step="0.01" value="${vkHand}"
                                onchange="updateQuotePosition(${index}, 'vkHand', this.value)"
-                               placeholder="manuell"
-                               style="width:90px;text-align:right;">
+                               placeholder="= WV oder End"
+                               title="Angebotspreis: Normalfall = WV ges. oder End ges. übernehmen. Manuelle Eingabe für individuelle Netto-Anpassungen."
+                               style="width:90px;text-align:right;${vkHand ? 'background:#fffbe6;border-color:#f59e0b;font-weight:600;' : ''}">
                     </td>
-                    <td class="action-cell">
+                    <td class="action-cell" style="white-space:nowrap;">
+                        <button onclick="moveQuotePosition(${index}, -1)" class="btn-secondary btn-small" title="Position nach oben" style="font-size:11px;padding:2px 6px;" ${index === 0 ? 'disabled' : ''}>↑</button>
+                        <button onclick="moveQuotePosition(${index}, 1)" class="btn-secondary btn-small" title="Position nach unten" style="font-size:11px;padding:2px 6px;" ${index === positions.length - 1 ? 'disabled' : ''}>↓</button>
                         <button onclick="deleteQuotePosition(${index})" class="btn-danger btn-small">Löschen</button>
                     </td>
                 </tr>
