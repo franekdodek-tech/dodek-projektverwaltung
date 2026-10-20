@@ -3569,7 +3569,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.34';
+        const APP_VERSION = 'v1.6.35';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -7089,8 +7089,9 @@ function applyPermissions() {
             const positions = window.currentQuote.positions;
 
             const totalEK          = positions.reduce((s, p) => s + p.totalEK, 0);
-            const totalVKReseller   = totalEK * reseller * discountFactor;
-            const totalVKEndcust    = totalEK * endcustomer * discountFactor;
+            // Gerundete Summen: pro Position runden, dann addieren (konsistent mit Tabellenzeilen)
+            const totalVKReseller   = positions.reduce((s, p) => s + roundToQuarter(p.totalEK * reseller * discountFactor), 0);
+            const totalVKEndcust    = positions.reduce((s, p) => s + roundToQuarter(p.totalEK * endcustomer * discountFactor), 0);
             const dbReseller        = totalVKReseller - totalEK;
             const dbEndcust         = totalVKEndcust - totalEK;
             const dbPctReseller     = totalEK > 0 ? (dbReseller / totalVKReseller * 100) : 0;
