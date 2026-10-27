@@ -1006,32 +1006,173 @@
         
         .article-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));  /* 320px statt 300px */
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 20px;
         }
-        
+
         .article-card {
             background: white;
             padding: 20px;
             border-radius: 4px;
             border: 1px solid #ddd;
         }
-        
+
         .article-card h4 {
             color: #366092;
             margin-bottom: 10px;
         }
-        
+
         .article-card-info {
             font-size: 13px;
             color: #666;
             margin-bottom: 5px;
         }
-        
+
         .article-card-actions {
             display: flex;
             gap: 10px;
             margin-top: 15px;
+        }
+
+        /* Artikel-Listenansicht */
+        .article-list-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .article-list-table thead th {
+            background: #366092;
+            color: white;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .article-list-table tbody tr {
+            border-bottom: 1px solid #eee;
+        }
+        .article-list-table tbody tr:hover {
+            background: #f0f4ff;
+        }
+        .article-list-table tbody td {
+            padding: 9px 12px;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+
+        /* Artikelgruppen-Sektionen */
+        .article-group-section {
+            margin-bottom: 20px;
+        }
+        .article-group-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #366092;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+            user-select: none;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .article-group-header:hover {
+            background: #2a4e78;
+        }
+        .article-group-toggle {
+            font-size: 11px;
+            transition: transform 0.2s;
+        }
+        .article-group-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+        .article-group-body {
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            overflow: hidden;
+        }
+        .article-group-body.collapsed {
+            display: none;
+        }
+
+        /* Artikel-BOM-Tabelle im Modal */
+        .article-bom-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+        .article-bom-table thead th {
+            background: #f0f4ff;
+            color: #366092;
+            padding: 7px 8px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #366092;
+            white-space: nowrap;
+        }
+        .article-bom-table thead th.num { text-align: right; }
+        .article-bom-table tbody td {
+            padding: 5px 6px;
+            border-bottom: 1px solid #eee;
+            vertical-align: middle;
+        }
+        .article-bom-table tbody td.num { text-align: right; }
+        .article-bom-table input[type="text"],
+        .article-bom-table input[type="number"] {
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            padding: 4px 6px;
+            font-size: 12px;
+            box-sizing: border-box;
+        }
+        .article-bom-table input[type="number"] { text-align: right; }
+        .article-bom-table .ek-display {
+            font-weight: 600;
+            color: #366092;
+            white-space: nowrap;
+        }
+        .article-bom-table tfoot td {
+            padding: 7px 8px;
+            font-weight: 700;
+            background: #f0f4ff;
+            color: #366092;
+            border-top: 2px solid #366092;
+        }
+        .article-bom-table tfoot td.num { text-align: right; }
+
+        /* Artikelgruppen-Einstellungstabelle */
+        .group-settings-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+        .group-settings-table th {
+            background: #f0f4ff;
+            color: #366092;
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 2px solid #366092;
+            font-weight: 600;
+        }
+        .group-settings-table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .group-settings-table input[type="text"] {
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            padding: 4px 6px;
+            font-size: 13px;
+            box-sizing: border-box;
         }
         
         /* Statistiken */
@@ -1828,6 +1969,30 @@
                 </div>
             </div>
 
+            <!-- Artikelgruppen -->
+            <div class="positions-section" style="margin-bottom: 20px;">
+                <div class="section-header"><h3>🏷️ Artikelgruppen</h3></div>
+                <div style="padding: 20px;">
+                    <p style="font-size:13px;color:#666;margin-bottom:12px;">Verwalten Sie hier die Artikelgruppen-Präfixe (z.B. D09, D10, D20). Der Präfix wird als erstes Segment der Artikel-ID verwendet.</p>
+                    <table class="group-settings-table">
+                        <thead>
+                            <tr>
+                                <th style="width:120px;">Präfix</th>
+                                <th>Bezeichnung</th>
+                                <th style="width:80px;text-align:center;">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="articleGroupsTableBody"></tbody>
+                    </table>
+                    <div style="display:flex;gap:8px;margin-bottom:15px;">
+                        <input type="text" id="newGroupPrefix" placeholder="z.B. D30" style="width:100px;">
+                        <input type="text" id="newGroupLabel" placeholder="z.B. Pumpen" style="flex:1;">
+                        <button onclick="addArticleGroup()" class="btn-success btn-small">+ Gruppe</button>
+                    </div>
+                    <button onclick="saveArticleGroups()" class="btn-secondary">💾 Gruppen speichern</button>
+                </div>
+            </div>
+
             <!-- Backup & Daten -->
             <div class="positions-section" style="margin-bottom: 20px;">
                 <div class="section-header"><h3>💾 Backup & Daten</h3></div>
@@ -1874,10 +2039,18 @@
         <!-- ARTICLES VIEW -->
         <div id="articlesView" class="view">
             <div style="background: white; padding: 20px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px;">
-                <h2 style="margin-bottom: 15px;">Artikelstamm-Verwaltung</h2>
-                <button onclick="openArticleModal()" class="btn-success">➕ Neuer Artikel</button>
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <h2 style="margin:0;">Artikelstamm-Verwaltung</h2>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <select id="articleGroupFilter" onchange="renderArticles()" style="font-size:13px;">
+                            <option value="">Alle Gruppen</option>
+                        </select>
+                        <button id="articleViewToggle" onclick="toggleArticleView()" class="btn-secondary btn-small" title="Ansicht wechseln">☰ Liste</button>
+                        <button onclick="openArticleModal()" class="btn-success">➕ Neuer Artikel</button>
+                    </div>
+                </div>
             </div>
-            
+
             <div id="articleGrid" class="article-grid"></div>
         </div>
         
@@ -2374,21 +2547,27 @@
                 
                 <div class="form-row">
                     <div class="form-group">
+                        <label for="articleGroup">Artikelgruppe</label>
+                        <select id="articleGroup" onchange="applyGroupPrefix()" style="width:100%;">
+                            <option value="">— keine Gruppe —</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label for="articleId">Artikel-ID *</label>
-                        <input type="text" id="articleId" placeholder="z.B. FA-2000" required>
+                        <input type="text" id="articleId" placeholder="z.B. D10.0001" required>
                     </div>
                     <div class="form-group">
                         <label for="articleName">Bezeichnung *</label>
                         <input type="text" id="articleName" placeholder="z.B. Filteranlage Typ 2000" required>
                     </div>
                 </div>
-                
+
                 <h4 style="margin-top: 20px; margin-bottom: 10px; color: #366092;">Stückliste (Bill of Materials)</h4>
-                <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
-                    Definieren Sie die Komponenten und deren Lieferanten. Der Einkaufspreis wird automatisch aus der Stückliste berechnet.
+                <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+                    Komponenten und Lieferanten definieren. EK/St. = Listenpreis × (1 − Rabatt%). Der Einkaufspreis wird automatisch summiert.
                 </p>
-                
-                <div id="bomList" class="bom-list"></div>
+
+                <div id="bomList"></div>
                 <button onclick="addBOMItem()" class="btn-secondary btn-small" style="margin-bottom: 20px;">➕ Komponente hinzufügen</button>
                 
                 <div class="form-row">
@@ -3562,6 +3741,7 @@ function applyPermissions() {
             await loadQuotesFromSharePoint();
             await loadSettingsFromSharePoint();
             await loadContactsFromSharePoint();
+            await loadArticleGroupsFromSharePoint();
 
             applyPermissions();
         }
@@ -3572,7 +3752,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.38';
+        const APP_VERSION = 'v1.6.39';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -3700,58 +3880,203 @@ function applyPermissions() {
             event.target.value = '';
         }
         
+        // Artikelgruppen-State (wird beim Init geladen)
+        let articleGroups = {}; // { D10: 'Filteranlagen', D20: 'Ventilatoren', ... }
+        window.articleGroups = articleGroups;
+        let articleViewMode = 'grid'; // 'grid' | 'list'
+
+        function getArticleGroup(articleId) {
+            const groups = articleGroups || window.articleGroups || {};
+            for (const prefix of Object.keys(groups).sort((a,b) => b.length - a.length)) {
+                if (articleId.startsWith(prefix)) return prefix;
+            }
+            return '';
+        }
+
+        function toggleArticleView() {
+            articleViewMode = (articleViewMode === 'grid') ? 'list' : 'grid';
+            const btn = document.getElementById('articleViewToggle');
+            if (btn) btn.textContent = articleViewMode === 'grid' ? '☰ Liste' : '⊞ Kacheln';
+            renderArticles();
+        }
+        window.toggleArticleView = toggleArticleView;
+
+        function populateGroupFilter() {
+            const sel = document.getElementById('articleGroupFilter');
+            if (!sel) return;
+            const groups = articleGroups || {};
+            const current = sel.value;
+            sel.innerHTML = '<option value="">Alle Gruppen</option>';
+            Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0])).forEach(([prefix, label]) => {
+                const opt = document.createElement('option');
+                opt.value = prefix;
+                opt.textContent = `${prefix} — ${label}`;
+                if (prefix === current) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        }
+
         function renderArticles() {
             const grid = document.getElementById('articleGrid');
-            const articleIds = Object.keys(articleDatabase).sort();
-            
+            const db = articleDatabase || window.articleDatabase || {};
+            let articleIds = Object.keys(db).sort();
+
+            // Gruppenfilter
+            const filterPrefix = (document.getElementById('articleGroupFilter') || {}).value || '';
+            if (filterPrefix) {
+                articleIds = articleIds.filter(id => id.startsWith(filterPrefix));
+            }
+
+            populateGroupFilter();
+
             if (articleIds.length === 0) {
+                grid.className = 'article-grid';
                 grid.innerHTML = `
                     <div class="empty-state" style="grid-column: 1/-1;">
                         <h3>Keine Artikel vorhanden</h3>
                         <p>Legen Sie Artikel an, um sie in Projekten schnell auswählen zu können.</p>
-                    </div>
-                `;
+                    </div>`;
                 return;
             }
-            
-            grid.innerHTML = articleIds.map(articleId => {
-                const article = articleDatabase[articleId];
-                const bomCount = article.bom ? article.bom.length : 0;
-                
-                let suppliersHTML = '';
-                if (bomCount > 0) {
-                    const uniqueSuppliers = [...new Set(article.bom.map(item => item.supplier).filter(s => s))];
-                    if (uniqueSuppliers.length > 0) {
-                        suppliersHTML = `
-                            <div class="article-card-suppliers">
-                                <strong>Lieferanten:</strong> ${uniqueSuppliers.join(', ')}
-                            </div>
-                        `;
-                    }
-                }
-                
-                return `
-                    <div class="article-card">
-                        <h4>${article.name}</h4>
-                        <div class="article-card-info"><strong>ID:</strong> ${articleId}</div>
-                        <div class="article-card-info"><strong>Einkauf:</strong> ${formatCurrency(article.purchasePrice)}${bomCount > 0 ? ' <span style="color: #28a745;">(aus BOM)</span>' : ''}</div>
-                        <div class="article-card-info"><strong>Verkauf:</strong> ${formatCurrency(article.salesPrice)} <span style="color: #28a745;">(+${article.margin}%)</span></div>
-                        ${bomCount > 0 ? `<div class="article-card-info" style="color: #28a745;"><strong>Stückliste:</strong> ${bomCount} Komponenten</div>` : ''}
-                        ${suppliersHTML}
-                        <div class="article-card-actions">
-                            <button onclick="editArticle('${articleId}')" class="btn-secondary btn-small">✏️ Bearbeiten</button>
-                            <button onclick="deleteArticle('${articleId}')" class="btn-danger btn-small">🗑️ Löschen</button>
+
+            const groups = articleGroups || {};
+
+            // Artikel nach Gruppe sortieren
+            const grouped = {}; // { groupKey: [articleId, ...] }
+            articleIds.forEach(id => {
+                const gk = getArticleGroup(id) || '__ohne__';
+                if (!grouped[gk]) grouped[gk] = [];
+                grouped[gk].push(id);
+            });
+
+            const groupKeys = Object.keys(grouped).sort((a,b) => {
+                if (a === '__ohne__') return 1;
+                if (b === '__ohne__') return -1;
+                return a.localeCompare(b);
+            });
+
+            if (articleViewMode === 'list') {
+                grid.className = '';
+                grid.innerHTML = groupKeys.map(gk => {
+                    const label = gk === '__ohne__' ? 'Ohne Gruppe' : (groups[gk] ? `${gk} — ${groups[gk]}` : gk);
+                    const ids = grouped[gk];
+                    const rows = ids.map(articleId => {
+                        const a = db[articleId];
+                        const bomCount = a.bom ? a.bom.length : 0;
+                        return `<tr>
+                            <td style="font-weight:600;color:#366092;">${articleId}</td>
+                            <td>${a.name}</td>
+                            <td style="text-align:right;">${formatCurrency(a.purchasePrice)}${bomCount > 0 ? ' <span style="color:#28a745;font-size:11px;">(BOM)</span>' : ''}</td>
+                            <td style="text-align:right;">${formatCurrency(a.salesPrice)}</td>
+                            <td style="text-align:center;color:#666;">${bomCount > 0 ? bomCount + ' Komp.' : '—'}</td>
+                            <td style="text-align:right;">
+                                <button onclick="editArticle('${articleId}')" class="btn-secondary btn-small">✏️</button>
+                                <button onclick="deleteArticle('${articleId}')" class="btn-danger btn-small">🗑️</button>
+                            </td>
+                        </tr>`;
+                    }).join('');
+                    return `<div class="article-group-section">
+                        <div class="article-group-header" onclick="toggleGroupSection(this)">
+                            <span class="article-group-toggle">▼</span>
+                            <span>${label}</span>
+                            <span style="margin-left:auto;font-size:12px;opacity:0.85;">${ids.length} Artikel</span>
                         </div>
-                    </div>
-                `;
-            }).join('');
+                        <div class="article-group-body">
+                            <table class="article-list-table">
+                                <thead><tr>
+                                    <th>Artikel-ID</th><th>Bezeichnung</th>
+                                    <th style="text-align:right;">EK</th>
+                                    <th style="text-align:right;">VK</th>
+                                    <th style="text-align:center;">BOM</th>
+                                    <th style="text-align:right;">Aktionen</th>
+                                </tr></thead>
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>
+                    </div>`;
+                }).join('');
+            } else {
+                grid.className = '';
+                grid.innerHTML = groupKeys.map(gk => {
+                    const label = gk === '__ohne__' ? 'Ohne Gruppe' : (groups[gk] ? `${gk} — ${groups[gk]}` : gk);
+                    const ids = grouped[gk];
+                    const cards = ids.map(articleId => {
+                        const a = db[articleId];
+                        const bomCount = a.bom ? a.bom.length : 0;
+                        const uniqueSuppliers = bomCount > 0 ? [...new Set(a.bom.map(i => i.supplier || i.name?.split(' ')[0]).filter(s => s))] : [];
+                        return `<div class="article-card">
+                            <h4>${a.name}</h4>
+                            <div class="article-card-info"><strong>ID:</strong> ${articleId}</div>
+                            <div class="article-card-info"><strong>EK:</strong> ${formatCurrency(a.purchasePrice)}${bomCount > 0 ? ' <span style="color:#28a745;">(BOM)</span>' : ''}</div>
+                            <div class="article-card-info"><strong>VK:</strong> ${formatCurrency(a.salesPrice)} <span style="color:#28a745;">(+${a.margin}%)</span></div>
+                            ${bomCount > 0 ? `<div class="article-card-info" style="color:#28a745;"><strong>BOM:</strong> ${bomCount} Komponenten</div>` : ''}
+                            ${uniqueSuppliers.length > 0 ? `<div class="article-card-suppliers"><strong>Lieferanten:</strong> ${uniqueSuppliers.join(', ')}</div>` : ''}
+                            <div class="article-card-actions">
+                                <button onclick="editArticle('${articleId}')" class="btn-secondary btn-small">✏️ Bearbeiten</button>
+                                <button onclick="deleteArticle('${articleId}')" class="btn-danger btn-small">🗑️ Löschen</button>
+                            </div>
+                        </div>`;
+                    }).join('');
+                    return `<div class="article-group-section">
+                        <div class="article-group-header" onclick="toggleGroupSection(this)">
+                            <span class="article-group-toggle">▼</span>
+                            <span>${label}</span>
+                            <span style="margin-left:auto;font-size:12px;opacity:0.85;">${ids.length} Artikel</span>
+                        </div>
+                        <div class="article-group-body">
+                            <div class="article-grid" style="padding:15px;">${cards}</div>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
         }
+
+        function toggleGroupSection(header) {
+            const toggle = header.querySelector('.article-group-toggle');
+            const body = header.nextElementSibling;
+            if (!body) return;
+            body.classList.toggle('collapsed');
+            if (toggle) toggle.classList.toggle('collapsed');
+        }
+        window.toggleGroupSection = toggleGroupSection;
         
+        function populateGroupDropdown(selectedPrefix) {
+            const sel = document.getElementById('articleGroup');
+            if (!sel) return;
+            const groups = articleGroups || {};
+            sel.innerHTML = '<option value="">— keine Gruppe —</option>';
+            Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0])).forEach(([prefix, label]) => {
+                const opt = document.createElement('option');
+                opt.value = prefix;
+                opt.textContent = `${prefix} — ${label}`;
+                if (prefix === selectedPrefix) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        }
+
+        function applyGroupPrefix() {
+            const sel = document.getElementById('articleGroup');
+            const idField = document.getElementById('articleId');
+            if (!sel || !idField) return;
+            const prefix = sel.value;
+            if (!prefix) return;
+            const currentVal = idField.value.trim();
+            // Nur vorbelegen wenn Feld leer oder nur Präfix-Rest
+            if (!currentVal || Object.keys(articleGroups || {}).some(p => currentVal === p || currentVal.startsWith(p + '.'))) {
+                idField.value = prefix + '.';
+            }
+            idField.focus();
+        }
+        window.applyGroupPrefix = applyGroupPrefix;
+
         function openArticleModal(articleId = null) {
             currentBOM = []; window.currentBOM = currentBOM;
-            
+
+            populateGroupDropdown('');
+
             if (articleId) {
                 const article = articleDatabase[articleId];
+                const groupPrefix = getArticleGroup(articleId);
                 document.getElementById('articleModalTitle').textContent = 'Artikel bearbeiten';
                 document.getElementById('editArticleId').value = articleId;
                 document.getElementById('articleId').value = articleId;
@@ -3760,7 +4085,17 @@ function applyPermissions() {
                 document.getElementById('articleMargin').value = article.margin;
                 document.getElementById('articleType').value = article.type || 'material';
                 document.getElementById('articleDescription').value = article.description || '';
-                currentBOM = article.bom || []; window.currentBOM = currentBOM;
+                currentBOM = (article.bom || []).map(item => ({
+                    description: item.description || item.name || '',
+                    supplier: item.supplier || '',
+                    quantity: item.quantity || 1,
+                    listPrice: item.listPrice != null ? item.listPrice : (item.price || 0),
+                    discount: item.discount != null ? item.discount : 0,
+                    unitPrice: item.unitPrice != null ? item.unitPrice : (item.price || 0),
+                    supplierArticleNumber: item.supplierArticleNumber || ''
+                }));
+                window.currentBOM = currentBOM;
+                populateGroupDropdown(groupPrefix);
             } else {
                 document.getElementById('articleModalTitle').textContent = 'Neuer Artikel';
                 document.getElementById('editArticleId').value = '';
@@ -3771,7 +4106,7 @@ function applyPermissions() {
                 document.getElementById('articleType').value = 'material';
                 document.getElementById('articleDescription').value = '';
             }
-            
+
             renderBOM();
             calculatePurchaseFromBOM();
             calculateMarginFromPrices();
@@ -3785,8 +4120,11 @@ function applyPermissions() {
         function calculatePurchaseFromBOM() {
             const total = currentBOM.reduce((sum, item) => {
                 const quantity = parseFloat(item.quantity) || 0;
-                const price = parseFloat(item.price) || 0;
-                return sum + (quantity * price);
+                // neues Format: listPrice/discount → unitPrice; altes Format: price
+                const lp = parseFloat(item.listPrice) || parseFloat(item.price) || 0;
+                const rb = parseFloat(item.discount) || 0;
+                const ek = item.listPrice != null ? lp * (1 - rb / 100) : lp;
+                return sum + (quantity * ek);
             }, 0);
             
             document.getElementById('articlePurchasePrice').value = total.toFixed(2);
@@ -3832,73 +4170,112 @@ function applyPermissions() {
         
         function addBOMItem() {
             currentBOM.push({
+                description: '',
                 supplier: '',
-                supplierArticleNumber: '',
-                name: '',
                 quantity: 1,
-                price: 0
+                listPrice: 0,
+                discount: 0,
+                unitPrice: 0,
+                supplierArticleNumber: ''
             });
             renderBOM();
         }
-        
+
         function removeBOMItem(index) {
             currentBOM.splice(index, 1);
             renderBOM();
             calculatePurchaseFromBOM();
         }
-        
+
+        function updateBOMItem(index, field, value) {
+            window.currentBOM[index][field] = value;
+            // EK/St. neu berechnen
+            const item = window.currentBOM[index];
+            const lp = parseFloat(item.listPrice) || 0;
+            const rb = parseFloat(item.discount) || 0;
+            item.unitPrice = lp * (1 - rb / 100);
+            calculatePurchaseFromBOM();
+            // nur EK/St. cell updaten ohne full re-render
+            const ekCell = document.getElementById(`bom-ek-${index}`);
+            if (ekCell) ekCell.textContent = item.unitPrice.toLocaleString('de-DE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+            const totalCell = document.getElementById(`bom-total-${index}`);
+            if (totalCell) {
+                const qty = parseFloat(item.quantity) || 0;
+                totalCell.textContent = (qty * item.unitPrice).toLocaleString('de-DE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+            }
+        }
+        window.updateBOMItem = updateBOMItem;
+
         function renderBOM() {
             const list = document.getElementById('bomList');
-            
+
             if (currentBOM.length === 0) {
-                list.innerHTML = '<p style="color: #999; font-size: 13px;">Keine Komponenten. Fügen Sie Komponenten hinzu oder wählen Sie einen Artikel aus dem Stamm.</p>';
+                list.innerHTML = '<p style="color: #999; font-size: 13px; margin-bottom:10px;">Keine Komponenten vorhanden.</p>';
                 return;
             }
-            
+
             const total = currentBOM.reduce((sum, item) => {
-                return sum + ((parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0));
+                const lp = parseFloat(item.listPrice) || parseFloat(item.price) || 0;
+                const rb = parseFloat(item.discount) || 0;
+                const ek = lp * (1 - rb / 100);
+                return sum + ((parseFloat(item.quantity) || 0) * ek);
             }, 0);
 
-            // Artikel-Optionen für Dropdown (ohne den aktuell bearbeiteten Artikel — Zirkelschutz)
-            const currentArticleId = document.getElementById('articleId')?.value || '';
-            const articleOptions = Object.values(articleDatabase)
-                .filter(a => a.id !== currentArticleId)
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map(a => `<option value="${a.id}">${a.id} — ${a.name}</option>`)
-                .join('');
-            
-            list.innerHTML = currentBOM.map((item, index) => `
-                <div class="bom-item">
-                    <div style="grid-column: 1 / -1; margin-bottom:4px;">
-                        <select onchange="fillBOMFromArticle(${index}, this.value)" style="width:100%;font-size:12px;">
-                            <option value="">— Manuell eingeben oder Artikel wählen —</option>
-                            ${articleOptions}
-                        </select>
-                    </div>
-                    <input type="text" placeholder="Lieferant" value="${item.supplier || ''}" 
-                        onchange="window.currentBOM[${index}].supplier = this.value; renderBOM();" style="width: 100%;">
-                    <input type="text" placeholder="Lieferanten-Artikelnr." value="${item.supplierArticleNumber || ''}" 
-                        onchange="window.currentBOM[${index}].supplierArticleNumber = this.value;" style="width: 100%;">
-                    <input type="text" placeholder="Komponentenname" value="${item.name || ''}" 
-                        onchange="window.currentBOM[${index}].name = this.value; renderBOM();" style="width: 100%;">
-                    <input type="number" step="0.01" placeholder="Menge" value="${item.quantity}" 
-                        onchange="window.currentBOM[${index}].quantity = parseFloat(this.value); calculatePurchaseFromBOM();" style="width: 100%;">
-                    <input type="number" step="0.01" placeholder="Preis (€)" value="${item.price}" 
-                        onchange="window.currentBOM[${index}].price = parseFloat(this.value); calculatePurchaseFromBOM();" style="width: 100%;">
-                    <button onclick="removeBOMItem(${index})" class="btn-danger btn-small">×</button>
-                </div>
-            `).join('') + `
-                <div class="bom-total">Gesamt Einkaufspreis: ${formatCurrency(total)}</div>
-            `;
+            const rows = currentBOM.map((item, index) => {
+                const lp = parseFloat(item.listPrice) || parseFloat(item.price) || 0;
+                const rb = parseFloat(item.discount) || 0;
+                const ek = lp * (1 - rb / 100);
+                const qty = parseFloat(item.quantity) || 0;
+                const desc = (item.description || item.name || '').replace(/"/g, '&quot;');
+                const supp = (item.supplier || '').replace(/"/g, '&quot;');
+                return `<tr>
+                    <td><input type="text" value="${desc}" placeholder="Beschreibung"
+                        onchange="window.currentBOM[${index}].description=this.value; window.currentBOM[${index}].name=this.value;"></td>
+                    <td><input type="text" value="${supp}" placeholder="Lieferant"
+                        onchange="window.currentBOM[${index}].supplier=this.value;"></td>
+                    <td class="num"><input type="number" step="0.001" value="${qty}" style="width:65px;"
+                        onchange="window.currentBOM[${index}].quantity=parseFloat(this.value)||0; updateBOMItem(${index},'quantity',parseFloat(this.value)||0);"></td>
+                    <td class="num"><input type="number" step="0.01" value="${lp.toFixed(2)}" style="width:80px;" placeholder="LP"
+                        onchange="updateBOMItem(${index},'listPrice',parseFloat(this.value)||0);"></td>
+                    <td class="num"><input type="number" step="0.1" value="${rb.toFixed(1)}" style="width:60px;" placeholder="%"
+                        onchange="updateBOMItem(${index},'discount',parseFloat(this.value)||0);"></td>
+                    <td class="num ek-display" id="bom-ek-${index}">${ek.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})} €</td>
+                    <td class="num" id="bom-total-${index}">${(qty*ek).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})} €</td>
+                    <td><button onclick="removeBOMItem(${index})" class="btn-danger btn-small" style="padding:2px 7px;">×</button></td>
+                </tr>`;
+            }).join('');
+
+            list.innerHTML = `<table class="article-bom-table">
+                <thead><tr>
+                    <th>Beschreibung</th>
+                    <th>Lieferant</th>
+                    <th class="num">Menge</th>
+                    <th class="num">Listenpreis</th>
+                    <th class="num">Rabatt %</th>
+                    <th class="num">EK/St.</th>
+                    <th class="num">EK ges.</th>
+                    <th></th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+                <tfoot><tr>
+                    <td colspan="6" class="num" style="text-align:right;">EK gesamt (${currentBOM.length} Komp.):</td>
+                    <td class="num">${total.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})} €</td>
+                    <td></td>
+                </tr></tfoot>
+            </table>`;
         }
 
         function fillBOMFromArticle(bomIndex, articleId) {
             if (!articleId || !articleDatabase[articleId]) return;
             const article = articleDatabase[articleId];
+            const ek = article.purchasePrice || 0;
+            window.currentBOM[bomIndex].description        = article.name;
             window.currentBOM[bomIndex].name               = article.name;
-            window.currentBOM[bomIndex].price              = article.purchasePrice || 0;
+            window.currentBOM[bomIndex].listPrice          = ek;
+            window.currentBOM[bomIndex].discount           = 0;
+            window.currentBOM[bomIndex].unitPrice          = ek;
+            window.currentBOM[bomIndex].price              = ek;
             window.currentBOM[bomIndex].supplierArticleNumber = article.id;
-            // Lieferant aus erster BOM-Komponente des Artikels wenn vorhanden
             if (article.bom && article.bom.length > 0 && article.bom[0].supplier) {
                 window.currentBOM[bomIndex].supplier = article.bom[0].supplier;
             }
@@ -3931,7 +4308,18 @@ function applyPermissions() {
                 salesPrice: parseFloat(document.getElementById('articleSalesPrice').value) || 0,
                 type: document.getElementById('articleType').value,
                 description: document.getElementById('articleDescription').value.trim(),
-                bom: currentBOM.filter(item => item.name.trim() !== '')
+                group: (document.getElementById('articleGroup') || {}).value || '',
+                bom: currentBOM.filter(item => (item.description || item.name || '').trim() !== '').map(item => ({
+                    description: item.description || item.name || '',
+                    name: item.description || item.name || '',
+                    supplier: item.supplier || '',
+                    quantity: parseFloat(item.quantity) || 1,
+                    listPrice: parseFloat(item.listPrice) || 0,
+                    discount: parseFloat(item.discount) || 0,
+                    unitPrice: parseFloat(item.unitPrice) || 0,
+                    price: parseFloat(item.unitPrice) || 0,
+                    supplierArticleNumber: item.supplierArticleNumber || ''
+                }))
             };
             
             if (!article.name) {
@@ -4906,6 +5294,7 @@ function applyPermissions() {
                     </td>
                     <td class="number-cell"><strong>${formatCurrency(pos.totalPrice)}</strong></td>
                     <td class="action-cell">
+                        <button onclick="saveSalesPositionAsArticle(${index})" class="btn-secondary btn-small" title="Als Artikel speichern">💾</button>
                         <button onclick="deleteSalesPosition(${index})" class="btn-danger btn-small">Löschen</button>
                     </td>
                 </tr>
@@ -7692,6 +8081,157 @@ function applyPermissions() {
         }
         window.saveQuotePositionAsArticle = saveQuotePositionAsArticle;
 
+        // ========== ARTIKEL AUS PROJEKTÜBERSICHT SPEICHERN ==========
+        function saveSalesPositionAsArticle(index) {
+            if (!currentProject || !currentProject.salesPositions) return;
+            const pos = currentProject.salesPositions[index];
+            if (!pos) return;
+
+            const db = articleDatabase || window.articleDatabase || {};
+            const groups = articleGroups || {};
+            const groupEntries = Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0]));
+
+            // Gruppen-Prompt aufbauen
+            let groupHint = '';
+            if (groupEntries.length > 0) {
+                groupHint = '\n\nVerfügbare Gruppen:\n' + groupEntries.map(([p,l]) => `  ${p} — ${l}`).join('\n');
+            }
+
+            const artId = prompt(`Artikel-ID für diese Position:${groupHint}`, '');
+            if (!artId) return;
+            if (db[artId] && !confirm(`Artikel "${artId}" existiert bereits. Überschreiben?`)) return;
+
+            const artName = prompt('Artikelbezeichnung:', pos.description || '');
+            if (!artName) return;
+
+            const gk = getArticleGroup(artId);
+            const article = {
+                id: artId,
+                articleId: artId,
+                name: artName,
+                purchasePrice: pos.unitPrice || 0,
+                salesPrice: pos.unitPrice || 0,
+                margin: 0,
+                type: pos.type || 'material',
+                description: pos.description || '',
+                group: gk,
+                bom: []
+            };
+
+            articleDatabase[artId] = article;
+            if (window.articleDatabase) window.articleDatabase[artId] = article;
+            saveArticleToSharePoint(article).then(() => {
+                renderArticles();
+                showMessage(`Artikel "${artId}" gespeichert`, 'success');
+            }).catch(() => {
+                renderArticles();
+                showMessage(`Artikel "${artId}" lokal gespeichert (SharePoint-Fehler)`, 'warning');
+            });
+        }
+        window.saveSalesPositionAsArticle = saveSalesPositionAsArticle;
+
+        // ========== ARTIKELGRUPPEN-VERWALTUNG ==========
+        function renderArticleGroupsSettings() {
+            const tbody = document.getElementById('articleGroupsTableBody');
+            if (!tbody) return;
+            const groups = articleGroups || {};
+            const entries = Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0]));
+            if (entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="color:#999;font-style:italic;padding:10px;">Noch keine Gruppen definiert.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = entries.map(([prefix, label]) => `
+                <tr>
+                    <td><input type="text" value="${prefix}" id="gp-prefix-${prefix}" style="width:90px;"></td>
+                    <td><input type="text" value="${label}" id="gp-label-${prefix}"></td>
+                    <td style="text-align:center;">
+                        <button onclick="removeArticleGroup('${prefix}')" class="btn-danger btn-small">×</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        window.renderArticleGroupsSettings = renderArticleGroupsSettings;
+
+        function addArticleGroup() {
+            const prefix = (document.getElementById('newGroupPrefix') || {}).value.trim().toUpperCase();
+            const label = (document.getElementById('newGroupLabel') || {}).value.trim();
+            if (!prefix || !label) { showMessage('Präfix und Bezeichnung erforderlich', 'error'); return; }
+            if (articleGroups[prefix]) { showMessage('Präfix existiert bereits', 'error'); return; }
+            articleGroups[prefix] = label;
+            if (document.getElementById('newGroupPrefix')) document.getElementById('newGroupPrefix').value = '';
+            if (document.getElementById('newGroupLabel')) document.getElementById('newGroupLabel').value = '';
+            renderArticleGroupsSettings();
+        }
+        window.addArticleGroup = addArticleGroup;
+
+        function removeArticleGroup(prefix) {
+            if (!confirm(`Gruppe "${prefix}" wirklich entfernen?`)) return;
+            delete articleGroups[prefix];
+            renderArticleGroupsSettings();
+        }
+        window.removeArticleGroup = removeArticleGroup;
+
+        function saveArticleGroups() {
+            // Aktuelle Werte aus Tabelle einlesen
+            const tbody = document.getElementById('articleGroupsTableBody');
+            const rows = tbody ? tbody.querySelectorAll('tr') : [];
+            const updated = {};
+            rows.forEach(row => {
+                const inputs = row.querySelectorAll('input[type="text"]');
+                if (inputs.length >= 2) {
+                    const p = inputs[0].value.trim().toUpperCase();
+                    const l = inputs[1].value.trim();
+                    if (p && l) updated[p] = l;
+                }
+            });
+            articleGroups = updated;
+            window.articleGroups = articleGroups;
+            try {
+                localStorage.setItem('dodekHubArticleGroups', JSON.stringify(articleGroups));
+            } catch(e) {}
+            // SharePoint: in Settings-Liste speichern wenn möglich
+            saveArticleGroupsToSharePoint().catch(() => {});
+            showMessage('Artikelgruppen gespeichert', 'success');
+            populateGroupFilter();
+            populateGroupDropdown('');
+            renderArticles();
+        }
+        window.saveArticleGroups = saveArticleGroups;
+
+        async function saveArticleGroupsToSharePoint() {
+            // Speichern als JSON-Setting in SharePoint (analog zu anderen Einstellungen)
+            if (typeof saveSettingToSharePoint === 'function') {
+                await saveSettingToSharePoint('articleGroups', JSON.stringify(articleGroups));
+            }
+        }
+
+        async function loadArticleGroupsFromSharePoint() {
+            // Versuche von SharePoint zu laden, fallback localStorage
+            try {
+                if (typeof loadSettingFromSharePoint === 'function') {
+                    const val = await loadSettingFromSharePoint('articleGroups');
+                    if (val) {
+                        articleGroups = JSON.parse(val);
+                        window.articleGroups = articleGroups;
+                        return;
+                    }
+                }
+            } catch(e) {}
+            // localStorage-Fallback
+            try {
+                const stored = localStorage.getItem('dodekHubArticleGroups');
+                if (stored) {
+                    articleGroups = JSON.parse(stored);
+                    window.articleGroups = articleGroups;
+                }
+            } catch(e) {}
+            // Defaults wenn noch nichts vorhanden
+            if (Object.keys(articleGroups).length === 0) {
+                articleGroups = { D09: 'Ersatzteile Filteranlage', D10: 'Filteranlagen', D20: 'Ventilatoren' };
+                window.articleGroups = articleGroups;
+            }
+        }
+
         function toggleQuoteBOM(index) {
             const pos = window.currentQuote.positions[index];
             if (!pos) return;
@@ -7882,6 +8422,7 @@ function applyPermissions() {
         });
 
         function renderSettingsView() {
+            renderArticleGroupsSettings();
             renderRolePermissionsTable();
             // Rechteverwaltung rendern
             const permList = document.getElementById('settingsPermissionsList');
