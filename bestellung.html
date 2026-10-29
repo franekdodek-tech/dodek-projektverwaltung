@@ -481,7 +481,6 @@
     </div>
   </div>
 
-<!--  <div class="idx">Index: 08 · 17.02.2015 · H:\12 Dodek\Formulare\[Filter-Bestellblatt.xls]Dodek bei Sigg</div> -->
 
 </div><!-- /seite filter -->
 </div><!-- /tab-filter -->
@@ -710,13 +709,13 @@
     if (aktiverTab === 'filter') {
       var datum   = dateinameDatum(document.getElementById('f-datum').value);
       var comNr   = (document.getElementById('f-com-nr').value || '').trim();
-      var lief    = 'BiKu Lasertechnik'; // erstes Wort
+      var lief    = (document.getElementById('f-lieferant') ? document.getElementById('f-lieferant').value : '') || 'Lieferant';
       var typ     = (document.getElementById('f-typ').value || '').trim();
       name = ['BE DT', datum, comNr, lief, typ, 'Beiblatt'].filter(Boolean).join(' ');
     } else {
       var datum   = dateinameDatum(document.getElementById('v-datum').value);
       var comNr   = (document.getElementById('v-com-nr').value || '').trim();
-      var lief    = 'BiKu Lasertechnik';
+      var lief    = (document.getElementById('v-lieferant') ? document.getElementById('v-lieferant').value : '') || 'Lieferant';
       var typ     = (document.getElementById('v-typ').value || '').trim();
       name = ['BE DT', datum, comNr, lief, typ, 'Beiblatt'].filter(Boolean).join(' ');
     }
