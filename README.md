@@ -10,7 +10,7 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.6 |
+| `Projektuebersicht_APP.html` | v1.6.40 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.8.0 |
 
@@ -77,15 +77,6 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 | DodekAdressen | Adressbuch |
 
 > Listen werden über GUID angesprochen — konfiguriert in `SP_CONFIG` im App-Code.
-
-### Nutzerrollen
-
-| Nutzer | Rolle |
-|---|---|
-| franek.dodek@dodek.de | Admin |
-| hagen.dodek@dodek.de | Editor |
-| nicole.merk@dodek.de | Editor |
-| harry.dodek@dodek.de | Reader |
 
 ---
 
