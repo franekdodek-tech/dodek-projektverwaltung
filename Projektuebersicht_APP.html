@@ -3752,13 +3752,17 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.40';
+        const APP_VERSION = 'v1.6.41';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
-        // Nutzerrechte — werden vollständig aus DodekEinstellungen (SettingKey: "permissions") geladen.
-        // Kein Fallback-Hardcode; bis zum Laden der Einstellungen greift der sicherste Default: kein Zugriff.
-        let PERMISSIONS = {};
+        // Nutzerrechte — Fallback; werden aus DodekEinstellungen (SettingKey: "permissions") überschrieben.
+        let PERMISSIONS = {
+            'franek.dodek@dodek.de':  'admin',
+            'hagen.dodek@dodek.de':   'editor',
+            'nicole.merk@dodek.de':   'editor',
+            'harry.dodek@dodek.de':   'reader'
+        };
 
         // Aktuelle Nutzerrolle — wird nach Login gesetzt
         window.currentUserRole = 'reader'; // sicherster Default
