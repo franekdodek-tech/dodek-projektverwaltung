@@ -2127,11 +2127,11 @@
                     </div>
                     <div class="form-group">
                         <label>PLZ</label>
-                        <input type="text" id="cm_postalCode" placeholder="88410">
+                        <input type="text" id="cm_postalCode" placeholder="PLZ">
                     </div>
                     <div class="form-group">
                         <label>Ort</label>
-                        <input type="text" id="cm_city" placeholder="Bad Wurzach">
+                        <input type="text" id="cm_city" placeholder="Ort">
                     </div>
                     <div class="form-group">
                         <label>Land</label>
@@ -3726,7 +3726,7 @@ function applyPermissions() {
                 document.getElementById('loginOverlay').style.display = 'flex';
                 document.getElementById('mainApp').style.display = 'none';
                 document.getElementById('loginError').style.display = 'block';
-                document.getElementById('loginError').textContent = `Kein Zugriff für ${email}. Bitte wenden Sie sich an den Administrator (Franek).`;
+                document.getElementById('loginError').textContent = `Kein Zugriff für ${email}. Bitte wenden Sie sich an den Administrator.`;
                 return;
             }
 
@@ -3752,18 +3752,13 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.39';
+        const APP_VERSION = 'v1.6.40';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
-        // Team-Mitglieder (für Aufgabenzuweisung EK-Positionen)
-        // Nutzerrechte (werden aus DodekEinstellungen überschrieben)
-        let PERMISSIONS = {
-            'franek.dodek@dodek.de':  'admin',
-            'hagen.dodek@dodek.de':   'editor',
-            'nicole.merk@dodek.de':   'editor',
-            'harry.dodek@dodek.de':   'reader'
-        };
+        // Nutzerrechte — werden vollständig aus DodekEinstellungen (SettingKey: "permissions") geladen.
+        // Kein Fallback-Hardcode; bis zum Laden der Einstellungen greift der sicherste Default: kein Zugriff.
+        let PERMISSIONS = {};
 
         // Aktuelle Nutzerrolle — wird nach Login gesetzt
         window.currentUserRole = 'reader'; // sicherster Default
