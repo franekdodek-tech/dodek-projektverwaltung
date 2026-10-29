@@ -125,7 +125,9 @@
     <h2>Auftraggeber</h2>
     <div class="body">
       <div class="abrow">
-        <button type="button" onclick="copyFirmaFromFrachtzahler()">📋 Firma aus Frachtzahler übernehmen</button>
+        <input type="text" class="ab-search" data-target="auftraggeber" list="adressbuch-list" placeholder="Gespeicherte Adresse suchen…">
+        <button type="button" onclick="saveAddress('auftraggeber')">💾 Adresse speichern</button>
+        <button type="button" onclick="copyFirmaFromFrachtzahler()">📋 Firma aus Frachtzahler</button>
       </div>
       <div class="grid stacked">
         <div class="field"><label>Firmenname</label><input type="text" data-field="auftraggeber.firma"></div>
@@ -266,7 +268,7 @@ function emptyState(){
   return {
     datum: new Date().toISOString().slice(0,10),
     spediteurName: '', spediteurEmail: '',
-    auftraggeber: {firma:'Dodek GmbH & Co. KG', ansprechpartner:'Franek Dodek', telefon:'07564 / 94895-0', telefax:'07564 / 94895-50'},
+    auftraggeber: {firma:'', ansprechpartner:'', telefon:'', telefax:''},
     transportart: {stueckgut:false, ladungTeilladung:false, abholungNeutralisieren:false},
     abholDatum:'', abholUhrzeit:'', anlieferDatum:'', anlieferUhrzeit:'',
     abholadresse: {firma:'', ansprechpartner:'', telefon:'', bemerkung:'', oeffnungszeiten:'', strasse:'', ladestelle:'', plzOrt:''},
@@ -275,7 +277,7 @@ function emptyState(){
     entladeart: {rampe:false, stapler:false, kran:false, hebebuehne:false},
     sendungen: [ {anzahl:'',verpackungsart:'',inhalt:'',gewicht:'',masse:''}, {anzahl:'',verpackungsart:'',inhalt:'',gewicht:'',masse:''}, {anzahl:'',verpackungsart:'',inhalt:'',gewicht:'',masse:''} ],
     warenwert:'', transportversicherung:false, svsVerbotskunde:false,
-    frachtzahler: {adresse:'Dodek GmbH & Co. KG\nStocket 3\n88410 Bad Wurzach', komNr:''}
+    frachtzahler: {adresse:'Dodek GmbH & Co. KG', komNr:''}
   };
 }
 
