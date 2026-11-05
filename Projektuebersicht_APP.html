@@ -4164,7 +4164,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.48';
+        const APP_VERSION = 'v1.6.49';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5190,7 +5190,6 @@ function applyPermissions() {
             } else if (viewName === 'tasks') {
                 document.getElementById('tasksView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
-                openSubnav('subnavTasks');
                 renderTasks();
             } else if (viewName === 'stock') {
                 document.getElementById('stockView').classList.add('active');
@@ -5205,7 +5204,6 @@ function applyPermissions() {
             } else if (viewName === 'contacts') {
                 document.getElementById('contactsView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
-                openSubnav('subnavContacts');
                 renderContacts();
             } else if (viewName === 'settings') {
                 document.getElementById('settingsView').classList.add('active');
@@ -5214,7 +5212,6 @@ function applyPermissions() {
             } else if (viewName === 'tools') {
                 document.getElementById('toolsView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
-                openSubnav('subnavTools');
                 showTool('spedition');
                 // Kurze Verzögerung damit iframes geladen sind
                 setTimeout(() => {
@@ -5324,6 +5321,11 @@ function applyPermissions() {
                     </div>
                 `;
             }).join('');
+
+            // Aktiven Jahres-/Status-Filter nach dem Neuaufbau erneut anwenden
+            // (Select ist vor dem ersten updateYearFilter() leer → dann nichts tun)
+            const yearSel = document.getElementById('yearFilter');
+            if (yearSel && yearSel.value && typeof applyYearFilter === 'function') applyYearFilter();
         }
 
         function renderProjectRows(projectNumbers) {
