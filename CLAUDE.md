@@ -31,7 +31,7 @@ Lies diese Datei vollständig, bevor du irgendeine Änderung machst.
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.49 |
+| `Projektuebersicht_APP.html` | v1.6.50 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -152,7 +152,8 @@ print(f'Endtiefe: {depth}')
 
 | View-ID | Inhalt |
 |---|---|
-| `dashboardView` | Projektübersicht (Hauptansicht) |
+| `dashboardKpiView` | Dashboard (KPI-Kacheln + Aktionsliste, nur lfd. Kalenderjahr; Startansicht nach Login) |
+| `dashboardView` | Projektübersicht (Projektliste nach Jahren) |
 | `tasksView` | Aufgabenverwaltung nach Mitglied |
 | `stockView` | Lagerverwaltung |
 | `quotesView` | Kalkulation (BOM, VK/EK-Positionen) |

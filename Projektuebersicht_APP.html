@@ -294,6 +294,49 @@
             display: block;
         }
         
+        /* Dashboard-KPI-View */
+        .kpi-year-title { margin-bottom: 16px; }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .kpi-tile {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 16px;
+        }
+        .kpi-value {
+            font-size: 26px;
+            font-weight: 700;
+            line-height: 1.2;
+            overflow-wrap: anywhere;
+        }
+        .kpi-sub { font-size: 13px; font-weight: 600; margin-top: 2px; }
+        .kpi-label { font-size: 12px; color: #666; margin-top: 4px; }
+        .kpi-action {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-left: 3px solid #e65100;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+        }
+        .kpi-action.kpi-ok { border-left-color: #2e7d32; color: #2e7d32; font-weight: 600; }
+        .kpi-action-title { font-weight: 600; }
+        .kpi-action-list { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+        .kpi-link {
+            cursor: pointer;
+            background: #f0f4f8;
+            color: #366092;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 13px;
+        }
+        .kpi-link:hover { background: #e1e9f2; }
+
         /* Dashboard */
         .dashboard-actions {
             display: flex;
@@ -1635,7 +1678,9 @@
             <button id="sidebarBackBtn" onclick="goBack()">⬅️ Zurück</button>
 
             <div class="sidebar-nav">
-                <button class="nav-item" data-view="dashboard" onclick="toggleSubnav('subnavDashboard'); showView('dashboard')">📊 Projektübersicht</button>
+                <button class="nav-item" data-view="dashboardKpi" onclick="showView('dashboardKpi')">📊 Dashboard</button>
+
+                <button class="nav-item" data-view="dashboard" onclick="toggleSubnav('subnavDashboard'); showView('dashboard')">📋 Projektübersicht</button>
                 <div class="subnav" id="subnavDashboard">
                     <button class="subnav-item" data-subnav-year="all" onclick="navToDashboardYear('all')">📋 Alle</button>
                     <!-- Jahreszahleinträge werden per JS befüllt (updateDashboardSubnav) -->
@@ -1740,6 +1785,13 @@
             <div id="projectListContainer"></div>
         </div>
        
+        <!-- DASHBOARD KPI VIEW -->
+        <div id="dashboardKpiView" class="view">
+            <h2 class="kpi-year-title" id="kpiYearTitle">📊 Dashboard</h2>
+            <div class="kpi-grid" id="kpiTiles"></div>
+            <div id="kpiActions"></div>
+        </div>
+
         <!-- STATISTICS VIEW -->
         <div id="statisticsView" class="view">
             <h2 style="margin-bottom: 20px;">📈 Statistiken und Auswertungen</h2>
@@ -3292,6 +3344,7 @@ function applyPermissions() {
                 });
                 console.log('Geladen:', Object.keys(window.allProjects).length, '| Parse-Fehler:', parseErrors, '| Kein Data:', noData);
                 renderDashboard();
+                renderDashboardKpi();
                 updateYearFilter();
                 showMessage(`${Object.keys(window.allProjects).length} Projekt(e) geladen`, 'success');
                 applyPermissions();
@@ -4156,6 +4209,9 @@ function applyPermissions() {
             await loadArticleGroupsFromSharePoint();
 
             applyPermissions();
+
+            // Startansicht nach Login: Dashboard (KPI)
+            if (typeof showView === 'function') showView('dashboardKpi');
         }
 
         function logoutMicrosoft() {
@@ -4164,7 +4220,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.49';
+        const APP_VERSION = 'v1.6.50';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5172,6 +5228,11 @@ function applyPermissions() {
                 renderDashboard();
                 // Scroll-Position wiederherstellen
                 requestAnimationFrame(() => window.scrollTo({ top: dashboardScrollY, behavior: 'instant' }));
+            } else if (viewName === 'dashboardKpi') {
+                document.getElementById('dashboardKpiView').classList.add('active');
+                document.getElementById('editorButton').style.display = 'none';
+                renderDashboardKpi();
+                window.scrollTo({ top: 0, behavior: 'instant' });
             } else if (viewName === 'editor') {
                 document.getElementById('editorView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'flex';
@@ -5326,6 +5387,112 @@ function applyPermissions() {
             // (Select ist vor dem ersten updateYearFilter() leer → dann nichts tun)
             const yearSel = document.getElementById('yearFilter');
             if (yearSel && yearSel.value && typeof applyYearFilter === 'function') applyYearFilter();
+        }
+
+        // ========== DASHBOARD (KPI) ==========
+
+        function renderDashboardKpi() {
+            const tilesEl = document.getElementById('kpiTiles');
+            const actionsEl = document.getElementById('kpiActions');
+            if (!tilesEl || !actionsEl) return;
+
+            const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const currentYear = new Date().getFullYear();
+            document.getElementById('kpiYearTitle').textContent = `📊 Dashboard ${currentYear}`;
+
+            // Projekte des laufenden Jahres (Datenquelle: window.allProjects)
+            const all = window.allProjects || {};
+            const projects = Object.keys(all)
+                .filter(pn => getYearFromProjectNumber(pn) === currentYear)
+                .sort()
+                .map(pn => ({ pn, p: all[pn] }));
+
+            const sum = (arr, key) => (arr || []).reduce((s, x) => s + (x[key] || 0), 0);
+
+            // ---- Zone 1: Kacheln ----
+            let vk = 0, vkInvoiced = 0, ek = 0, active = 0;
+            projects.forEach(({ p }) => {
+                const pVK = sum(p.salesPositions, 'totalPrice');
+                vk += pVK;
+                ek += sum(p.purchasePositions, 'totalPrice');
+                if (p.hasInvoice) vkInvoiced += pVK;
+                else active++;
+            });
+            const open = vk - vkInvoiced;
+            const db = vk - ek;
+            const dbPct = vk > 0 ? (db / vk * 100) : 0;
+            const dbColor = db >= 0 ? '#2e7d32' : '#c62828';
+            const pctText = dbPct.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
+
+            const tile = (value, label, color, sub) => `
+                <div class="kpi-tile">
+                    <div class="kpi-value" style="color:${color};">${value}</div>
+                    ${sub ? `<div class="kpi-sub" style="color:${color};">${sub}</div>` : ''}
+                    <div class="kpi-label">${label}</div>
+                </div>`;
+
+            tilesEl.innerHTML =
+                tile(formatCurrency(vk), 'VK-Umsatz lfd. Jahr', '#366092') +
+                tile(formatCurrency(vkInvoiced), 'Davon abgerechnet', '#2e7d32') +
+                tile(formatCurrency(open), 'Offen', '#e65100') +
+                tile(formatCurrency(db), 'Deckungsbeitrag', dbColor, pctText) +
+                tile(String(active), 'Aktive Projekte', '#366092');
+
+            // ---- Zone 2: Aktionsliste ----
+            const numberList = list => `<div class="kpi-action-list">${list.map(({ pn }) =>
+                `<span class="kpi-link" onclick="showView('dashboard')" title="Zur Projektübersicht">${esc(pn)}</span>`).join('')}</div>`;
+
+            const entries = [];
+            const addProjectEntry = (title, list) => {
+                if (list.length > 0) entries.push(`<div class="kpi-action"><div class="kpi-action-title">${title}: ${list.length}</div>${numberList(list)}</div>`);
+            };
+
+            addProjectEntry('Projekte ohne Nachkalkulation', projects.filter(({ p }) => !p.hasPostCalc && !p.hasInvoice));
+            addProjectEntry('Geliefert, aber nicht abgerechnet', projects.filter(({ p }) => p.hasDelivered && !p.hasInvoice));
+            addProjectEntry('Projekte ohne AB', projects.filter(({ p }) => !p.hasAB && !p.hasInvoice));
+
+            // Offene Aufgaben (project.tasks, Status ≠ done), nach Mitglied
+            const members = [['franek', 'Franek'], ['hagen', 'Hagen'], ['harry', 'Harry'], ['nicole', 'Nicole']];
+            const perMember = { franek: 0, hagen: 0, harry: 0, nicole: 0 };
+            let openTasks = 0, otherTasks = 0;
+            projects.forEach(({ p }) => {
+                (p.tasks || []).forEach(t => {
+                    if ((t.status || 'open') === 'done') return;
+                    openTasks++;
+                    if (t.assignedTo in perMember) perMember[t.assignedTo]++;
+                    else otherTasks++;
+                });
+            });
+            if (openTasks > 0) {
+                const parts = members.map(([id, name]) => `${name}: ${perMember[id]}`);
+                if (otherTasks > 0) parts.push(`Nicht zugewiesen: ${otherTasks}`);
+                entries.push(`<div class="kpi-action"><div class="kpi-action-title">Offene Aufgaben: ${openTasks}</div><div style="margin-top:6px;font-size:13px;color:#555;">${parts.join(' · ')}</div></div>`);
+            }
+
+            // Anstehende Liefertermine: heute bis heute + 14 Tage (inklusive)
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const limit = new Date(today); limit.setDate(limit.getDate() + 14);
+            const parseLocalDate = v => {
+                const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || ''));
+                if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+                const d = new Date(v);
+                if (isNaN(d)) return null;
+                d.setHours(0, 0, 0, 0);
+                return d;
+            };
+            const upcoming = projects
+                .map(({ pn, p }) => ({ pn, date: p.deliveryDate ? parseLocalDate(p.deliveryDate) : null }))
+                .filter(x => x.date && x.date >= today && x.date <= limit)
+                .sort((a, b) => a.date - b.date);
+            if (upcoming.length > 0) {
+                const fmt = d => d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                entries.push(`<div class="kpi-action"><div class="kpi-action-title">Anstehende Liefertermine (14 Tage): ${upcoming.length}</div><div class="kpi-action-list">${upcoming.map(x =>
+                    `<span class="kpi-link" onclick="showView('dashboard')" title="Zur Projektübersicht">${esc(x.pn)} · ${fmt(x.date)}</span>`).join('')}</div></div>`);
+            }
+
+            actionsEl.innerHTML = entries.length > 0
+                ? entries.join('')
+                : '<div class="kpi-action kpi-ok">Alles im grünen Bereich ✅</div>';
         }
 
         function renderProjectRows(projectNumbers) {
@@ -7407,6 +7574,7 @@ function applyPermissions() {
         window.updateYearFilter = updateYearFilter;
         window.updateFilterSummary = updateFilterSummary;
         window.renderDashboard = renderDashboard;
+        window.renderDashboardKpi = renderDashboardKpi;
         window.getYearFromProjectNumber = getYearFromProjectNumber;
         window.performSearch = performSearch;
         window.performPositionSearch = performPositionSearch;
