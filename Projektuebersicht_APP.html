@@ -1789,6 +1789,7 @@
         <div id="dashboardKpiView" class="view">
             <h2 class="kpi-year-title" id="kpiYearTitle">📊 Dashboard</h2>
             <div class="kpi-grid" id="kpiTiles"></div>
+            <div id="kpiMyTasks"></div>
             <div id="kpiActions"></div>
         </div>
 
@@ -4220,7 +4221,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.52';
+        const APP_VERSION = 'v1.6.53';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5437,6 +5438,35 @@ function applyPermissions() {
                 tile(formatCurrency(open), 'Offen', '#e65100') +
                 tile(formatCurrency(db), 'Deckungsbeitrag', dbColor, pctText) +
                 tile(String(active), 'Aktive Projekte', '#366092');
+
+            // ---- Meine offenen Aufgaben (Member-ID aus E-Mail-Präfix des eingeloggten Nutzers) ----
+            const myTasksEl = document.getElementById('kpiMyTasks');
+            const account = msalInstance?.getAllAccounts?.()?.[0];
+            const email = (account?.username || '').toLowerCase().trim();
+            const myMemberId = email.split('.')[0]; // "franek.dodek@dodek.de" → "franek"
+            const memberObj = TEAM_MEMBERS.find(m => m.id === myMemberId) || null;
+            if (!memberObj) {
+                myTasksEl.innerHTML = '';
+            } else {
+                const myTasks = [];
+                projects.forEach(({ pn, p }) => {
+                    (p.tasks || []).forEach(t => {
+                        if (t.assignedTo === myMemberId && (t.status || 'open') !== 'done') myTasks.push({ pn, t });
+                    });
+                });
+                const taskRow = ({ pn, t }) => {
+                    const st = TASK_STATUS.find(s => s.id === (t.status || 'open')) || TASK_STATUS[0];
+                    return `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;">
+                        <span class="kpi-link" data-pn="${esc(pn)}" onclick="openProject(this.dataset.pn)" title="Projekt öffnen">${esc(pn)}</span>
+                        <span>${esc(t.description || '')}</span>
+                        <span style="font-weight:600;color:${st.color};">${st.label}</span>
+                    </div>`;
+                };
+                myTasksEl.innerHTML = `<div class="kpi-action" style="margin-bottom:24px;">
+                    <div class="kpi-action-title">Meine offenen Aufgaben — ${esc(memberObj.name)}</div>
+                    ${myTasks.length > 0 ? myTasks.map(taskRow).join('') : '<div style="margin-top:6px;color:#2e7d32;">Keine offenen Aufgaben ✅</div>'}
+                </div>`;
+            }
 
             // ---- Zone 2: Aktionsliste ----
             const numberList = list => `<div class="kpi-action-list">${list.map(({ pn }) =>
