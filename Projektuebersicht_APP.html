@@ -4236,7 +4236,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.56';
+        const APP_VERSION = 'v1.6.57';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -6847,10 +6847,10 @@ function applyPermissions() {
     }
     window.showMessage = showMessage;
 
-    // Sicherstellen dass nur Dashboard beim Laden aktiv ist
+    // Sicherstellen dass nur das Dashboard (KPI) beim Laden aktiv ist
     (async () => {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        document.getElementById('dashboardView').classList.add('active');
+        document.getElementById('dashboardKpiView').classList.add('active');
 
         await msalInstance.initialize();
 
