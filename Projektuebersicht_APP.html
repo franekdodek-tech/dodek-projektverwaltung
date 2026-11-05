@@ -3694,13 +3694,24 @@ function applyPermissions() {
         }
         window.autoGrowAll = autoGrowAll;
 
+        function isIOS() {
+            return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
         async function loginMicrosoft() {
             try {
                 document.getElementById('loginBtn').disabled = true;
                 document.getElementById('loginBtn').textContent = 'Anmelden...';
                 await msalInstance.initialize();
-                await msalInstance.loginPopup({ scopes: SP_SCOPES });
-                await initAppAfterLogin();
+                if (isIOS()) {
+                    // Safari blockiert loginPopup — Redirect-Flow verwenden
+                    await msalInstance.loginRedirect({ scopes: SP_SCOPES });
+                    // Ausführung endet hier; initAppAfterLogin() wird nach dem Redirect über handleRedirectPromise() aufgerufen
+                } else {
+                    await msalInstance.loginPopup({ scopes: SP_SCOPES });
+                    await initAppAfterLogin();
+                }
             } catch (e) {
                 showMessage('Anmeldung fehlgeschlagen: ' + e.message, 'error');
                 document.getElementById('loginBtn').disabled = false;
@@ -3752,7 +3763,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.41';
+        const APP_VERSION = 'v1.6.42';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
