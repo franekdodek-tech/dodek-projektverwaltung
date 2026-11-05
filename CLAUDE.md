@@ -31,7 +31,7 @@ Lies diese Datei vollständig, bevor du irgendeine Änderung machst.
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.53 |
+| `Projektuebersicht_APP.html` | v1.6.54 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 

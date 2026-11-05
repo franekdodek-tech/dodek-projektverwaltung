@@ -4221,7 +4221,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.53';
+        const APP_VERSION = 'v1.6.54';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5450,15 +5450,22 @@ function applyPermissions() {
             } else {
                 const myTasks = [];
                 projects.forEach(({ pn, p }) => {
+                    // Allgemeine Aufgaben (project.tasks)
                     (p.tasks || []).forEach(t => {
-                        if (t.assignedTo === myMemberId && (t.status || 'open') !== 'done') myTasks.push({ pn, t });
+                        if (t.assignedTo === myMemberId && (t.status || 'open') !== 'done') myTasks.push({ pn, t, kind: 'task' });
+                    });
+                    // Einkaufspositionen (project.purchasePositions), wie in der Aufgabenliste (Gruppe Einkauf)
+                    (p.purchasePositions || []).forEach(pos => {
+                        if (pos.assignedTo === myMemberId && (pos.status || 'open') !== 'done') myTasks.push({ pn, t: pos, kind: 'ek' });
                     });
                 });
-                const taskRow = ({ pn, t }) => {
-                    const st = TASK_STATUS.find(s => s.id === (t.status || 'open')) || TASK_STATUS[0];
+                const taskRow = ({ pn, t, kind }) => {
+                    const statusList = kind === 'ek' ? PURCHASE_STATUS : TASK_STATUS;
+                    const st = statusList.find(s => s.id === (t.status || 'open')) || statusList[0];
                     return `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;">
                         <span class="kpi-link" data-pn="${esc(pn)}" onclick="openProject(this.dataset.pn)" title="Projekt öffnen">${esc(pn)}</span>
-                        <span>${esc(t.description || '')}</span>
+                        <span style="font-size:11px;color:#666;background:#f0f0f0;border-radius:3px;padding:1px 6px;">${kind === 'ek' ? 'Einkauf' : 'Aufgabe'}</span>
+                        <span>${esc(t.description || '')}${kind === 'ek' && t.supplier ? ` <span style="color:#666;">(${esc(t.supplier)})</span>` : ''}</span>
                         <span style="font-weight:600;color:${st.color};">${st.label}</span>
                     </div>`;
                 };
