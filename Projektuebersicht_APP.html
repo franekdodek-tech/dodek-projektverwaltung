@@ -4220,7 +4220,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.50';
+        const APP_VERSION = 'v1.6.51';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5447,7 +5447,7 @@ function applyPermissions() {
                 if (list.length > 0) entries.push(`<div class="kpi-action"><div class="kpi-action-title">${title}: ${list.length}</div>${numberList(list)}</div>`);
             };
 
-            addProjectEntry('Projekte ohne Nachkalkulation', projects.filter(({ p }) => !p.hasPostCalc && !p.hasInvoice));
+            addProjectEntry('Projekte ohne Nachkalkulation', projects.filter(({ p }) => !p.hasPostCalc));
             addProjectEntry('Geliefert, aber nicht abgerechnet', projects.filter(({ p }) => p.hasDelivered && !p.hasInvoice));
             addProjectEntry('Projekte ohne AB', projects.filter(({ p }) => !p.hasAB && !p.hasInvoice));
 
@@ -5481,6 +5481,7 @@ function applyPermissions() {
                 return d;
             };
             const upcoming = projects
+                .filter(({ p }) => !p.hasDelivered)
                 .map(({ pn, p }) => ({ pn, date: p.deliveryDate ? parseLocalDate(p.deliveryDate) : null }))
                 .filter(x => x.date && x.date >= today && x.date <= limit)
                 .sort((a, b) => a.date - b.date);

@@ -10,7 +10,7 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.50 |
+| `Projektuebersicht_APP.html` | v1.6.51 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
