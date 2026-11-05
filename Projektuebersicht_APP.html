@@ -4221,7 +4221,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.54';
+        const APP_VERSION = 'v1.6.55';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5452,11 +5452,11 @@ function applyPermissions() {
                 projects.forEach(({ pn, p }) => {
                     // Allgemeine Aufgaben (project.tasks)
                     (p.tasks || []).forEach(t => {
-                        if (t.assignedTo === myMemberId && (t.status || 'open') !== 'done') myTasks.push({ pn, t, kind: 'task' });
+                        if (t.assignedTo === myMemberId && (t.status || 'open') === 'open') myTasks.push({ pn, t, kind: 'task' });
                     });
                     // Einkaufspositionen (project.purchasePositions), wie in der Aufgabenliste (Gruppe Einkauf)
                     (p.purchasePositions || []).forEach(pos => {
-                        if (pos.assignedTo === myMemberId && (pos.status || 'open') !== 'done') myTasks.push({ pn, t: pos, kind: 'ek' });
+                        if (pos.assignedTo === myMemberId && (pos.status || 'open') === 'open') myTasks.push({ pn, t: pos, kind: 'ek' });
                     });
                 });
                 const taskRow = ({ pn, t, kind }) => {
