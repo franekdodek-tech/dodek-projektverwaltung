@@ -297,25 +297,37 @@
         /* Dashboard-KPI-View */
         .kpi-year-title { margin-bottom: 16px; }
         .kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
             margin-bottom: 24px;
         }
         .kpi-tile {
             background: #fff;
             border: 1px solid #e0e0e0;
-            border-radius: 6px;
+            border-radius: 8px;
             padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
+        .kpi-tile-wide { flex: 1; min-width: 220px; }
+        .kpi-tile-narrow { flex: 0 0 160px; }
+        .kpi-title { font-size: 13px; color: #666; margin-bottom: 4px; }
         .kpi-value {
             font-size: 26px;
             font-weight: 700;
             line-height: 1.2;
             overflow-wrap: anywhere;
         }
-        .kpi-sub { font-size: 13px; font-weight: 600; margin-top: 2px; }
-        .kpi-label { font-size: 12px; color: #666; margin-top: 4px; }
+        .kpi-split {
+            display: flex;
+            gap: 12px;
+            border-top: 1px solid #e0e0e0;
+            padding-top: 8px;
+            margin-top: 8px;
+        }
+        .kpi-split > div { flex: 1; min-width: 0; }
+        .kpi-sub-label { font-size: 12px; color: #666; }
+        .kpi-sub-value { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
         .kpi-action {
             background: #fff;
             border: 1px solid #e0e0e0;
@@ -1741,7 +1753,7 @@
         </div>
         
         <!-- DASHBOARD VIEW -->
-        <div id="dashboardView" class="view active">
+        <div id="dashboardView" class="view">
             <div class="dashboard-actions">
                 <button onclick="createNewProject()" class="btn-success">➕ Neues Projekt anlegen</button>
                 <label class="btn-secondary" style="cursor: pointer; display: inline-block;">
@@ -1786,7 +1798,7 @@
         </div>
        
         <!-- DASHBOARD KPI VIEW -->
-        <div id="dashboardKpiView" class="view">
+        <div id="dashboardKpiView" class="view active">
             <h2 class="kpi-year-title" id="kpiYearTitle">📊 Dashboard</h2>
             <div class="kpi-grid" id="kpiTiles"></div>
             <div id="kpiMyTasks"></div>
@@ -3252,6 +3264,9 @@ function applyPermissions() {
             }
         }
 
+        // Verhindert, dass showView() beim Zurück-Navigieren erneut in den History-Stack schreibt
+        let isNavigatingBack = false;
+
         function initApp() {
 
         const msalConfig = {
@@ -4221,7 +4236,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.55';
+        const APP_VERSION = 'v1.6.56';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5179,20 +5194,29 @@ function applyPermissions() {
 
         function goBack() {
             if (_navHistory.length < 2) return;
-            _navHistory.pop(); // aktuelle Seite entfernen
-            const prev = _navHistory.pop(); // vorherige Seite holen (showView pusht sie wieder)
-            showView(prev);
+            _navHistory.pop(); // aktuelle Seite entfernen; die vorherige Seite bleibt oben im Stack
+            const prev = _navHistory[_navHistory.length - 1];
+            isNavigatingBack = true;
+            try {
+                showView(prev);
+            } finally {
+                isNavigatingBack = false;
+            }
         }
 
         function showView(viewName) {
             // History-Stack pflegen
             const currentView = document.querySelector('.view.active');
             const currentName = currentView ? currentView.id.replace('View', '') : null;
-            if (currentName && currentName !== viewName) {
-                _navHistory.push(currentName);
-                if (_navHistory.length > 20) _navHistory.shift();
+            // Beim Zurück-Navigieren (goBack) wird der Stack nicht verändert
+            if (!isNavigatingBack) {
+                const pushNav = v => { if (_navHistory[_navHistory.length - 1] !== v) _navHistory.push(v); };
+                if (currentName && currentName !== viewName) {
+                    pushNav(currentName);
+                    if (_navHistory.length > 20) _navHistory.shift();
+                }
+                pushNav(viewName);
             }
-            _navHistory.push(viewName);
 
             // Zurück-Button (Sidebar: immer sichtbar, aber disabled wenn keine History)
             const sidebarBack = document.getElementById('sidebarBackBtn');
@@ -5411,33 +5435,46 @@ function applyPermissions() {
             const sum = (arr, key) => (arr || []).reduce((s, x) => s + (x[key] || 0), 0);
 
             // ---- Zone 1: Kacheln ----
-            let vk = 0, vkInvoiced = 0, ek = 0, active = 0;
+            let vk = 0, vkInvoiced = 0, active = 0;
+            let pcCount = 0, pcVK = 0, pcEK = 0; // nachkalkulierte Projekte (hasPostCalc)
             projects.forEach(({ p }) => {
                 const pVK = sum(p.salesPositions, 'totalPrice');
                 vk += pVK;
-                ek += sum(p.purchasePositions, 'totalPrice');
                 if (p.hasInvoice) vkInvoiced += pVK;
                 else active++;
+                if (p.hasPostCalc) {
+                    pcCount++;
+                    pcVK += pVK;
+                    pcEK += sum(p.purchasePositions, 'totalPrice');
+                }
             });
             const open = vk - vkInvoiced;
-            const db = vk - ek;
-            const dbPct = vk > 0 ? (db / vk * 100) : 0;
-            const dbColor = db >= 0 ? '#2e7d32' : '#c62828';
+            const db = pcVK - pcEK;
+            const dbPct = pcVK > 0 ? (db / pcVK * 100) : 0;
+            const dbColor = db > 0 ? '#2e7d32' : '#c62828'; // positiv grün, negativ oder null rot
             const pctText = dbPct.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
 
-            const tile = (value, label, color, sub) => `
-                <div class="kpi-tile">
-                    <div class="kpi-value" style="color:${color};">${value}</div>
-                    ${sub ? `<div class="kpi-sub" style="color:${color};">${sub}</div>` : ''}
-                    <div class="kpi-label">${label}</div>
+            tilesEl.innerHTML = `
+                <div class="kpi-tile kpi-tile-wide">
+                    <div class="kpi-title">VK Umsatz lfd. Jahr</div>
+                    <div class="kpi-value" style="color:#366092;">${formatCurrency(vk)}</div>
+                    <div class="kpi-split">
+                        <div><div class="kpi-sub-label">✅ Abgerechnet</div><div class="kpi-sub-value" style="color:#2e7d32;">${formatCurrency(vkInvoiced)}</div></div>
+                        <div><div class="kpi-sub-label">⏳ Offen</div><div class="kpi-sub-value" style="color:#e65100;">${formatCurrency(open)}</div></div>
+                    </div>
+                </div>
+                <div class="kpi-tile kpi-tile-wide">
+                    <div class="kpi-title">Deckungsbeitrag (nachkalkuliert)</div>
+                    <div class="kpi-value" style="color:${dbColor};">${formatCurrency(db)}</div>
+                    <div class="kpi-split">
+                        <div><div class="kpi-sub-label" style="font-size:13px;">${pcCount} von ${projects.length} Projekten nachkalkuliert</div></div>
+                        <div><div class="kpi-sub-value" style="color:${dbColor};">${pctText}</div></div>
+                    </div>
+                </div>
+                <div class="kpi-tile kpi-tile-narrow">
+                    <div class="kpi-title">Aktive Projekte</div>
+                    <div class="kpi-value" style="color:#366092;">${active}</div>
                 </div>`;
-
-            tilesEl.innerHTML =
-                tile(formatCurrency(vk), 'VK-Umsatz lfd. Jahr', '#366092') +
-                tile(formatCurrency(vkInvoiced), 'Davon abgerechnet', '#2e7d32') +
-                tile(formatCurrency(open), 'Offen', '#e65100') +
-                tile(formatCurrency(db), 'Deckungsbeitrag', dbColor, pctText) +
-                tile(String(active), 'Aktive Projekte', '#366092');
 
             // ---- Meine offenen Aufgaben (Member-ID aus E-Mail-Präfix des eingeloggten Nutzers) ----
             const myTasksEl = document.getElementById('kpiMyTasks');
