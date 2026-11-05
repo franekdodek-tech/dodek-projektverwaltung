@@ -4220,7 +4220,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.51';
+        const APP_VERSION = 'v1.6.52';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5440,7 +5440,7 @@ function applyPermissions() {
 
             // ---- Zone 2: Aktionsliste ----
             const numberList = list => `<div class="kpi-action-list">${list.map(({ pn }) =>
-                `<span class="kpi-link" onclick="showView('dashboard')" title="Zur Projektübersicht">${esc(pn)}</span>`).join('')}</div>`;
+                `<span class="kpi-link" data-pn="${esc(pn)}" onclick="openProject(this.dataset.pn)" title="Projekt öffnen">${esc(pn)}</span>`).join('')}</div>`;
 
             const entries = [];
             const addProjectEntry = (title, list) => {
@@ -5488,7 +5488,7 @@ function applyPermissions() {
             if (upcoming.length > 0) {
                 const fmt = d => d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
                 entries.push(`<div class="kpi-action"><div class="kpi-action-title">Anstehende Liefertermine (14 Tage): ${upcoming.length}</div><div class="kpi-action-list">${upcoming.map(x =>
-                    `<span class="kpi-link" onclick="showView('dashboard')" title="Zur Projektübersicht">${esc(x.pn)} · ${fmt(x.date)}</span>`).join('')}</div></div>`);
+                    `<span class="kpi-link" data-pn="${esc(x.pn)}" onclick="openProject(this.dataset.pn)" title="Projekt öffnen">${esc(x.pn)} · ${fmt(x.date)}</span>`).join('')}</div></div>`);
             }
 
             actionsEl.innerHTML = entries.length > 0
