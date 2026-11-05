@@ -1634,7 +1634,11 @@
             <button id="sidebarBackBtn" onclick="goBack()">⬅️ Zurück</button>
 
             <div class="sidebar-nav">
-                <button class="nav-item" data-view="dashboard" onclick="showView('dashboard')">📊 Projektübersicht</button>
+                <button class="nav-item" data-view="dashboard" onclick="toggleSubnav('subnavDashboard'); showView('dashboard')">📊 Projektübersicht</button>
+                <div class="subnav" id="subnavDashboard">
+                    <button class="subnav-item" data-subnav-year="all" onclick="navToDashboardYear('all')">📋 Alle</button>
+                    <!-- Jahreszahleinträge werden per JS befüllt (updateDashboardSubnav) -->
+                </div>
 
                 <button class="nav-item" data-view="statistics" onclick="showView('statistics')">📈 Statistiken</button>
 
@@ -3143,6 +3147,41 @@ function applyPermissions() {
             if (document.body.classList.contains('sidebar-unpinned')) closeSidebar();
         }
 
+        function navToDashboardYear(year) {
+            // yearFilter-Select im Dashboard setzen und Filter anwenden
+            const sel = document.getElementById('yearFilter');
+            if (sel) {
+                sel.value = year;
+                if (typeof applyYearFilter === 'function') applyYearFilter();
+            }
+            openSubnav('subnavDashboard');
+            if (typeof showView === 'function') showView('dashboard');
+            document.querySelectorAll('[data-subnav-year]').forEach(b => {
+                b.classList.toggle('nav-active', b.dataset.subnavYear === String(year));
+            });
+            if (document.body.classList.contains('sidebar-unpinned')) closeSidebar();
+        }
+
+        // Sidebar-Subnav für Dashboard mit Jahreszahlen befüllen (wird nach Datenladen aufgerufen)
+        function updateDashboardSubnav() {
+            const yearSet = new Set();
+            const projects = window.allProjects || {};
+            Object.keys(projects).forEach(pn => {
+                const y = typeof getYearFromProjectNumber === 'function'
+                    ? getYearFromProjectNumber(pn)
+                    : (parseInt(String(pn).substring(0, 2)) + 2000);
+                if (y) yearSet.add(y);
+            });
+            const years = Array.from(yearSet).sort((a, b) => a - b);
+            const container = document.getElementById('subnavDashboard');
+            if (!container) return;
+            container.innerHTML =
+                `<button class="subnav-item" data-subnav-year="all" onclick="navToDashboardYear('all')">📋 Alle</button>` +
+                years.map(y =>
+                    `<button class="subnav-item" data-subnav-year="${y}" onclick="navToDashboardYear('${y}')">${y}</button>`
+                ).join('');
+        }
+
         // localStorage-Zustand beim Laden sofort anwenden (body-Klasse, kein DOM nötig)
         (function() {
             const pinned = localStorage.getItem('sidebarPinned') !== 'false';
@@ -4124,7 +4163,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.46';
+        const APP_VERSION = 'v1.6.47';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -6755,8 +6794,11 @@ function applyPermissions() {
         const optionsHTML = '<option value="all">Alle Jahre</option>' + 
             years.map(year => `<option value="${year}">${year}</option>`).join('');
         
-        // Dashboard-Filter
+        // Dashboard-Filter (Select im Main-Content)
         document.getElementById('yearFilter').innerHTML = optionsHTML;
+
+        // Sidebar-Subnav für Projektübersicht synchron befüllen
+        if (typeof updateDashboardSubnav === 'function') updateDashboardSubnav();
     }
 
     function applyYearFilter() {
