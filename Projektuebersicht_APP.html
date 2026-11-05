@@ -83,7 +83,26 @@
             margin-bottom: 25px;
             border-bottom: 2px solid #e0e0e0;
             padding-bottom: 15px;
+            align-items: center;
         }
+        .view-selector button.nav-active {
+            background: #b3121a;
+            color: #fff;
+            font-weight: 700;
+            box-shadow: 0 2px 6px rgba(179,18,26,0.25);
+        }
+        #backBtn {
+            margin-left: auto;
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ccc;
+            font-size: 13px;
+            padding: 6px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none;
+        }
+        #backBtn:hover { background: #e0e0e0; }
         
         .view {
             display: none;
@@ -1422,16 +1441,17 @@
         <div id="message" class="message"></div>
         
         <div class="view-selector">
-            <button onclick="showView('dashboard')">📊 Projektübersicht</button>
-            <button onclick="showView('statistics')">📈 Statistiken</button>
-            <button onclick="showView('tasks')">📋 Aufgaben</button>
-            <button onclick="showView('stock')">📦 Lager</button>
-            <button onclick="showView('quotes')">🧮 Kalkulation</button>
-            <button onclick="showView('editor')" id="editorButton" style="display: none;">📝 Projekt bearbeiten</button>
-            <button onclick="showView('contacts')">👥 Kontakte</button>
-            <button onclick="showView('articles')">📦 Artikelstamm</button>
-            <button onclick="showView('tools')">🛠️ Tools</button>
-            <button onclick="showView('settings')" id="settingsBtn" style="display:none;">⚙️ Einstellungen</button>
+            <button onclick="showView('dashboard')" data-view="dashboard">📊 Projektübersicht</button>
+            <button onclick="showView('statistics')" data-view="statistics">📈 Statistiken</button>
+            <button onclick="showView('tasks')" data-view="tasks">📋 Aufgaben</button>
+            <button onclick="showView('stock')" data-view="stock">📦 Lager</button>
+            <button onclick="showView('quotes')" data-view="quotes">🧮 Kalkulation</button>
+            <button onclick="showView('editor')" data-view="editor" id="editorButton" style="display: none;">📝 Projekt bearbeiten</button>
+            <button onclick="showView('contacts')" data-view="contacts">👥 Kontakte</button>
+            <button onclick="showView('articles')" data-view="articles">📦 Artikelstamm</button>
+            <button onclick="showView('tools')" data-view="tools">🛠️ Tools</button>
+            <button onclick="showView('settings')" data-view="settings" id="settingsBtn" style="display:none;">⚙️ Einstellungen</button>
+            <button id="backBtn" onclick="goBack()">⬅️ Zurück</button>
         </div>
         
         <!-- DASHBOARD VIEW -->
@@ -3763,7 +3783,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.42';
+        const APP_VERSION = 'v1.6.43';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -4716,7 +4736,34 @@ function applyPermissions() {
         // Scroll-Position der Projektliste merken
         let dashboardScrollY = 0;
 
+        let _navHistory = [];
+
+        function goBack() {
+            if (_navHistory.length < 2) return;
+            _navHistory.pop(); // aktuelle Seite entfernen
+            const prev = _navHistory.pop(); // vorherige Seite holen (showView pusht sie wieder)
+            showView(prev);
+        }
+
         function showView(viewName) {
+            // History-Stack pflegen
+            const currentView = document.querySelector('.view.active');
+            const currentName = currentView ? currentView.id.replace('View', '') : null;
+            if (currentName && currentName !== viewName) {
+                _navHistory.push(currentName);
+                if (_navHistory.length > 20) _navHistory.shift();
+            }
+            _navHistory.push(viewName);
+
+            // Zurück-Button ein-/ausblenden
+            const backBtn = document.getElementById('backBtn');
+            if (backBtn) backBtn.style.display = _navHistory.length > 1 ? 'inline-block' : 'none';
+
+            // Aktiven Menüpunkt hervorheben
+            document.querySelectorAll('.view-selector button[data-view]').forEach(btn => {
+                btn.classList.toggle('nav-active', btn.dataset.view === viewName);
+            });
+
             // Scroll-Position merken wenn wir die Dashboard-Ansicht verlassen
             const currentlyDashboard = document.getElementById('dashboardView').classList.contains('active');
             if (currentlyDashboard && viewName !== 'dashboard') {
@@ -6909,6 +6956,7 @@ function applyPermissions() {
 
         // Alle vom HTML aufgerufenen Funktionen global verfügbar machen
         window.showView = showView;
+        window.goBack = goBack;
         window.createNewProject = createNewProject;
         window.openProject = openProject;
         window.saveProject = saveProject;
