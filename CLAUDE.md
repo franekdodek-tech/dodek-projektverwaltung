@@ -112,6 +112,30 @@ Claude-Session: https://claude.ai/code/session_0112q721THq4Xa5MtZn82Y5R
 - Sidebar-Drawer im unpinned-Modus: `position: fixed; top: 60px` (unterhalb des App-Headers)
 - Subnav-Accordions: `.subnav` / `.subnav.subnav-open` per `toggleSubnav(id)`
 - Globale Sidebar-Funktionen: `togglePin()`, `toggleSidebar()`, `closeSidebar()`, `toggleSubnav()`, `openSubnav()`, `navToContactType()`, `navToTasksMember()`, `navToTool()`, `navToDashboardYear()`
+- Einträge: „📊 Dashboard“ (`data-view="dashboardKpi"`, kein Subnav), „📋 Projektübersicht“ (`data-view="dashboard"`, Subnav mit Jahren), Statistiken, Aufgaben (Subnav), Lager, Kalkulation, Kontakte (Subnav), Artikelstamm, Tools (Subnav)
+- **`showView()` darf Subnav-Accordions nicht öffnen** (kein `openSubnav()` in `showView()`). Geöffnet wird nur per `toggleSubnav()` (Klick auf den Hauptpunkt) und in den `navTo…()`-Funktionen. Sonst lässt sich die Unterstruktur nicht mehr zuklappen.
+
+### Navigation / Views (Stand v1.6.57)
+- **View-Namen:** `showView()` bekommt den Namen ohne Suffix „View“, z. B. `showView('dashboardKpi')` → `#dashboardKpiView`, `showView('dashboard')` → `#dashboardView`. `showView('dashboardKpiView')` würde keinen View anzeigen.
+- **Startansicht = Dashboard (KPI).** Muss an drei Stellen übereinstimmen: `class="view active"` auf `#dashboardKpiView` im HTML, der Start-Block am Ende des Scripts (`(async () => { … msalInstance.initialize() … })()`, setzt `dashboardKpiView` aktiv) und `showView('dashboardKpi')` am Ende von `initAppAfterLogin()`. Wird eine Stelle geändert, die anderen mitändern, sonst Flackern und falscher Zurück-Stack.
+- **History:** `_navHistory` (max. 20), oberster Eintrag = aktuelle Ansicht, keine direkt aufeinanderfolgenden Duplikate. `goBack()` entfernt nur die aktuelle Ansicht und ruft `showView(prev)` mit `isNavigatingBack = true` auf; dann schreibt `showView()` nicht in den Stack. `isNavigatingBack` steht vor `initApp()`.
+- **`renderDashboard()`** baut die Projektliste komplett neu auf und wendet am Ende `applyYearFilter()` (Jahres- und Status-Filter) wieder an. Das muss erhalten bleiben, sonst gehen Filter beim Neuaufbau verloren (z. B. Sidebar → Jahr). Der Suchbegriff wird beim Neuaufbau nicht wiederhergestellt (offen).
+
+### Dashboard (KPI) — `dashboardKpiView`, `renderDashboardKpi()`
+- Zeigt immer das laufende Kalenderjahr (`new Date().getFullYear()`), Jahr per `getYearFromProjectNumber()`, Daten aus `window.allProjects`. Aufruf in `showView('dashboardKpi')` und in `loadFromSharePoint()` direkt nach `renderDashboard()`.
+- **Kacheln** (`#kpiTiles`, Flex mit Umbruch): VK Umsatz lfd. Jahr (mit Abgerechnet/Offen über `hasInvoice`), Deckungsbeitrag nur nachkalkulierter Projekte (`hasPostCalc`; grün nur bei DB > 0, sonst rot), Aktive Projekte (`!hasInvoice`).
+- **Meine offenen Aufgaben** (`#kpiMyTasks`): Member-ID = `email.split('.')[0]` aus `msalInstance.getAllAccounts()[0].username`, Abgleich mit `TEAM_MEMBERS`. **Bewusste Entscheidung des Entwicklers: kein Mapping-Objekt einführen, auch nicht bei zukünftigen Änderungen.** Ohne Treffer in `TEAM_MEMBERS` wird die Zone ausgeblendet. Angezeigt werden `project.tasks` und `project.purchasePositions` mit `assignedTo === Member-ID` und Status `open`.
+- **Aktionsliste** (`#kpiActions`): ohne Nachkalkulation (`!hasPostCalc`), geliefert aber nicht abgerechnet, ohne AB (`!hasAB && !hasInvoice`), offene Aufgaben je Mitglied (`project.tasks` mit Status ≠ `done`), Liefertermine der nächsten 14 Tage (ohne `hasDelivered`). Projektnummern öffnen das Projekt per `openProject()`.
+
+---
+
+## Bekannte offene Punkte (Stand 2026-11-05)
+
+- Aktionsliste „Offene Aufgaben“ zählt nur `project.tasks` (Status ≠ `done`); die Zone „Meine offenen Aufgaben“ zeigt `project.tasks` und Einkaufspositionen mit Status `open`. Die beiden Zählungen sind nicht angeglichen — Entscheidung offen.
+- Suchbegriff geht beim Neuaufbau der Projektliste (`renderDashboard()`) verloren.
+- Unter 900 px Breite gibt es Seitenscroll, weil `#appLayout` und `body` `min-width: 900px` haben (Tablet im Hochformat — nicht auf echtem Gerät geprüft).
+- README: Die SharePoint-Listen-Tabelle enthält die Kontakte-Liste (`guidContacts`) nicht; ihre übrigen Listennamen wurden nicht gegen den Code geprüft.
+- Auf dem Entwicklungsrechner sind weder `python3` noch `node` installiert; der Syntax-Diagnose-Workflow unten lief in diesen Sitzungen nicht. Änderungen wurden im Browser getestet.
 
 ---
 
@@ -152,7 +176,7 @@ print(f'Endtiefe: {depth}')
 
 | View-ID | Inhalt |
 |---|---|
-| `dashboardKpiView` | Dashboard (KPI-Kacheln + Aktionsliste, nur lfd. Kalenderjahr; Startansicht nach Login) |
+| `dashboardKpiView` | Dashboard (KPI-Kacheln, „Meine offenen Aufgaben“, Aktionsliste; nur lfd. Kalenderjahr; Startansicht) |
 | `dashboardView` | Projektübersicht (Projektliste nach Jahren) |
 | `tasksView` | Aufgabenverwaltung nach Mitglied |
 | `stockView` | Lagerverwaltung |

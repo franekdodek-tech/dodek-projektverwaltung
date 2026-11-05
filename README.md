@@ -18,7 +18,13 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 
 ## Funktionsumfang
 
-### 📊 Dashboard
+### 📊 Dashboard (Startansicht, laufendes Kalenderjahr)
+- KPI-Kacheln: VK Umsatz (abgerechnet / offen), Deckungsbeitrag nachkalkulierter Projekte, aktive Projekte
+- „Meine offenen Aufgaben“ des eingeloggten Nutzers (allgemeine Aufgaben und Einkaufspositionen mit Status „Offen“)
+- Aktionsliste: ohne Nachkalkulation, geliefert aber nicht abgerechnet, ohne AB, offene Aufgaben je Mitglied, Liefertermine der nächsten 14 Tage
+- Projektnummern öffnen das Projekt direkt
+
+### 📋 Projektübersicht
 - Projekte nach Jahrgängen gruppiert und kollabierbar
 - Farbliche Statusanzeige (kein AB / AB / Rechnung / Nachkalkulation)
 - Volltextsuche, Jahresfilter, VK/EK/DB-Summen pro Jahrgang
