@@ -3052,6 +3052,108 @@ function applyPermissions() {
             'Schallschutz', 'Erfassungselemente', 'Ersatzteile'
         ];
 
+        // ========== SIDEBAR (global — außerhalb initApp, damit onclick-Attribute funktionieren) ==========
+
+        function applySidebarPin(pinned) {
+            const pinBtn = document.getElementById('pinBtn');
+            if (pinned) {
+                document.body.classList.remove('sidebar-unpinned');
+                const overlay = document.getElementById('sidebarOverlay');
+                if (overlay) overlay.classList.remove('overlay-visible');
+                const sidebar = document.getElementById('appSidebar');
+                if (sidebar) sidebar.classList.remove('sidebar-open');
+                if (pinBtn) { pinBtn.textContent = '📌'; pinBtn.title = 'Sidebar lösen'; }
+            } else {
+                document.body.classList.add('sidebar-unpinned');
+                const overlay = document.getElementById('sidebarOverlay');
+                if (overlay) overlay.classList.remove('overlay-visible');
+                const sidebar = document.getElementById('appSidebar');
+                if (sidebar) sidebar.classList.remove('sidebar-open');
+                if (pinBtn) { pinBtn.textContent = '🔓'; pinBtn.title = 'Sidebar anheften'; }
+            }
+        }
+
+        function togglePin() {
+            const wasPinned = !document.body.classList.contains('sidebar-unpinned');
+            const nowPinned = !wasPinned;
+            localStorage.setItem('sidebarPinned', nowPinned ? 'true' : 'false');
+            applySidebarPin(nowPinned);
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('appSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (!sidebar) return;
+            const isOpen = sidebar.classList.toggle('sidebar-open');
+            if (overlay) overlay.classList.toggle('overlay-visible', isOpen);
+        }
+
+        function closeSidebar() {
+            const sidebar = document.getElementById('appSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sidebar) sidebar.classList.remove('sidebar-open');
+            if (overlay) overlay.classList.remove('overlay-visible');
+        }
+
+        function toggleSubnav(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.toggle('subnav-open');
+        }
+
+        function openSubnav(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('subnav-open');
+        }
+
+        function navToContactType(type) {
+            const sel = document.getElementById('contactTypeFilter');
+            if (sel) sel.value = type;
+            openSubnav('subnavContacts');
+            if (typeof showView === 'function') showView('contacts');
+            document.querySelectorAll('[data-subnav-contacts]').forEach(b => {
+                b.classList.toggle('nav-active', b.dataset.subnavContacts === type);
+            });
+            if (document.body.classList.contains('sidebar-unpinned')) closeSidebar();
+        }
+
+        function navToTasksMember(member) {
+            const sel = document.getElementById('tasksMemberFilter');
+            if (sel) sel.value = member;
+            openSubnav('subnavTasks');
+            if (typeof showView === 'function') showView('tasks');
+            document.querySelectorAll('[data-subnav-tasks]').forEach(b => {
+                b.classList.toggle('nav-active', b.dataset.subnavTasks === member);
+            });
+            if (document.body.classList.contains('sidebar-unpinned')) closeSidebar();
+        }
+
+        function navToTool(tool) {
+            openSubnav('subnavTools');
+            if (typeof showView === 'function') showView('tools');
+            if (typeof showTool === 'function') showTool(tool);
+            document.querySelectorAll('[data-subnav-tool]').forEach(b => {
+                b.classList.toggle('nav-active', b.dataset.subnavTool === tool);
+            });
+            if (document.body.classList.contains('sidebar-unpinned')) closeSidebar();
+        }
+
+        // localStorage-Zustand beim Laden sofort anwenden (body-Klasse, kein DOM nötig)
+        (function() {
+            const pinned = localStorage.getItem('sidebarPinned') !== 'false';
+            if (!pinned) document.body.classList.add('sidebar-unpinned');
+        })();
+
+        // Nach Login: pinBtn-Icon synchronisieren
+        function syncPinBtn() {
+            const pinned = !document.body.classList.contains('sidebar-unpinned');
+            const pinBtn = document.getElementById('pinBtn');
+            if (pinBtn) {
+                pinBtn.textContent = pinned ? '📌' : '🔓';
+                pinBtn.title = pinned ? 'Sidebar lösen' : 'Sidebar anheften';
+            }
+        }
+
         function initApp() {
 
         const msalConfig = {
@@ -3980,6 +4082,7 @@ function applyPermissions() {
             document.getElementById('loginOverlay').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
             document.getElementById('userDisplayName').textContent = account.name || account.username;
+            syncPinBtn(); // Pin-Button Icon nach Login synchronisieren
 
             // Rolle ermitteln
             const email = (account.username || '').toLowerCase().trim();
@@ -4970,111 +5073,7 @@ function applyPermissions() {
         let dashboardScrollY = 0;
 
         let _navHistory = [];
-
-        // ========== SIDEBAR ==========
-
-        (function initSidebar() {
-            const pinned = localStorage.getItem('sidebarPinned') !== 'false'; // default: pinned
-            applySidebarPin(pinned);
-        })();
-
-        function applySidebarPin(pinned) {
-            const pinBtn = document.getElementById('pinBtn');
-            if (pinned) {
-                document.body.classList.remove('sidebar-unpinned');
-                // Sidebar-Overlay ausblenden — Sidebar ist jetzt sticky
-                const overlay = document.getElementById('sidebarOverlay');
-                if (overlay) overlay.classList.remove('overlay-visible');
-                // Sidebar immer sichtbar, kein open-State nötig
-                const sidebar = document.getElementById('appSidebar');
-                if (sidebar) sidebar.classList.remove('sidebar-open');
-                if (pinBtn) pinBtn.textContent = '📌';
-                if (pinBtn) pinBtn.title = 'Sidebar lösen (Overlay-Modus)';
-            } else {
-                document.body.classList.add('sidebar-unpinned');
-                // Sidebar schließen — kein Overlay, kein open
-                const overlay = document.getElementById('sidebarOverlay');
-                if (overlay) overlay.classList.remove('overlay-visible');
-                const sidebar = document.getElementById('appSidebar');
-                if (sidebar) sidebar.classList.remove('sidebar-open');
-                if (pinBtn) pinBtn.textContent = '📌';
-                if (pinBtn) pinBtn.title = 'Sidebar anheften';
-            }
-        }
-
-        function togglePin() {
-            const wasPinned = !document.body.classList.contains('sidebar-unpinned');
-            const nowPinned = !wasPinned;
-            localStorage.setItem('sidebarPinned', nowPinned ? 'true' : 'false');
-            applySidebarPin(nowPinned);
-        }
-
-        function toggleSidebar() {
-            const sidebar = document.getElementById('appSidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            const isOpen = sidebar.classList.toggle('sidebar-open');
-            if (overlay) overlay.classList.toggle('overlay-visible', isOpen);
-        }
-
-        function closeSidebar() {
-            const sidebar = document.getElementById('appSidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            sidebar.classList.remove('sidebar-open');
-            if (overlay) overlay.classList.remove('overlay-visible');
-        }
-
-        function toggleSubnav(id) {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.classList.toggle('subnav-open');
-        }
-
-        function openSubnav(id) {
-            const el = document.getElementById(id);
-            if (el) el.classList.add('subnav-open');
-        }
-
-        function navToContactType(type) {
-            const sel = document.getElementById('contactTypeFilter');
-            if (sel) { sel.value = type; }
-            openSubnav('subnavContacts');
-            showView('contacts');
-            // Subnav-Item hervorheben
-            document.querySelectorAll('[data-subnav-contacts]').forEach(b => {
-                b.classList.toggle('nav-active', b.dataset.subnavContacts === type);
-            });
-            if (document.body.classList.contains('sidebar-unpinned')) closeSidebar();
-        }
-
-        function navToTasksMember(member) {
-            const sel = document.getElementById('tasksMemberFilter');
-            if (sel) { sel.value = member; }
-            openSubnav('subnavTasks');
-            showView('tasks');
-            document.querySelectorAll('[data-subnav-tasks]').forEach(b => {
-                b.classList.toggle('nav-active', b.dataset.subnavTasks === member);
-            });
-            if (document.body.classList.contains('sidebar-unpinned')) closeSidebar();
-        }
-
-        function navToTool(tool) {
-            openSubnav('subnavTools');
-            showView('tools');
-            showTool(tool);
-            document.querySelectorAll('[data-subnav-tool]').forEach(b => {
-                b.classList.toggle('nav-active', b.dataset.subnavTool === tool);
-            });
-            if (document.body.classList.contains('sidebar-unpinned')) closeSidebar();
-        }
-
-        window.togglePin = togglePin;
-        window.toggleSidebar = toggleSidebar;
-        window.closeSidebar = closeSidebar;
-        window.toggleSubnav = toggleSubnav;
-        window.openSubnav = openSubnav;
-        window.navToContactType = navToContactType;
-        window.navToTasksMember = navToTasksMember;
-        window.navToTool = navToTool;
+        // Sidebar-Funktionen sind global (außerhalb initApp) definiert — siehe weiter unten im Script.
 
         function goBack() {
             if (_navHistory.length < 2) return;
