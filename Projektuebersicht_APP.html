@@ -16,25 +16,199 @@
             background: #f5f5f5;
             color: #333;
             line-height: 1.6;
+            min-width: 900px;
         }
         
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
+        /* ===== LAYOUT: SIDEBAR + MAIN ===== */
+        #appLayout {
+            display: flex;
+            min-height: calc(100vh - 0px);
+            min-width: 900px;
+        }
+
+        /* Sidebar */
+        #appSidebar {
+            width: 220px;
+            min-width: 220px;
+            background: #fff;
+            border-right: 2px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            transition: transform 0.25s ease, width 0.25s ease;
+            z-index: 100;
+        }
+
+        /* Unpinned: overlay drawer */
+        body.sidebar-unpinned #appSidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            transform: translateX(-100%);
+            box-shadow: 4px 0 20px rgba(0,0,0,0.18);
+        }
+        body.sidebar-unpinned #appSidebar.sidebar-open {
+            transform: translateX(0);
+        }
+        body.sidebar-unpinned #sidebarOverlay {
+            display: block;
+        }
+        #sidebarOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 99;
+        }
+
+        /* Main content */
+        #appMain {
+            flex: 1;
+            min-width: 0;
             padding: 20px;
+        }
+
+        /* Sidebar header */
+        .sidebar-header {
+            background: #366092;
+            color: white;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .sidebar-pin-btn {
+            margin-left: auto;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            border-radius: 4px;
+            padding: 3px 7px;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+        }
+        .sidebar-pin-btn:hover { background: rgba(255,255,255,0.35); }
+
+        /* Hamburger toggle (shown when unpinned) */
+        #sidebarToggle {
+            display: none;
+            background: #366092;
+            border: none;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            margin-right: 10px;
+        }
+        body.sidebar-unpinned #sidebarToggle {
+            display: inline-block;
+        }
+
+        /* Back button in sidebar */
+        #sidebarBackBtn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #f0f0f0;
+            border: none;
+            color: #333;
+            padding: 8px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            border-bottom: 1px solid #e0e0e0;
+            width: 100%;
+            text-align: left;
+            flex-shrink: 0;
+        }
+        #sidebarBackBtn:hover { background: #e0e0e0; }
+
+        /* Nav items */
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            color: #333;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            border-radius: 0;
+            transition: background 0.1s;
+            font-weight: 500;
+        }
+        .nav-item:hover { background: #f0f4f8; }
+        .nav-item.nav-active {
+            background: #e8f0fb;
+            color: #1a3a6b;
+            font-weight: 700;
+            border-left: 3px solid #366092;
+        }
+        .nav-item.nav-active-parent {
+            color: #366092;
+            font-weight: 600;
+        }
+
+        /* Subnav */
+        .subnav {
+            display: none;
+            background: #f8fafc;
+            border-left: 3px solid #d0dce9;
+            margin-left: 0;
+        }
+        .subnav.subnav-open { display: block; }
+        .subnav-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px 7px 30px;
+            font-size: 12px;
+            cursor: pointer;
+            color: #555;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            transition: background 0.1s;
+        }
+        .subnav-item:hover { background: #edf2f7; color: #1a3a6b; }
+        .subnav-item.nav-active {
+            background: #dce8f7;
+            color: #1a3a6b;
+            font-weight: 600;
+        }
+
+        /* Legacy: container is now just inner wrapper */
+        .container {
+            /* max-width removed — layout now via #appLayout / #appMain */
         }
         
         header {
             background: #366092;
             color: white;
-            padding: 20px;
-            margin-bottom: 30px;
-            border-radius: 4px;
+            padding: 14px 20px;
         }
-        
+
         header h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
+            font-size: 18px;
+            margin-bottom: 2px;
         }
         
         .backup-info {
@@ -76,33 +250,28 @@
             margin: 0 5px;
         }
             
-        .view-selector {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 25px;
-            border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 15px;
-            align-items: center;
+        /* Legacy .view-selector hidden — replaced by sidebar */
+        .view-selector { display: none; }
+
+        /* Tablet: Sidebar immer als Overlay, Pin ausgeblendet */
+        @media (max-width: 1023px) {
+            body { min-width: 0; }
+            #appSidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: 100vh;
+                transform: translateX(-100%);
+                box-shadow: 4px 0 20px rgba(0,0,0,0.18);
+            }
+            #appSidebar.sidebar-open {
+                transform: translateX(0);
+            }
+            #sidebarOverlay { display: none; }
+            body.sidebar-open-tablet #sidebarOverlay { display: block; }
+            #sidebarToggle { display: inline-block !important; }
+            .sidebar-pin-btn { display: none; }
         }
-        .view-selector button.nav-active {
-            background: #b3121a;
-            color: #fff;
-            font-weight: 700;
-            box-shadow: 0 2px 6px rgba(179,18,26,0.25);
-        }
-        #backBtn {
-            margin-left: auto;
-            background: #f0f0f0;
-            color: #333;
-            border: 1px solid #ccc;
-            font-size: 13px;
-            padding: 6px 14px;
-            border-radius: 5px;
-            cursor: pointer;
-            display: none;
-        }
-        #backBtn:hover { background: #e0e0e0; }
         
         .view {
             display: none;
@@ -1424,34 +1593,88 @@
 
     <!-- MAIN APP (wird nach Login eingeblendet) -->
     <div id="mainApp" style="display: none;">
-    <div class="container">
-        <header>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h1>Dodek Hub</h1>
-                    <p>Projektsteuerung · Einkauf · Aufgaben · Lager <span id="headerVersion" style="font-size:11px; color:#aaa; margin-left:8px;"></span></p>
-                </div>
-                <div style="text-align: right; font-size: 13px;">
-                    <div id="userDisplayName" style="margin-bottom: 6px; font-weight: 600;"></div>
-                    <button onclick="logoutMicrosoft()" class="btn-secondary btn-small">Abmelden</button>
-                </div>
+
+    <!-- Sidebar Overlay (bei unpinned) -->
+    <div id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+    <!-- App-Header (full width) -->
+    <header style="background:#366092;color:white;padding:14px 20px;display:flex;align-items:center;gap:12px;">
+        <button id="sidebarToggle" onclick="toggleSidebar()" title="Navigation ein-/ausblenden">☰</button>
+        <div style="flex:1;">
+            <div style="font-size:18px;font-weight:700;">Dodek Hub</div>
+            <div style="font-size:11px;color:#aad4f5;">Projektsteuerung · Einkauf · Aufgaben · Lager <span id="headerVersion"></span></div>
+        </div>
+        <div style="text-align:right;font-size:13px;">
+            <div id="userDisplayName" style="margin-bottom:4px;font-weight:600;"></div>
+            <button onclick="logoutMicrosoft()" class="btn-secondary btn-small">Abmelden</button>
+        </div>
+    </header>
+
+    <div id="appLayout">
+        <!-- SIDEBAR -->
+        <nav id="appSidebar">
+            <div class="sidebar-header">
+                <span>Navigation</span>
+                <button class="sidebar-pin-btn" id="pinBtn" onclick="togglePin()" title="Sidebar anheften/lösen">📌</button>
             </div>
-        </header>
-        
+
+            <button id="sidebarBackBtn" onclick="goBack()">⬅️ Zurück</button>
+
+            <div class="sidebar-nav">
+                <button class="nav-item" data-view="dashboard" onclick="showView('dashboard')">📊 Projektübersicht</button>
+
+                <button class="nav-item" data-view="statistics" onclick="showView('statistics')">📈 Statistiken</button>
+
+                <!-- Aufgaben mit Subnav nach Mitglied -->
+                <button class="nav-item" data-view="tasks" onclick="toggleSubnav('subnavTasks'); showView('tasks')">📋 Aufgaben</button>
+                <div class="subnav" id="subnavTasks">
+                    <button class="subnav-item" data-subnav-tasks="all" onclick="navToTasksMember('all')">👥 Alle</button>
+                    <button class="subnav-item" data-subnav-tasks="franek" onclick="navToTasksMember('franek')">Franek</button>
+                    <button class="subnav-item" data-subnav-tasks="hagen" onclick="navToTasksMember('hagen')">Hagen</button>
+                    <button class="subnav-item" data-subnav-tasks="harry" onclick="navToTasksMember('harry')">Harry</button>
+                    <button class="subnav-item" data-subnav-tasks="nicole" onclick="navToTasksMember('nicole')">Nicole</button>
+                </div>
+
+                <button class="nav-item" data-view="stock" onclick="showView('stock')">📦 Lager</button>
+
+                <button class="nav-item" data-view="quotes" onclick="showView('quotes')">🧮 Kalkulation</button>
+
+                <!-- Kontakte mit Subnav Kunden/Lieferanten -->
+                <button class="nav-item" data-view="contacts" onclick="toggleSubnav('subnavContacts'); showView('contacts')">👥 Kontakte</button>
+                <div class="subnav" id="subnavContacts">
+                    <button class="subnav-item" data-subnav-contacts="all" onclick="navToContactType('all')">📋 Alle Kontakte</button>
+                    <button class="subnav-item" data-subnav-contacts="Kunde" onclick="navToContactType('Kunde')">🛒 Kunden</button>
+                    <button class="subnav-item" data-subnav-contacts="Lieferant" onclick="navToContactType('Lieferant')">🏭 Lieferanten</button>
+                </div>
+
+                <button class="nav-item" data-view="articles" onclick="showView('articles')">🗂️ Artikelstamm</button>
+
+                <!-- Tools mit Subnav -->
+                <button class="nav-item" data-view="tools" onclick="toggleSubnav('subnavTools'); showView('tools')">🛠️ Tools</button>
+                <div class="subnav" id="subnavTools">
+                    <button class="subnav-item" data-subnav-tool="spedition" onclick="navToTool('spedition')">🚚 Speditionsaufträge</button>
+                    <button class="subnav-item" data-subnav-tool="bestellung" onclick="navToTool('bestellung')">🔧 Filter / Ventilatoren</button>
+                </div>
+
+                <button class="nav-item" id="editorButton" data-view="editor" onclick="showView('editor')" style="display:none;">📝 Projekt bearbeiten</button>
+                <button class="nav-item" id="settingsBtn" data-view="settings" onclick="showView('settings')" style="display:none;">⚙️ Einstellungen</button>
+            </div>
+        </nav>
+
+        <!-- MAIN CONTENT -->
+        <div id="appMain">
+    <div class="container">
+
         <div id="message" class="message"></div>
-        
+
+        <!-- Legacy view-selector (hidden via CSS) -->
         <div class="view-selector">
             <button onclick="showView('dashboard')" data-view="dashboard">📊 Projektübersicht</button>
             <button onclick="showView('statistics')" data-view="statistics">📈 Statistiken</button>
             <button onclick="showView('tasks')" data-view="tasks">📋 Aufgaben</button>
             <button onclick="showView('stock')" data-view="stock">📦 Lager</button>
             <button onclick="showView('quotes')" data-view="quotes">🧮 Kalkulation</button>
-            <button onclick="showView('editor')" data-view="editor" id="editorButton" style="display: none;">📝 Projekt bearbeiten</button>
-            <button onclick="showView('contacts')" data-view="contacts">👥 Kontakte</button>
-            <button onclick="showView('articles')" data-view="articles">📦 Artikelstamm</button>
-            <button onclick="showView('tools')" data-view="tools">🛠️ Tools</button>
-            <button onclick="showView('settings')" data-view="settings" id="settingsBtn" style="display:none;">⚙️ Einstellungen</button>
-            <button id="backBtn" onclick="goBack()">⬅️ Zurück</button>
+            <button id="backBtn" onclick="goBack()" style="display:none;">⬅️ Zurück</button>
         </div>
         
         <!-- DASHBOARD VIEW -->
@@ -2535,8 +2758,10 @@
                 </div>
             </div>
         </div>
-    </div>
-    
+    </div><!-- /.container -->
+    </div><!-- /#appMain -->
+    </div><!-- /#appLayout -->
+
     <!-- BOM IMPORT DIALOG -->
     <div id="bomImportModal" class="modal">
         <div class="modal-content" style="max-width: 600px;">
@@ -2728,7 +2953,7 @@ function applyPermissions() {
 
             // Settings-Tab nur für Admin
             const settingsBtn = document.getElementById('settingsBtn');
-            if (settingsBtn) settingsBtn.style.display = isAdmin ? 'inline-block' : 'none';
+            if (settingsBtn) settingsBtn.style.display = isAdmin ? 'flex' : 'none';
 
             // Backup-Verwaltung nur für Admin sichtbar
             const backupSection = document.querySelector('.backup-info');
@@ -3783,7 +4008,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.43';
+        const APP_VERSION = 'v1.6.44';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -4738,6 +4963,97 @@ function applyPermissions() {
 
         let _navHistory = [];
 
+        // ========== SIDEBAR ==========
+
+        (function initSidebar() {
+            const pinned = localStorage.getItem('sidebarPinned') !== 'false'; // default: pinned
+            applySidebarPin(pinned);
+        })();
+
+        function applySidebarPin(pinned) {
+            const pinBtn = document.getElementById('pinBtn');
+            if (pinned) {
+                document.body.classList.remove('sidebar-unpinned');
+                if (pinBtn) pinBtn.textContent = '📌';
+                if (pinBtn) pinBtn.title = 'Sidebar lösen';
+            } else {
+                document.body.classList.add('sidebar-unpinned');
+                if (pinBtn) pinBtn.textContent = '☰';
+                if (pinBtn) pinBtn.title = 'Sidebar anheften';
+            }
+        }
+
+        function togglePin() {
+            const wasPinned = !document.body.classList.contains('sidebar-unpinned');
+            const nowPinned = !wasPinned;
+            localStorage.setItem('sidebarPinned', nowPinned ? 'true' : 'false');
+            applySidebarPin(nowPinned);
+            if (!nowPinned) closeSidebar();
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('appSidebar');
+            sidebar.classList.toggle('sidebar-open');
+        }
+
+        function closeSidebar() {
+            const sidebar = document.getElementById('appSidebar');
+            sidebar.classList.remove('sidebar-open');
+        }
+
+        function toggleSubnav(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.toggle('subnav-open');
+        }
+
+        function openSubnav(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('subnav-open');
+        }
+
+        function navToContactType(type) {
+            const sel = document.getElementById('contactTypeFilter');
+            if (sel) { sel.value = type; }
+            openSubnav('subnavContacts');
+            showView('contacts');
+            // Subnav-Item hervorheben
+            document.querySelectorAll('[data-subnav-contacts]').forEach(b => {
+                b.classList.toggle('nav-active', b.dataset.subnavContacts === type);
+            });
+            if (document.body.classList.contains('sidebar-unpinned')) closeSidebar();
+        }
+
+        function navToTasksMember(member) {
+            const sel = document.getElementById('tasksMemberFilter');
+            if (sel) { sel.value = member; }
+            openSubnav('subnavTasks');
+            showView('tasks');
+            document.querySelectorAll('[data-subnav-tasks]').forEach(b => {
+                b.classList.toggle('nav-active', b.dataset.subnavTasks === member);
+            });
+            if (document.body.classList.contains('sidebar-unpinned')) closeSidebar();
+        }
+
+        function navToTool(tool) {
+            openSubnav('subnavTools');
+            showView('tools');
+            showTool(tool);
+            document.querySelectorAll('[data-subnav-tool]').forEach(b => {
+                b.classList.toggle('nav-active', b.dataset.subnavTool === tool);
+            });
+            if (document.body.classList.contains('sidebar-unpinned')) closeSidebar();
+        }
+
+        window.togglePin = togglePin;
+        window.toggleSidebar = toggleSidebar;
+        window.closeSidebar = closeSidebar;
+        window.toggleSubnav = toggleSubnav;
+        window.openSubnav = openSubnav;
+        window.navToContactType = navToContactType;
+        window.navToTasksMember = navToTasksMember;
+        window.navToTool = navToTool;
+
         function goBack() {
             if (_navHistory.length < 2) return;
             _navHistory.pop(); // aktuelle Seite entfernen
@@ -4755,11 +5071,23 @@ function applyPermissions() {
             }
             _navHistory.push(viewName);
 
-            // Zurück-Button ein-/ausblenden
+            // Zurück-Button (Sidebar: immer sichtbar, aber disabled wenn keine History)
+            const sidebarBack = document.getElementById('sidebarBackBtn');
+            if (sidebarBack) {
+                sidebarBack.disabled = _navHistory.length < 2;
+                sidebarBack.style.opacity = _navHistory.length < 2 ? '0.4' : '1';
+            }
+            // Legacy backBtn (hidden via CSS)
             const backBtn = document.getElementById('backBtn');
-            if (backBtn) backBtn.style.display = _navHistory.length > 1 ? 'inline-block' : 'none';
+            if (backBtn) backBtn.style.display = 'none';
 
-            // Aktiven Menüpunkt hervorheben
+            // Aktiven Menüpunkt hervorheben (Sidebar + legacy view-selector)
+            document.querySelectorAll('.nav-item[data-view]').forEach(btn => {
+                btn.classList.toggle('nav-active', btn.dataset.view === viewName);
+                btn.classList.toggle('nav-active-parent',
+                    btn.dataset.view === viewName &&
+                    document.querySelector(`[data-subnav-tasks], [data-subnav-contacts], [data-subnav-tool]`) !== null);
+            });
             document.querySelectorAll('.view-selector button[data-view]').forEach(btn => {
                 btn.classList.toggle('nav-active', btn.dataset.view === viewName);
             });
@@ -4780,7 +5108,7 @@ function applyPermissions() {
                 requestAnimationFrame(() => window.scrollTo({ top: dashboardScrollY, behavior: 'instant' }));
             } else if (viewName === 'editor') {
                 document.getElementById('editorView').classList.add('active');
-                document.getElementById('editorButton').style.display = 'inline-block';
+                document.getElementById('editorButton').style.display = 'flex';
                 applyPermissions();
                 updateArticleSelects();
                 updateCustomerSuggestions();
@@ -4796,6 +5124,7 @@ function applyPermissions() {
             } else if (viewName === 'tasks') {
                 document.getElementById('tasksView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
+                openSubnav('subnavTasks');
                 renderTasks();
             } else if (viewName === 'stock') {
                 document.getElementById('stockView').classList.add('active');
@@ -4810,6 +5139,7 @@ function applyPermissions() {
             } else if (viewName === 'contacts') {
                 document.getElementById('contactsView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
+                openSubnav('subnavContacts');
                 renderContacts();
             } else if (viewName === 'settings') {
                 document.getElementById('settingsView').classList.add('active');
@@ -4818,6 +5148,7 @@ function applyPermissions() {
             } else if (viewName === 'tools') {
                 document.getElementById('toolsView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
+                openSubnav('subnavTools');
                 showTool('spedition');
                 // Kurze Verzögerung damit iframes geladen sind
                 setTimeout(() => {
