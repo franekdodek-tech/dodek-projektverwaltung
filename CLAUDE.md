@@ -31,7 +31,7 @@ Lies diese Datei vollständig, bevor du irgendeine Änderung machst.
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.57 |
+| `Projektuebersicht_APP.html` | v1.6.58 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -126,6 +126,16 @@ Claude-Session: https://claude.ai/code/session_0112q721THq4Xa5MtZn82Y5R
 - **Kacheln** (`#kpiTiles`, Flex mit Umbruch): VK Umsatz lfd. Jahr (mit Abgerechnet/Offen über `hasInvoice`), Deckungsbeitrag nur nachkalkulierter Projekte (`hasPostCalc`; grün nur bei DB > 0, sonst rot), Aktive Projekte (`!hasInvoice`).
 - **Meine offenen Aufgaben** (`#kpiMyTasks`): Member-ID = `email.split('.')[0]` aus `msalInstance.getAllAccounts()[0].username`, Abgleich mit `TEAM_MEMBERS`. **Bewusste Entscheidung des Entwicklers: kein Mapping-Objekt einführen, auch nicht bei zukünftigen Änderungen.** Ohne Treffer in `TEAM_MEMBERS` wird die Zone ausgeblendet. Angezeigt werden `project.tasks` und `project.purchasePositions` mit `assignedTo === Member-ID` und Status `open`.
 - **Aktionsliste** (`#kpiActions`): ohne Nachkalkulation (`!hasPostCalc`), geliefert aber nicht abgerechnet, ohne AB (`!hasAB && !hasInvoice`), offene Aufgaben je Mitglied (`project.tasks` mit Status ≠ `done`), Liefertermine der nächsten 14 Tage (ohne `hasDelivered`). Projektnummern öffnen das Projekt per `openProject()`.
+
+### Kalkulationsvarianten — `quotesView` (ab v1.6.58)
+- Kalkulationen („Vorkalkulation“) sind **nicht** Teil der Projekte, sondern eigene Einträge der SharePoint-Liste `DodekVorkalkulation` (`guidQuotes`, Felder `QuoteTitle`, `Customer`, `QuoteData`). Die Varianten liegen im bestehenden JSON-Feld `QuoteData`; es gibt kein neues Feld und keine neue Liste.
+- **Speicherformat:** `{ id, title, customer, date, activeVariant, variants: [{ id, label, createdAt, positions, factorReseller, factorEndcustomer, discount }] }`. Positionen, beide Faktoren und Projektrabatt gelten je Variante; Bezeichnung, Kunde und Datum gemeinsam.
+- **Arbeitskopie:** `window.currentQuote` enthält zusätzlich die Felder `positions`, `factorReseller`, `factorEndcustomer`, `discount` der aktiven Variante. Alle bestehenden Positions-Funktionen arbeiten weiter auf `currentQuote.positions`. Beim Speichern entfernt `buildQuoteForStorage()` diese Arbeitsfelder.
+- **Migration:** `migrateQuoteToVariants()` packt Altdaten (flaches Objekt) im Speicher als `v1` („V1 – Erstkalkulation“) ein; `createdAt` von v1 = Kalkulationsdatum (Annahme). Das passiert in `loadQuotesFromSharePoint()` und in `openQuoteEditor()`; zurückgeschrieben wird erst beim nächsten Klick auf „Speichern“.
+- **Variantenwechsel** (`switchQuoteVariant()`) speichert zuerst die gesamte Kalkulation nach SharePoint (`saveQuote({ silent: true, activateVariant: id })`, die neue Variante wird als `activeVariant` mitgeschrieben) und lädt dann die gewählte Variante. Schlägt das Speichern fehl (Netzwerk, fehlende Bezeichnung), bleibt die Ansicht unverändert und die Fehlermeldung erscheint. `saveQuote()` liefert `true`/`false` zurück.
+- **Löschen** (`deleteQuoteVariant()`): das × erscheint nur bei mindestens zwei Varianten und nur auf nicht aktiven Tabs; die aktive Variante bleibt aktiv. Gelöscht wird nur im Speicher, geschrieben wird beim nächsten Speichern oder Variantenwechsel.
+- **„+ Variante“** kopiert im Speicher und macht die Kopie aktiv; es speichert nicht.
+- `renderQuoteList()` zeigt EK/Rabatt/VK der aktiven Variante (`quoteActiveVariant()`).
 
 ---
 

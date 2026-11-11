@@ -10,7 +10,7 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.57 |
+| `Projektuebersicht_APP.html` | v1.6.58 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -42,6 +42,7 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 - Faktoren: Wiederverkauf (WV) und Endkunde (End)
 - EP und GP pro Position, Projektrabatt
 - Position kopieren, als Artikel speichern
+- Kalkulationsvarianten: Tab-Leiste mit beliebig vielen Varianten je Kalkulation (Positionen, Faktoren, Rabatt), Variante kopieren, umbenennen, löschen; Wechsel speichert automatisch
 - PDF-Druck mit Rabatt und EP/GP
 
 ### 📋 Aufgabenliste (projektübergreifend)

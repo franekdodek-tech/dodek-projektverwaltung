@@ -349,6 +349,50 @@
         }
         .kpi-link:hover { background: #e1e9f2; }
 
+        /* Kalkulationsvarianten (Tab-Leiste im quotesView) */
+        .qv-bar {
+            display: flex;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 4px;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 12px;
+        }
+        .qv-tab {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            color: #333;
+            background: #f5f7fa;
+            border: 1px solid #e0e0e0;
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            margin-bottom: -2px;
+        }
+        .qv-tab:hover { background: #edf2f7; }
+        .qv-tab.qv-active {
+            background: #e8f0fb;
+            color: #1a3a6b;
+            font-weight: 700;
+            border-color: #366092;
+            border-bottom: 2px solid #e8f0fb;
+        }
+        .qv-edit { font-size: 13px; padding: 2px 6px; min-width: 140px; }
+        .qv-del {
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: #888;
+            font-size: 15px;
+            line-height: 1;
+            padding: 0 2px;
+        }
+        .qv-del:hover { color: #c62828; }
+        .qv-add { margin-left: auto; margin-bottom: 4px; }
+
         /* Dashboard */
         .dashboard-actions {
             display: flex;
@@ -2094,6 +2138,9 @@
                         </div>
                     </div>
 
+                    <!-- Varianten-Leiste (wird von renderQuoteVariantBar() befüllt) -->
+                    <div id="quoteVariantBar" class="qv-bar"></div>
+
                     <div class="positions-table-wrapper">
                         <table>
                             <thead>
@@ -3542,6 +3589,7 @@ function applyPermissions() {
                     try {
                         if (item.QuoteData) {
                             const quote = JSON.parse(item.QuoteData);
+                            migrateQuoteToVariants(quote); // Altdaten nur im Speicher in V1 einpacken
                             quote._spId = item.Id;
                             window.quoteDatabase[quote.id] = quote;
                         }
@@ -4236,7 +4284,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.57';
+        const APP_VERSION = 'v1.6.58';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -7864,8 +7912,174 @@ function applyPermissions() {
         window.getQuoteFactors           = getQuoteFactors;
         window.recalcQuotePosition       = recalcQuotePosition;
 
+        // ========== KALKULATIONSVARIANTEN ==========
+        // Gespeichert (QuoteData): Kopfdaten + activeVariant + variants[{id,label,createdAt,positions,factorReseller,factorEndcustomer,discount}]
+        // window.currentQuote hält zusätzlich die Arbeitsfelder positions/factorReseller/factorEndcustomer/discount der aktiven Variante,
+        // damit alle bestehenden Positions-Funktionen unverändert auf currentQuote.positions arbeiten.
+
+        // Altdaten (flache Struktur) → V1. Nur im Speicher; geschrieben wird erst beim nächsten Speichern.
+        function migrateQuoteToVariants(q) {
+            if (Array.isArray(q.variants) && q.variants.length > 0) {
+                if (!q.variants.some(v => v.id === q.activeVariant)) q.activeVariant = q.variants[0].id;
+                return q;
+            }
+            const d = q.date ? new Date(q.date + 'T00:00:00') : null;
+            q.variants = [{
+                id: 'v1',
+                label: 'V1 – Erstkalkulation',
+                createdAt: (d && !isNaN(d) ? d : new Date()).toISOString(),
+                positions: q.positions || [],
+                factorReseller: q.factorReseller || 1.30,
+                factorEndcustomer: q.factorEndcustomer || 1.60,
+                discount: q.discount || 0
+            }];
+            q.activeVariant = 'v1';
+            delete q.positions;
+            delete q.factorReseller;
+            delete q.factorEndcustomer;
+            delete q.discount;
+            return q;
+        }
+
+        // Aktive Variante; fällt bei flacher Altstruktur auf das Objekt selbst zurück
+        function quoteActiveVariant(q) {
+            if (!q || !Array.isArray(q.variants) || q.variants.length === 0) return q;
+            return q.variants.find(v => v.id === q.activeVariant) || q.variants[0];
+        }
+
+        // Aktive Variante → Arbeitsfelder von currentQuote
+        function loadQuoteVariantIntoEditor(q) {
+            const v = quoteActiveVariant(q);
+            q.activeVariant = v.id;
+            q.positions = v.positions = v.positions || [];
+            q.factorReseller = v.factorReseller || 1.30;
+            q.factorEndcustomer = v.factorEndcustomer || 1.60;
+            q.discount = v.discount || 0;
+        }
+
+        // Aktueller Editorstand (Positionen + Faktoren/Rabatt aus den Feldern) → aktive Variante (nur im Speicher)
+        function syncQuoteEditorToVariant(q) {
+            const v = quoteActiveVariant(q);
+            const f = getQuoteFactors();
+            v.positions = q.positions || [];
+            v.factorReseller = f.reseller;
+            v.factorEndcustomer = f.endcustomer;
+            v.discount = f.discount;
+        }
+
+        // Speicherform: ohne Arbeitsfelder, tiefe Kopie
+        function buildQuoteForStorage(q) {
+            const { positions, factorReseller, factorEndcustomer, discount, ...rest } = q;
+            return JSON.parse(JSON.stringify(rest));
+        }
+
+        function applyQuoteVariantToEditor(q) {
+            document.getElementById('quoteFactorReseller').value    = q.factorReseller;
+            document.getElementById('quoteFactorEndcustomer').value = q.factorEndcustomer;
+            document.getElementById('quoteDiscount').value          = q.discount;
+            renderQuoteVariantBar();
+            renderQuotePositions();
+        }
+
+        function renderQuoteVariantBar() {
+            const bar = document.getElementById('quoteVariantBar');
+            const q = window.currentQuote;
+            if (!bar || !q || !Array.isArray(q.variants)) return;
+            const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const many = q.variants.length > 1;
+            bar.innerHTML = q.variants.map(v => `
+                <div class="qv-tab ${v.id === q.activeVariant ? 'qv-active' : ''}" data-vid="${esc(v.id)}" onclick="switchQuoteVariant(this.dataset.vid)">
+                    <span class="qv-label" ondblclick="startQuoteVariantRename(this)" title="Doppelklick: umbenennen">${esc(v.label)}</span>
+                    ${many && v.id !== q.activeVariant ? `<button class="qv-del" data-vid="${esc(v.id)}" onclick="event.stopPropagation(); deleteQuoteVariant(this.dataset.vid)" title="Variante löschen">×</button>` : ''}
+                </div>`).join('') +
+                `<button class="btn-secondary btn-small qv-add" onclick="addQuoteVariant()">+ Variante</button>`;
+        }
+
+        // Variantenwechsel: aktuelle Kalkulation (inkl. aktiver Variante) zuerst nach SharePoint speichern, dann die gewählte laden.
+        // Schlägt das Speichern fehl (z. B. keine Bezeichnung, Netzwerkfehler), bleibt die Ansicht unverändert.
+        let quoteVariantBusy = false;
+        async function switchQuoteVariant(id) {
+            const q = window.currentQuote;
+            if (!q || quoteVariantBusy || id === q.activeVariant || !q.variants.some(v => v.id === id)) return;
+            quoteVariantBusy = true;
+            try {
+                const ok = await saveQuote({ silent: true, activateVariant: id });
+                if (!ok || window.currentQuote !== q) return;
+                loadQuoteVariantIntoEditor(q);
+                applyQuoteVariantToEditor(q);
+            } finally {
+                quoteVariantBusy = false;
+            }
+        }
+
+        function addQuoteVariant() {
+            const q = window.currentQuote;
+            if (!q) return;
+            syncQuoteEditorToVariant(q);
+            const nums = q.variants.map(v => parseInt(String(v.id).replace(/^v/, ''), 10)).filter(n => !isNaN(n));
+            const n = (nums.length ? Math.max(...nums) : 0) + 1;
+            const copy = JSON.parse(JSON.stringify(quoteActiveVariant(q))); // Deep Copy der aktiven Variante
+            copy.id = `v${n}`;
+            copy.label = `V${n} – Kopie`;
+            copy.createdAt = new Date().toISOString();
+            q.variants.push(copy);
+            q.activeVariant = copy.id;
+            loadQuoteVariantIntoEditor(q);
+            applyQuoteVariantToEditor(q);
+        }
+
+        // Nur inaktive Varianten sind löschbar und nur, solange mindestens zwei existieren; die aktive Variante bleibt aktiv.
+        function deleteQuoteVariant(id) {
+            const q = window.currentQuote;
+            if (!q || q.variants.length < 2 || id === q.activeVariant) return;
+            const v = q.variants.find(x => x.id === id);
+            if (!v) return;
+            if (!confirm(`Variante "${v.label}" löschen?`)) return;
+            q.variants = q.variants.filter(x => x.id !== id);
+            renderQuoteVariantBar();
+        }
+
+        // Inline-Umbenennen per Doppelklick; Enter oder Klick außerhalb bestätigt, Escape verwirft
+        function startQuoteVariantRename(span) {
+            const q = window.currentQuote;
+            const v = q && q.variants.find(x => x.id === span.parentElement.dataset.vid);
+            if (!v) return;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'qv-edit';
+            input.value = v.label;
+            let done = false;
+            const finish = save => {
+                if (done) return;
+                done = true;
+                const val = input.value.trim();
+                if (save && val) v.label = val;
+                input.remove();
+                span.textContent = v.label;
+                span.style.display = '';
+            };
+            input.onclick = e => e.stopPropagation();
+            input.ondblclick = e => e.stopPropagation();
+            input.onkeydown = e => {
+                if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+                else if (e.key === 'Escape') { finish(false); }
+            };
+            input.onblur = () => finish(true);
+            span.style.display = 'none';
+            span.after(input);
+            input.focus();
+            input.select();
+        }
+
+        window.switchQuoteVariant      = switchQuoteVariant;
+        window.addQuoteVariant         = addQuoteVariant;
+        window.deleteQuoteVariant      = deleteQuoteVariant;
+        window.startQuoteVariantRename = startQuoteVariantRename;
+
         function openQuoteEditor() {
             const q = window.currentQuote;
+            migrateQuoteToVariants(q);       // neue Kalkulation bzw. Altdaten → Varianten
+            loadQuoteVariantIntoEditor(q);   // zuletzt aktive Variante laden
             document.getElementById('quoteTitle').value = q.title || '';
             document.getElementById('quoteCustomer').value = q.customer || '';
             document.getElementById('quoteDate').value = q.date || new Date().toISOString().split('T')[0];
@@ -7875,6 +8089,7 @@ function applyPermissions() {
             document.getElementById('quoteListSection').style.display = 'none';
             document.getElementById('quoteEditorSection').style.display = 'block';
             updateQuoteArticleSelect();
+            renderQuoteVariantBar();
             renderQuotePositions();
         }
 
@@ -8238,11 +8453,12 @@ function applyPermissions() {
             quotes.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
             tbody.innerHTML = quotes.map(q => {
-                const r = q.factorReseller || 1.30;
-                const e = q.factorEndcustomer || 1.60;
-                const discount = q.discount || 0;
+                const av = quoteActiveVariant(q); // Werte der aktiven Variante
+                const r = av.factorReseller || 1.30;
+                const e = av.factorEndcustomer || 1.60;
+                const discount = av.discount || 0;
                 const discountFactor = 1 - (discount / 100);
-                const totalEK = (q.positions || []).reduce((s, p) => s + (p.totalEK || 0), 0);
+                const totalEK = (av.positions || []).reduce((s, p) => s + (p.totalEK || 0), 0);
                 const vkR = totalEK * r * discountFactor;
                 const vkE = totalEK * e * discountFactor;
                 return `
@@ -8269,9 +8485,11 @@ function applyPermissions() {
             openQuoteEditor();
         }
 
-        async function saveQuote() {
+        // opts.silent: keine Erfolgsmeldung; opts.activateVariant: Varianten-ID, die als aktive Variante mitgespeichert wird
+        // (Variantenwechsel). Rückgabe: true bei erfolgreichem Speichern, sonst false.
+        async function saveQuote(opts = {}) {
             const q = window.currentQuote;
-            if (!q) return;
+            if (!q) return false;
 
             q.title             = document.getElementById('quoteTitle').value.trim();
             q.customer          = document.getElementById('quoteCustomer').value.trim();
@@ -8280,22 +8498,31 @@ function applyPermissions() {
             q.factorEndcustomer = parseFloat(document.getElementById('quoteFactorEndcustomer').value) || 1.60;
             q.discount          = parseFloat(document.getElementById('quoteDiscount').value) || 0;
 
-            if (!q.title) { window.showMessage('Bezeichnung erforderlich', 'error'); return; }
+            if (!q.title) { window.showMessage('Bezeichnung erforderlich', 'error'); return false; }
 
             // _spId aus bestehender Datenbank übernehmen falls vorhanden
             if (window.quoteDatabase[q.id]?._spId) {
                 q._spId = window.quoteDatabase[q.id]._spId;
             }
 
-            window.quoteDatabase[q.id] = q;
+            // Gesamte Variantenstruktur schreiben (aktive Variante zuvor aus dem Editor übernehmen)
+            const prevActive = q.activeVariant;
+            syncQuoteEditorToVariant(q);
+            if (opts.activateVariant) q.activeVariant = opts.activateVariant;
+            const stored = buildQuoteForStorage(q);
+            window.quoteDatabase[q.id] = stored;
 
             try {
-                await saveQuoteToSharePoint(q);
+                await saveQuoteToSharePoint(stored);
+                q._spId = stored._spId;
                 renderQuoteList();
                 renderQuotePositions();
-                showMessage('Vorkalkulation gespeichert', 'success');
+                if (!opts.silent) showMessage('Vorkalkulation gespeichert', 'success');
+                return true;
             } catch (e) {
+                q.activeVariant = prevActive; // Wechsel nicht durchgeführt
                 showMessage('Fehler beim Speichern: ' + e.message, 'error');
+                return false;
             }
         }
 
