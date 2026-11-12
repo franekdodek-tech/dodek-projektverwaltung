@@ -31,7 +31,7 @@ Lies diese Datei vollständig, bevor du irgendeine Änderung machst.
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.60 |
+| `Projektuebersicht_APP.html` | v1.6.61 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -143,6 +143,7 @@ Claude-Session: https://claude.ai/code/session_0112q721THq4Xa5MtZn82Y5R
 - **Titel-sicher:** Summen (`renderQuoteSummary()`, Summen in `printQuote()`) und Umwandlung in ein Projekt (`convertQuoteToProject()`) ignorieren Titel; bei der Umwandlung werden Titel bisher nicht übernommen (offen). Neue Schleifen über `positions` müssen Titel überspringen.
 - **Druck (`printQuote()`):** Titel als hervorgehobene Zeile (`.pos-title`), nach der letzten Position eines Abschnitts eine Zwischensumme-Zeile (`.pos-subtotal`) mit EK, VK Wiederverkauf und VK Endkunde, analog zur Bildschirmdarstellung. Positionen vor dem ersten Titel und Titel ohne Positionen erhalten keine Zwischensumme.
 - **Variantenvergleich:** `renderQuoteCompareBar()` (Leiste unter den Varianten-Tabs, wird am Ende von `renderQuoteSummary()` und `renderQuoteVariantBar()` aktualisiert) und `openQuoteCompare()` (Modal `#quoteCompareModal`, schließt per ×, Klick außerhalb und Escape). Datenquelle: alle Varianten in `window.currentQuote`, die aktive mit dem Live-Stand des Editors (`quoteCompareVariants()`); Summen aus `quoteVariantTotals()`. Es wird kein SharePoint-Call ausgeführt.
+- **Alternativpositionen (ab v1.6.61):** Feld `included` an Positionen (nur `item`); fehlt es oder ist es nicht `false`, gilt die Position als einbezogen (`isQuoteIncluded(p)`). `included: false` schließt die Position aus EK/VK/DB, Abschnitts-Zwischensummen, Vergleichsleiste/-modal und Druck-Summen aus; sie bleibt sichtbar, editierbar (gelber Zeilenhintergrund) und im Druck mit „Alt."-Label und Gelbton. Checkbox ganz links (`toggleQuotePositionIncluded()`), Zustand je Variante. `convertQuoteToProject()` wurde nicht angepasst (übernimmt weiterhin alle Positionen, auch nicht einbezogene — offen). Pfeil-Buttons ↑/↓ je Position und Titel (`moveQuotePosition()`); an Listenanfang/-ende entfällt der jeweilige Pfeil.
 - Anzeige je Variante: EK, Rabatt, VK Wiederverkauf und VK Endkunde mit DB € und DB %, bei Titeln zusätzlich VK-Zwischensummen je Abschnitt (Zuordnung über den Titeltext). Differenz zur vorherigen Variante absolut und prozentual; Farbe aus Kundensicht: VK höher = rot, VK niedriger = grün, Rabatt höher = grün; EK und DB bewusst neutral grau.
 
 ---

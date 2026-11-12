@@ -393,6 +393,11 @@
         .qv-del:hover { color: #c62828; }
         .qv-add { margin-left: auto; margin-bottom: 4px; }
 
+        /* Nicht einbezogene Positionen (Alternativpositionen): heller Gelbton */
+        .quote-pos-header.quote-pos-excluded td,
+        .quote-bom-child.quote-pos-excluded td,
+        .quote-bom-footer.quote-pos-excluded td { background: #fffde7; }
+
         /* Titel-Positionen (Gewerke) und Zwischensummen */
         .quote-title-row td {
             background: #cfe0f3;
@@ -2195,6 +2200,7 @@
                         <table>
                             <thead>
                                 <tr>
+                                    <th style="width:28px;" title="In Kalkulation einbeziehen">✓</th>
                                     <th>Beschreibung</th>
                                     <th style="min-width:80px;">Stückliste</th>
                                     <th class="number-cell" style="min-width:60px;">Menge</th>
@@ -4345,7 +4351,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.60';
+        const APP_VERSION = 'v1.6.61';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -8143,6 +8149,16 @@ function applyPermissions() {
         // Position mit type === 'title': nur Überschrift (description). totalEK: 0 sichert alle Summenschleifen ab.
         // Alle übrigen Positionen sind implizit type 'item'.
         function isQuoteTitle(p) { return !!p && p.type === 'title'; }
+        // Position fließt in die Kalkulation ein (Feld included; fehlt es, gilt die Position als angehakt)
+        function isQuoteIncluded(p) { return !!p && p.included !== false; }
+
+        function toggleQuotePositionIncluded(index, checked) {
+            const pos = window.currentQuote.positions[index];
+            if (!pos || isQuoteTitle(pos)) return;
+            pos.included = !!checked;
+            renderQuotePositions();
+        }
+        window.toggleQuotePositionIncluded = toggleQuotePositionIncluded;
 
         function addQuoteTitle() {
             const q = window.currentQuote;
@@ -8184,6 +8200,7 @@ function applyPermissions() {
             const sections = [];
             (v.positions || []).forEach(p => {
                 if (isQuoteTitle(p)) { cur = { title: (p.description || '').trim(), vkWV: 0, vkEnd: 0, count: 0 }; sections.push(cur); return; }
+                if (!isQuoteIncluded(p)) return; // nicht einbezogene Positionen zählen nicht mit
                 const pek = p.totalEK || 0;
                 const w = roundToQuarter(pek * rf * df);
                 const e = roundToQuarter(pek * ef * df);
@@ -8441,7 +8458,7 @@ function applyPermissions() {
             const positions = window.currentQuote.positions;
 
             if (positions.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:30px;color:#999;">Noch keine Positionen — oben hinzufügen.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:30px;color:#999;">Noch keine Positionen — oben hinzufügen.</td></tr>`;
                 renderQuoteSummary();
                 return;
             }
@@ -8456,15 +8473,15 @@ function applyPermissions() {
                     secEK = 0; secWV = 0; secEnd = 0;
                     return `
                 <tr class="quote-title-row">
-                    <td colspan="10" class="editable-cell">
+                    <td colspan="11" class="editable-cell">
                         <div style="font-size:10px;color:#666;margin-bottom:2px;">Titel</div>
                         <input type="text" class="quote-title-input" value="${escHtml(pos.description || '')}"
                                placeholder="Titel / Gewerk"
                                onchange="updateQuoteTitle(${index}, this.value)">
                     </td>
                     <td class="action-cell" style="white-space:nowrap;">
-                        <button onclick="moveQuotePosition(${index}, -1)" class="btn-secondary btn-small" title="Titel nach oben" style="font-size:11px;padding:2px 6px;" ${index === 0 ? 'disabled' : ''}>↑</button>
-                        <button onclick="moveQuotePosition(${index}, 1)" class="btn-secondary btn-small" title="Titel nach unten" style="font-size:11px;padding:2px 6px;" ${index === positions.length - 1 ? 'disabled' : ''}>↓</button>
+                        ${index === 0 ? '<span style="display:inline-block;width:26px;"></span>' : `<button onclick="moveQuotePosition(${index}, -1)" class="btn-secondary btn-small" title="Titel nach oben" style="font-size:11px;padding:2px 6px;">↑</button>`}
+                        ${index === positions.length - 1 ? '<span style="display:inline-block;width:26px;"></span>' : `<button onclick="moveQuotePosition(${index}, 1)" class="btn-secondary btn-small" title="Titel nach unten" style="font-size:11px;padding:2px 6px;">↓</button>`}
                         <button onclick="deleteQuotePosition(${index})" class="btn-danger btn-small">Löschen</button>
                     </td>
                 </tr>`;
@@ -8481,14 +8498,16 @@ function applyPermissions() {
                 const vkResellerR    = roundToQuarter(vkReseller);
                 const vkEndcustomerR = roundToQuarter(vkEndcustomer);
                 const vkHandSource   = pos._vkHandSource || 'manual';
+                const included       = isQuoteIncluded(pos);
+                const exclClass      = included ? '' : 'quote-pos-excluded';
 
                 // Zwischensumme des Abschnitts nach der letzten Position vor dem nächsten Titel bzw. am Listenende
                 let subtotalHtml = '';
                 if (secTitle !== null) {
-                    secEK += pos.totalEK; secWV += vkResellerR; secEnd += vkEndcustomerR;
+                    if (isQuoteIncluded(pos)) { secEK += pos.totalEK; secWV += vkResellerR; secEnd += vkEndcustomerR; }
                     if (index === positions.length - 1 || isQuoteTitle(positions[index + 1])) {
                         subtotalHtml = `<tr class="quote-subtotal-row">
-                    <td colspan="4" style="text-align:right;">Zwischensumme ${escHtml(secTitle)}</td>
+                    <td colspan="5" style="text-align:right;">Zwischensumme ${escHtml(secTitle)}</td>
                     <td class="number-cell">${formatCurrency(secEK)}</td>
                     <td></td>
                     <td class="number-cell" style="color:#366092;">${formatCurrency(secWV)}</td>
@@ -8509,7 +8528,8 @@ function applyPermissions() {
                     const bi = comp._origIdx;
                     const supplier = comp.supplier || '';
                     return `
-                <tr class="quote-bom-child">
+                <tr class="quote-bom-child ${exclClass}">
+                    <td></td>
                     <td colspan="2" style="padding-left:8px;vertical-align:middle;">
                         <div style="font-size:10px;color:#999;margin-bottom:2px;">Beschreibung</div>
                         <div style="display:flex;align-items:center;gap:4px;">
@@ -8562,7 +8582,12 @@ function applyPermissions() {
                 }).join('')) : '';
 
                 return `
-                <tr class="quote-pos-header">
+                <tr class="quote-pos-header ${exclClass}">
+                    <td style="text-align:center;vertical-align:middle;">
+                        <input type="checkbox" ${included ? 'checked' : ''}
+                               onchange="toggleQuotePositionIncluded(${index}, this.checked)"
+                               title="In Kalkulation einbeziehen (nicht angehakt = Alternativposition)">
+                    </td>
                     <td class="editable-cell">
                         <div style="font-size:10px;color:#999;margin-bottom:2px;">Beschreibung</div>
                         <textarea class="auto-grow" oninput="autoGrow(this)" onfocus="autoGrow(this)"
@@ -8636,13 +8661,13 @@ function applyPermissions() {
                                    vkHand                          ? 'background:#fff8e1;border-color:#f0b429;color:#b45309;' : ''}">
                     </td>
                     <td class="action-cell" style="white-space:nowrap;">
-                        <button onclick="moveQuotePosition(${index}, -1)" class="btn-secondary btn-small" title="Position nach oben" style="font-size:11px;padding:2px 6px;" ${index === 0 ? 'disabled' : ''}>↑</button>
-                        <button onclick="moveQuotePosition(${index}, 1)" class="btn-secondary btn-small" title="Position nach unten" style="font-size:11px;padding:2px 6px;" ${index === positions.length - 1 ? 'disabled' : ''}>↓</button>
+                        ${index === 0 ? '<span style="display:inline-block;width:26px;"></span>' : `<button onclick="moveQuotePosition(${index}, -1)" class="btn-secondary btn-small" title="Position nach oben" style="font-size:11px;padding:2px 6px;">↑</button>`}
+                        ${index === positions.length - 1 ? '<span style="display:inline-block;width:26px;"></span>' : `<button onclick="moveQuotePosition(${index}, 1)" class="btn-secondary btn-small" title="Position nach unten" style="font-size:11px;padding:2px 6px;">↓</button>`}
                         <button onclick="deleteQuotePosition(${index})" class="btn-danger btn-small">Löschen</button>
                     </td>
                 </tr>
                 ${bomRows}
-                ${hasBOM && !bomCollapsed ? `<tr><td colspan="11" style="background:#dce8f5;border-bottom:2px solid #366092;padding:3px 8px 4px 28px;font-size:11px;color:#1a3a5c;">
+                ${hasBOM && !bomCollapsed ? `<tr class="quote-bom-footer ${exclClass}"><td colspan="12" style="background:#dce8f5;border-bottom:2px solid #366092;padding:3px 8px 4px 28px;font-size:11px;color:#1a3a5c;">
                     EK gesamt (${pos.bom.length} Komp. × ${pos.quantity}×): <strong>${formatCurrency(pos.totalEK)}</strong>
                 </td></tr>` : ''}
                 ${subtotalHtml}`;
@@ -8658,7 +8683,8 @@ function applyPermissions() {
 
             const { reseller, endcustomer, discount } = getQuoteFactors();
             const discountFactor = 1 - (discount / 100);
-            const positions = window.currentQuote.positions.filter(p => !isQuoteTitle(p)); // Titel-Positionen zählen nicht mit
+            // Titel-Positionen und nicht einbezogene Positionen zählen nicht mit
+            const positions = window.currentQuote.positions.filter(p => !isQuoteTitle(p) && isQuoteIncluded(p));
 
             const totalEK          = positions.reduce((s, p) => s + p.totalEK, 0);
             // Gerundete Summen: pro Position runden, dann addieren (konsistent mit Tabellenzeilen)
@@ -8900,7 +8926,7 @@ function applyPermissions() {
             const { reseller, endcustomer, discount } = getQuoteFactors();
             const discountFactor = 1 - (discount / 100);
             const allPositions = q.positions || [];                        // inkl. Titel-Positionen (Darstellung)
-            const positions = allPositions.filter(p => !isQuoteTitle(p));  // ohne Titel (Summen)
+            const positions = allPositions.filter(p => !isQuoteTitle(p) && isQuoteIncluded(p));  // ohne Titel und ohne Alternativpositionen (Summen)
             const escP = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
             // Laufender Abschnitt (ab Titel bis zum nächsten Titel); Positionen vor dem ersten Titel gehören zu keinem Abschnitt
             let secTitle = null, secEK = 0, secWV = 0, secEnd = 0;
@@ -8934,6 +8960,8 @@ function applyPermissions() {
                         .pos-header td { background: #e8f0f8; font-weight: bold; border-top: 2px solid #366092; }
                         .pos-title td { background: #cfe0f3; color: #1a3a6b; font-size: 12px; font-weight: bold; border-top: 2px solid #366092; border-bottom: 1px solid #aac4e0; }
                         .pos-subtotal td { background: #eef3f9; font-weight: bold; border-bottom: 2px solid #366092; }
+                        .pos-header.pos-alt td, .bom-row.pos-alt td, .bom-footer.pos-alt td { background: #fffde7; }
+                        .alt-label { display: inline-block; background: #f0b429; color: #fff; font-size: 8px; font-weight: bold; padding: 1px 5px; border-radius: 3px; margin-right: 5px; }
                         .bom-row td { background: #fafcff; font-size: 9px; color: #555; border-top: 1px solid #e2e8f0; }
                         .bom-footer td { background: #dce8f5; border-bottom: 2px solid #366092; font-size: 9px; color: #1a3a5c; }
                         .summary { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px; }
@@ -8974,6 +9002,7 @@ function applyPermissions() {
                                     secEK = 0; secWV = 0; secEnd = 0;
                                     return `<tr class="pos-title"><td colspan="9">${escP(secTitle) || '—'}</td></tr>`;
                                 }
+                                const altClass = isQuoteIncluded(pos) ? '' : ' pos-alt';
                                 const hasBOM = pos.bom && pos.bom.length > 0;
                                 const qty = pos.quantity || 1;
                                 const vkR = roundToQuarter(pos.totalEK * reseller * discountFactor);
@@ -8987,7 +9016,7 @@ function applyPermissions() {
                                         ? (comp.discount > 0 ? `−${comp.discount}%` : `+${Math.abs(comp.discount)}%`)
                                         : '';
                                     return `
-                                <tr class="bom-row">
+                                <tr class="bom-row${altClass}">
                                     <td style="padding-left:16px;">↳ ${comp.description || '—'}${comp.supplier ? ` <em style="color:#999;">(${comp.supplier})</em>` : ''}</td>
                                     <td class="number">${comp.quantity}</td>
                                     <td class="number">${hasLP ? `<span style="color:#999;font-size:8px;">${fmt(comp.listPrice)}${rabattText ? ' '+rabattText : ''}<br></span>` : ''}${fmt(comp.unitPrice)}</td>
@@ -8996,14 +9025,14 @@ function applyPermissions() {
                                 </tr>`;
                                 }).join('') : '';
                                 const bomFooter = hasBOM ? `
-                                <tr class="bom-footer">
+                                <tr class="bom-footer${altClass}">
                                     <td colspan="9" style="padding-left:16px;">
                                         EK gesamt (${pos.bom.length} Komp. × ${qty}×): <strong>${fmt(pos.totalEK)}</strong>
                                     </td>
                                 </tr>` : '';
                                 return `
-                                <tr class="pos-header">
-                                    <td>${pos.description || '—'}</td>
+                                <tr class="pos-header${altClass}">
+                                    <td>${altClass ? '<span class="alt-label">Alt.</span>' : ''}${pos.description || '—'}</td>
                                     <td class="number">${qty}</td>
                                     <td class="number">${hasBOM ? '<em style="color:#888;font-size:9px;">→ BOM</em>' : fmt(ekUnit)}</td>
                                     <td class="number">${fmt(pos.totalEK)}</td>
@@ -9016,7 +9045,7 @@ function applyPermissions() {
                                 ${bomRows}${bomFooter}${(() => {
                                     // Zwischensumme nach der letzten Position eines Abschnitts
                                     if (secTitle === null) return '';
-                                    secEK += pos.totalEK; secWV += vkR; secEnd += vkE;
+                                    if (!altClass) { secEK += pos.totalEK; secWV += vkR; secEnd += vkE; }
                                     if (index !== allPositions.length - 1 && !isQuoteTitle(allPositions[index + 1])) return '';
                                     return `<tr class="pos-subtotal">
                                     <td colspan="3" style="text-align:right;">Zwischensumme ${escP(secTitle)}</td>
