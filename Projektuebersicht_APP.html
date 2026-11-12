@@ -393,6 +393,52 @@
         .qv-del:hover { color: #c62828; }
         .qv-add { margin-left: auto; margin-bottom: 4px; }
 
+        /* Titel-Positionen (Gewerke) und Zwischensummen */
+        .quote-title-row td {
+            background: #cfe0f3;
+            border-top: 2px solid #366092;
+            border-bottom: 1px solid #aac4e0;
+        }
+        .quote-title-input {
+            width: 100%;
+            font-size: 15px;
+            font-weight: 700;
+            color: #1a3a6b;
+        }
+        .quote-subtotal-row td {
+            background: #eef3f9;
+            font-weight: 700;
+            border-bottom: 2px solid #366092;
+        }
+
+        /* Variantenvergleich: Kurzübersicht + Modal */
+        .qc-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: stretch;
+            gap: 8px;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+        .qc-chip {
+            flex: 1;
+            min-width: 230px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        .qc-chip.qc-active { background: #e8f0fb; border-color: #366092; }
+        .qc-label { font-weight: 700; color: #1a3a6b; margin-bottom: 2px; }
+        .qc-line { display: flex; justify-content: space-between; gap: 8px; white-space: nowrap; }
+        .qc-open { align-self: center; }
+        .qc-table { font-size: 13px; }
+        .qc-table th, .qc-table td { padding: 8px 10px; text-align: right; vertical-align: top; }
+        .qc-table th:first-child, .qc-table td:first-child { text-align: left; white-space: nowrap; }
+        .qc-table td .qc-diff { display: block; font-size: 11px; margin-top: 2px; }
+        .qc-table tr.qc-sep td { border-top: 2px solid #366092; }
+
         /* Dashboard */
         .dashboard-actions {
             display: flex;
@@ -2134,12 +2180,16 @@
                             </div>
                             <div style="padding-bottom:1px;">
                                 <button onclick="addQuotePosition()" class="btn-success">+ Hinzufügen</button>
+                                <button onclick="addQuoteTitle()" class="btn-secondary" title="Titel (Gewerk) am Ende der Liste einfügen">+ Titel</button>
                             </div>
                         </div>
                     </div>
 
                     <!-- Varianten-Leiste (wird von renderQuoteVariantBar() befüllt) -->
                     <div id="quoteVariantBar" class="qv-bar"></div>
+
+                    <!-- Vergleichsleiste (wird von renderQuoteCompareBar() befüllt); Klick öffnet das Vergleichs-Modal -->
+                    <div id="quoteCompareBar" class="qc-bar" onclick="openQuoteCompare()" title="Klicken für den ausführlichen Variantenvergleich"></div>
 
                     <div class="positions-table-wrapper">
                         <table>
@@ -2907,6 +2957,17 @@
                     <button onclick="confirmBOMImport()" class="btn-success">✅ Ja, EK übernehmen</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- VARIANTENVERGLEICH MODAL -->
+    <div id="quoteCompareModal" class="modal" onclick="if (event.target === this) closeQuoteCompare()">
+        <div class="modal-content" style="max-width:1100px;">
+            <div class="modal-header">
+                <h3>Variantenvergleich</h3>
+                <button class="modal-close" onclick="closeQuoteCompare()" title="Schließen">&times;</button>
+            </div>
+            <div class="modal-body" id="quoteCompareBody"></div>
         </div>
     </div>
 
@@ -4284,7 +4345,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.58';
+        const APP_VERSION = 'v1.6.59';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -7993,6 +8054,7 @@ function applyPermissions() {
                     ${many && v.id !== q.activeVariant ? `<button class="qv-del" data-vid="${esc(v.id)}" onclick="event.stopPropagation(); deleteQuoteVariant(this.dataset.vid)" title="Variante löschen">×</button>` : ''}
                 </div>`).join('') +
                 `<button class="btn-secondary btn-small qv-add" onclick="addQuoteVariant()">+ Variante</button>`;
+            renderQuoteCompareBar();
         }
 
         // Variantenwechsel: aktuelle Kalkulation (inkl. aktiver Variante) zuerst nach SharePoint speichern, dann die gewählte laden.
@@ -8057,6 +8119,7 @@ function applyPermissions() {
                 input.remove();
                 span.textContent = v.label;
                 span.style.display = '';
+                renderQuoteCompareBar();
             };
             input.onclick = e => e.stopPropagation();
             input.ondblclick = e => e.stopPropagation();
@@ -8075,6 +8138,165 @@ function applyPermissions() {
         window.addQuoteVariant         = addQuoteVariant;
         window.deleteQuoteVariant      = deleteQuoteVariant;
         window.startQuoteVariantRename = startQuoteVariantRename;
+
+        // ========== TITEL-POSITIONEN (GEWERKE) ==========
+        // Position mit type === 'title': nur Überschrift (description). totalEK: 0 sichert alle Summenschleifen ab.
+        // Alle übrigen Positionen sind implizit type 'item'.
+        function isQuoteTitle(p) { return !!p && p.type === 'title'; }
+
+        function addQuoteTitle() {
+            const q = window.currentQuote;
+            if (!q) return;
+            q.positions.push({ id: `qtitle_${Date.now()}`, type: 'title', description: '', totalEK: 0 });
+            renderQuotePositions();
+            const inputs = document.querySelectorAll('#quotePositionsTable .quote-title-input');
+            if (inputs.length) inputs[inputs.length - 1].focus();
+        }
+
+        function updateQuoteTitle(index, value) {
+            const pos = window.currentQuote.positions[index];
+            if (!isQuoteTitle(pos)) return;
+            pos.description = value.trim();
+            renderQuotePositions();
+        }
+
+        window.addQuoteTitle    = addQuoteTitle;
+        window.updateQuoteTitle = updateQuoteTitle;
+
+        // ========== VARIANTENVERGLEICH ==========
+        // Liest alle Varianten aus dem Speicher (currentQuote); die aktive Variante mit dem Live-Stand des Editors.
+        function quoteCompareVariants() {
+            const q = window.currentQuote;
+            if (!q || !Array.isArray(q.variants)) return [];
+            const f = getQuoteFactors();
+            return q.variants.map(v => v.id === q.activeVariant
+                ? { id: v.id, label: v.label, positions: q.positions || [], factorReseller: f.reseller, factorEndcustomer: f.endcustomer, discount: f.discount }
+                : v);
+        }
+
+        // Summen einer Variante (VK je Position gerundet, dann addiert — wie quoteSummary); Abschnitte ab Titel-Position
+        function quoteVariantTotals(v) {
+            const rf = v.factorReseller || 1.30;
+            const ef = v.factorEndcustomer || 1.60;
+            const discount = v.discount || 0;
+            const df = 1 - (discount / 100);
+            let ek = 0, vkWV = 0, vkEnd = 0, cur = null;
+            const sections = [];
+            (v.positions || []).forEach(p => {
+                if (isQuoteTitle(p)) { cur = { title: (p.description || '').trim(), vkWV: 0, vkEnd: 0, count: 0 }; sections.push(cur); return; }
+                const pek = p.totalEK || 0;
+                const w = roundToQuarter(pek * rf * df);
+                const e = roundToQuarter(pek * ef * df);
+                ek += pek; vkWV += w; vkEnd += e;
+                if (cur) { cur.vkWV += w; cur.vkEnd += e; cur.count++; }
+            });
+            return {
+                ek, discount, vkWV, vkEnd,
+                dbWV: vkWV - ek,   dbWVPct:  vkWV  > 0 ? (vkWV  - ek) / vkWV  * 100 : 0,
+                dbEnd: vkEnd - ek, dbEndPct: vkEnd > 0 ? (vkEnd - ek) / vkEnd * 100 : 0,
+                sections: sections.filter(s => s.count > 0)
+            };
+        }
+
+        const fmtQuotePct = n => n.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
+
+        function renderQuoteCompareBar() {
+            const bar = document.getElementById('quoteCompareBar');
+            const q = window.currentQuote;
+            if (!bar || !q || !Array.isArray(q.variants)) return;
+            const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            bar.innerHTML = quoteCompareVariants().map(v => {
+                const t = quoteVariantTotals(v);
+                return `<div class="qc-chip ${v.id === q.activeVariant ? 'qc-active' : ''}">
+                    <div class="qc-label">${esc(v.label)}</div>
+                    <div class="qc-line"><span style="color:#366092;">WV <b>${formatCurrency(t.vkWV)}</b></span><span>DB ${formatCurrency(t.dbWV)} · ${fmtQuotePct(t.dbWVPct)}</span></div>
+                    <div class="qc-line"><span style="color:#28a745;">End <b>${formatCurrency(t.vkEnd)}</b></span><span>DB ${formatCurrency(t.dbEnd)} · ${fmtQuotePct(t.dbEndPct)}</span></div>
+                </div>`;
+            }).join('') + `<button class="btn-secondary btn-small qc-open" onclick="event.stopPropagation(); openQuoteCompare()">Vergleich</button>`;
+        }
+
+        function openQuoteCompare() {
+            const q = window.currentQuote;
+            if (!q || !Array.isArray(q.variants)) return;
+            const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const vs = quoteCompareVariants();
+            const T = vs.map(quoteVariantTotals);
+            const num1 = n => n.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+            const signed = (n, f) => (n > 0 ? '+' : n < 0 ? '−' : '') + f(Math.abs(n));
+
+            // kind: 'price' = Erhöhung rot (teurer für den Kunden), 'discount' = Erhöhung grün, 'neutral' = grau (EK, DB)
+            const rows = [
+                { label: 'EK-Summe',          vals: T.map(t => t.ek),       unit: 'eur', kind: 'neutral' },
+                { label: 'Rabatt',            vals: T.map(t => t.discount), unit: 'pct', kind: 'discount' },
+                { label: 'VK Wiederverkauf',  vals: T.map(t => t.vkWV),     unit: 'eur', kind: 'price', sep: true },
+                { label: 'DB € (WV)',         vals: T.map(t => t.dbWV),     unit: 'eur', kind: 'neutral' },
+                { label: 'DB % (WV)',         vals: T.map(t => t.dbWVPct),  unit: 'pct', kind: 'neutral' },
+                { label: 'VK Endkunde',       vals: T.map(t => t.vkEnd),    unit: 'eur', kind: 'price', sep: true },
+                { label: 'DB € (End)',        vals: T.map(t => t.dbEnd),    unit: 'eur', kind: 'neutral' },
+                { label: 'DB % (End)',        vals: T.map(t => t.dbEndPct), unit: 'pct', kind: 'neutral' }
+            ];
+
+            // VK-Zwischensummen je Abschnitt (nur wenn Titel-Positionen vorhanden); Zuordnung über den Titeltext
+            const secKeys = [];
+            const secMaps = T.map(t => {
+                const m = {}, seen = {};
+                t.sections.forEach(s => {
+                    const base = s.title.toLowerCase();
+                    seen[base] = (seen[base] || 0) + 1;
+                    const key = base + '#' + seen[base];
+                    m[key] = s;
+                    if (!secKeys.some(k => k.key === key)) secKeys.push({ key, label: s.title || '(ohne Titel)' });
+                });
+                return m;
+            });
+            secKeys.forEach((k, i) => {
+                rows.push({ label: `Abschnitt „${k.label}“: VK Wiederverkauf`, vals: secMaps.map(m => m[k.key] ? m[k.key].vkWV : null),  unit: 'eur', kind: 'price', sep: i === 0 });
+                rows.push({ label: `Abschnitt „${k.label}“: VK Endkunde`,      vals: secMaps.map(m => m[k.key] ? m[k.key].vkEnd : null), unit: 'eur', kind: 'price' });
+            });
+
+            const cell = (row, i) => {
+                const cur = row.vals[i];
+                if (cur === null || cur === undefined) return '<td>—</td>';
+                let html = row.unit === 'pct' ? fmtQuotePct(cur) : formatCurrency(cur);
+                const prev = i > 0 ? row.vals[i - 1] : null;
+                if (i > 0 && prev !== null && prev !== undefined) {
+                    const diff = cur - prev;
+                    let color = '#666', text;
+                    if (Math.abs(diff) < (row.unit === 'pct' ? 0.05 : 0.005)) {
+                        text = '±0';
+                    } else {
+                        const rel = prev !== 0 ? diff / Math.abs(prev) * 100 : null;
+                        const abs = row.unit === 'pct' ? `${signed(diff, num1)} %-Pkt` : signed(diff, formatCurrency);
+                        text = abs + (rel !== null ? ` (${signed(rel, num1)} %)` : '');
+                        if (row.kind === 'price')         color = diff > 0 ? '#c62828' : '#2e7d32';
+                        else if (row.kind === 'discount') color = diff > 0 ? '#2e7d32' : '#c62828';
+                    }
+                    html += `<span class="qc-diff" style="color:${color};">${text}</span>`;
+                }
+                return `<td>${html}</td>`;
+            };
+
+            document.getElementById('quoteCompareBody').innerHTML = `
+                <div style="overflow-x:auto;">
+                    <table class="qc-table">
+                        <thead><tr><th></th>${vs.map(v => `<th>${esc(v.label)}${v.id === q.activeVariant ? ' <small>(aktiv)</small>' : ''}</th>`).join('')}</tr></thead>
+                        <tbody>
+                            ${rows.map(r => `<tr class="${r.sep ? 'qc-sep' : ''}"><td>${esc(r.label)}</td>${vs.map((v, i) => cell(r, i)).join('')}</tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <p style="font-size:11px;color:#666;margin-top:12px;">Differenz jeweils zur vorherigen Variante. Aus Kundensicht: höherer VK = rot, niedrigerer VK = grün, höherer Rabatt = grün. EK und DB sind neutral dargestellt.</p>`;
+            document.getElementById('quoteCompareModal').classList.add('active');
+        }
+
+        function closeQuoteCompare() {
+            document.getElementById('quoteCompareModal').classList.remove('active');
+        }
+
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeQuoteCompare(); });
+
+        window.openQuoteCompare  = openQuoteCompare;
+        window.closeQuoteCompare = closeQuoteCompare;
 
         function openQuoteEditor() {
             const q = window.currentQuote;
@@ -8224,7 +8446,29 @@ function applyPermissions() {
                 return;
             }
 
+            const escHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            // Laufender Abschnitt (ab einer Titel-Position bis zum nächsten Titel); Positionen vor dem ersten Titel gehören zu keinem Abschnitt
+            let secTitle = null, secEK = 0, secWV = 0, secEnd = 0;
+
             tbody.innerHTML = positions.map((pos, index) => {
+                if (isQuoteTitle(pos)) {
+                    secTitle = pos.description || '';
+                    secEK = 0; secWV = 0; secEnd = 0;
+                    return `
+                <tr class="quote-title-row">
+                    <td colspan="10" class="editable-cell">
+                        <div style="font-size:10px;color:#666;margin-bottom:2px;">Titel</div>
+                        <input type="text" class="quote-title-input" value="${escHtml(pos.description || '')}"
+                               placeholder="Titel / Gewerk"
+                               onchange="updateQuoteTitle(${index}, this.value)">
+                    </td>
+                    <td class="action-cell" style="white-space:nowrap;">
+                        <button onclick="moveQuotePosition(${index}, -1)" class="btn-secondary btn-small" title="Titel nach oben" style="font-size:11px;padding:2px 6px;" ${index === 0 ? 'disabled' : ''}>↑</button>
+                        <button onclick="moveQuotePosition(${index}, 1)" class="btn-secondary btn-small" title="Titel nach unten" style="font-size:11px;padding:2px 6px;" ${index === positions.length - 1 ? 'disabled' : ''}>↓</button>
+                        <button onclick="deleteQuotePosition(${index})" class="btn-danger btn-small">Löschen</button>
+                    </td>
+                </tr>`;
+                }
                 if (!pos.bom) pos.bom = [];
                 const hasBOM = pos.bom.length > 0;
                 const vkReseller    = pos.totalEK * reseller * discountFactor;
@@ -8237,6 +8481,23 @@ function applyPermissions() {
                 const vkResellerR    = roundToQuarter(vkReseller);
                 const vkEndcustomerR = roundToQuarter(vkEndcustomer);
                 const vkHandSource   = pos._vkHandSource || 'manual';
+
+                // Zwischensumme des Abschnitts nach der letzten Position vor dem nächsten Titel bzw. am Listenende
+                let subtotalHtml = '';
+                if (secTitle !== null) {
+                    secEK += pos.totalEK; secWV += vkResellerR; secEnd += vkEndcustomerR;
+                    if (index === positions.length - 1 || isQuoteTitle(positions[index + 1])) {
+                        subtotalHtml = `<tr class="quote-subtotal-row">
+                    <td colspan="4" style="text-align:right;">Zwischensumme ${escHtml(secTitle)}</td>
+                    <td class="number-cell">${formatCurrency(secEK)}</td>
+                    <td></td>
+                    <td class="number-cell" style="color:#366092;">${formatCurrency(secWV)}</td>
+                    <td></td>
+                    <td class="number-cell" style="color:#28a745;">${formatCurrency(secEnd)}</td>
+                    <td colspan="2"></td>
+                </tr>`;
+                    }
+                }
 
                 // BOM-Zeilen (klappbar)
                 const bomCollapsed = pos._bomCollapsed || false;
@@ -8383,7 +8644,8 @@ function applyPermissions() {
                 ${bomRows}
                 ${hasBOM && !bomCollapsed ? `<tr><td colspan="11" style="background:#dce8f5;border-bottom:2px solid #366092;padding:3px 8px 4px 28px;font-size:11px;color:#1a3a5c;">
                     EK gesamt (${pos.bom.length} Komp. × ${pos.quantity}×): <strong>${formatCurrency(pos.totalEK)}</strong>
-                </td></tr>` : ''}`;
+                </td></tr>` : ''}
+                ${subtotalHtml}`;
             }).join('');
 
             renderQuoteSummary();
@@ -8396,7 +8658,7 @@ function applyPermissions() {
 
             const { reseller, endcustomer, discount } = getQuoteFactors();
             const discountFactor = 1 - (discount / 100);
-            const positions = window.currentQuote.positions;
+            const positions = window.currentQuote.positions.filter(p => !isQuoteTitle(p)); // Titel-Positionen zählen nicht mit
 
             const totalEK          = positions.reduce((s, p) => s + p.totalEK, 0);
             // Gerundete Summen: pro Position runden, dann addieren (konsistent mit Tabellenzeilen)
@@ -8437,6 +8699,7 @@ function applyPermissions() {
                     <div style="font-size:12px;color:#666;">DB: ${formatCurrency(dbHand)} (${dbPctHand.toFixed(1)}%)</div>
                 </div>` : ''}
             `;
+            renderQuoteCompareBar(); // Vergleichsleiste mit dem aktuellen Editorstand aktualisieren
         }
 
         function renderQuoteList() {
@@ -8553,7 +8816,8 @@ function applyPermissions() {
             const discountFactor = 1 - (discount / 100);
 
             // VK-Positionen — immer eine pro Vorkalkulations-Position
-            const salesPositions = q.positions.map(pos => ({
+            const quoteItems = q.positions.filter(p => !isQuoteTitle(p)); // Titel-Positionen werden nicht übernommen
+            const salesPositions = quoteItems.map(pos => ({
                 id: `sales_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 description: pos.description,
                 quantity: pos.quantity,
@@ -8564,7 +8828,7 @@ function applyPermissions() {
 
             // EK-Positionen — aus Stückliste wenn vorhanden, sonst identisch zur VK
             const purchasePositions = [];
-            q.positions.forEach(pos => {
+            quoteItems.forEach(pos => {
                 if (pos.bom && pos.bom.length > 0) {
                     pos.bom.forEach(comp => {
                         purchasePositions.push({
@@ -8635,7 +8899,7 @@ function applyPermissions() {
 
             const { reseller, endcustomer, discount } = getQuoteFactors();
             const discountFactor = 1 - (discount / 100);
-            const positions = q.positions || [];
+            const positions = (q.positions || []).filter(p => !isQuoteTitle(p)); // Titel-Positionen werden nicht gedruckt
 
             // Gerundete Summen: pro Position runden, dann addieren (konsistent mit UI)
             const totalEK    = positions.reduce((s, p) => s + p.totalEK, 0);

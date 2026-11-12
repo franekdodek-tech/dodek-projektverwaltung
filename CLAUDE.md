@@ -31,7 +31,7 @@ Lies diese Datei vollständig, bevor du irgendeine Änderung machst.
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.58 |
+| `Projektuebersicht_APP.html` | v1.6.59 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -136,6 +136,13 @@ Claude-Session: https://claude.ai/code/session_0112q721THq4Xa5MtZn82Y5R
 - **Löschen** (`deleteQuoteVariant()`): das × erscheint nur bei mindestens zwei Varianten und nur auf nicht aktiven Tabs; die aktive Variante bleibt aktiv. Gelöscht wird nur im Speicher, geschrieben wird beim nächsten Speichern oder Variantenwechsel.
 - **„+ Variante“** kopiert im Speicher und macht die Kopie aktiv; es speichert nicht.
 - `renderQuoteList()` zeigt EK/Rabatt/VK der aktiven Variante (`quoteActiveVariant()`).
+
+### Kalkulation: Titel-Positionen und Variantenvergleich (ab v1.6.59)
+- **Titel-Positionen (Gewerke):** Eintrag in `positions` mit `type: 'title'` (`{ id, type, description, totalEK: 0 }`); alle anderen Positionen sind implizit `type: 'item'`. `totalEK: 0` sichert Summenschleifen ab. `isQuoteTitle(p)` prüft den Typ. Titel liegen in der Variante und werden beim Kopieren mitgenommen.
+- **Abschnitt** = Titel bis zum nächsten Titel bzw. Listenende. Positionen vor dem ersten Titel gehören zu keinem Abschnitt. `renderQuotePositions()` zeigt unter der letzten Position eines Abschnitts eine Zwischensumme (EK, WV, End; VK je Position gerundet wie in `renderQuoteSummary()`). Titel verschieben und löschen wie Positionen (`moveQuotePosition()`, `deleteQuotePosition()`); „+ Titel“ → `addQuoteTitle()`, Text ändern → `updateQuoteTitle()`.
+- **Titel-sicher:** Summen (`renderQuoteSummary()`), Druck (`printQuote()`) und Umwandlung in ein Projekt (`convertQuoteToProject()`) ignorieren Titel; im Druck erscheinen sie bisher nicht. Neue Schleifen über `positions` müssen Titel überspringen.
+- **Variantenvergleich:** `renderQuoteCompareBar()` (Leiste unter den Varianten-Tabs, wird am Ende von `renderQuoteSummary()` und `renderQuoteVariantBar()` aktualisiert) und `openQuoteCompare()` (Modal `#quoteCompareModal`, schließt per ×, Klick außerhalb und Escape). Datenquelle: alle Varianten in `window.currentQuote`, die aktive mit dem Live-Stand des Editors (`quoteCompareVariants()`); Summen aus `quoteVariantTotals()`. Es wird kein SharePoint-Call ausgeführt.
+- Anzeige je Variante: EK, Rabatt, VK Wiederverkauf und VK Endkunde mit DB € und DB %, bei Titeln zusätzlich VK-Zwischensummen je Abschnitt (Zuordnung über den Titeltext). Differenz zur vorherigen Variante absolut und prozentual; Farbe aus Kundensicht: VK höher = rot, VK niedriger = grün, Rabatt höher = grün; EK und DB bewusst neutral grau.
 
 ---
 
