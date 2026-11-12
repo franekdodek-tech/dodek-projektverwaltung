@@ -10,7 +10,7 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.59 |
+| `Projektuebersicht_APP.html` | v1.6.60 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -43,7 +43,7 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 - EP und GP pro Position, Projektrabatt
 - Position kopieren, als Artikel speichern
 - Kalkulationsvarianten: Tab-Leiste mit beliebig vielen Varianten je Kalkulation (Positionen, Faktoren, Rabatt), Variante kopieren, umbenennen, löschen; Wechsel speichert automatisch
-- Titel-Positionen (Gewerke) mit Zwischensummen je Abschnitt
+- Titel-Positionen (Gewerke) mit Zwischensummen je Abschnitt, auch im Druck
 - Variantenvergleich: Kurzübersicht unter den Varianten-Tabs und Modal mit Gegenüberstellung (EK, Rabatt, VK, DB, Abschnitte, Differenz zur vorherigen Variante)
 - PDF-Druck mit Rabatt und EP/GP
 

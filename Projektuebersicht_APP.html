@@ -4345,7 +4345,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.59';
+        const APP_VERSION = 'v1.6.60';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -8899,7 +8899,11 @@ function applyPermissions() {
 
             const { reseller, endcustomer, discount } = getQuoteFactors();
             const discountFactor = 1 - (discount / 100);
-            const positions = (q.positions || []).filter(p => !isQuoteTitle(p)); // Titel-Positionen werden nicht gedruckt
+            const allPositions = q.positions || [];                        // inkl. Titel-Positionen (Darstellung)
+            const positions = allPositions.filter(p => !isQuoteTitle(p));  // ohne Titel (Summen)
+            const escP = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            // Laufender Abschnitt (ab Titel bis zum nächsten Titel); Positionen vor dem ersten Titel gehören zu keinem Abschnitt
+            let secTitle = null, secEK = 0, secWV = 0, secEnd = 0;
 
             // Gerundete Summen: pro Position runden, dann addieren (konsistent mit UI)
             const totalEK    = positions.reduce((s, p) => s + p.totalEK, 0);
@@ -8928,6 +8932,8 @@ function applyPermissions() {
                         td { padding: 4px 6px; border-bottom: 1px solid #eee; vertical-align: top; }
                         .number { text-align: right; }
                         .pos-header td { background: #e8f0f8; font-weight: bold; border-top: 2px solid #366092; }
+                        .pos-title td { background: #cfe0f3; color: #1a3a6b; font-size: 12px; font-weight: bold; border-top: 2px solid #366092; border-bottom: 1px solid #aac4e0; }
+                        .pos-subtotal td { background: #eef3f9; font-weight: bold; border-bottom: 2px solid #366092; }
                         .bom-row td { background: #fafcff; font-size: 9px; color: #555; border-top: 1px solid #e2e8f0; }
                         .bom-footer td { background: #dce8f5; border-bottom: 2px solid #366092; font-size: 9px; color: #1a3a5c; }
                         .summary { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px; }
@@ -8962,7 +8968,12 @@ function applyPermissions() {
                             </tr>
                         </thead>
                         <tbody>
-                            ${positions.map(pos => {
+                            ${allPositions.map((pos, index) => {
+                                if (isQuoteTitle(pos)) {
+                                    secTitle = pos.description || '';
+                                    secEK = 0; secWV = 0; secEnd = 0;
+                                    return `<tr class="pos-title"><td colspan="9">${escP(secTitle) || '—'}</td></tr>`;
+                                }
                                 const hasBOM = pos.bom && pos.bom.length > 0;
                                 const qty = pos.quantity || 1;
                                 const vkR = roundToQuarter(pos.totalEK * reseller * discountFactor);
@@ -9002,7 +9013,21 @@ function applyPermissions() {
                                     <td class="number" style="color:#28a745;">${fmt(vkE)}<br><small style="color:#888;">(DB: ${pos.totalEK > 0 ? ((vkE-pos.totalEK)/vkE*100).toFixed(1) : 0}%)</small></td>
                                     <td class="number">${pos.vkHand ? '<strong>' + fmt(parseFloat(pos.vkHand)) + '</strong>' : '—'}</td>
                                 </tr>
-                                ${bomRows}${bomFooter}`;
+                                ${bomRows}${bomFooter}${(() => {
+                                    // Zwischensumme nach der letzten Position eines Abschnitts
+                                    if (secTitle === null) return '';
+                                    secEK += pos.totalEK; secWV += vkR; secEnd += vkE;
+                                    if (index !== allPositions.length - 1 && !isQuoteTitle(allPositions[index + 1])) return '';
+                                    return `<tr class="pos-subtotal">
+                                    <td colspan="3" style="text-align:right;">Zwischensumme ${escP(secTitle)}</td>
+                                    <td class="number">${fmt(secEK)}</td>
+                                    <td></td>
+                                    <td class="number" style="color:#366092;">${fmt(secWV)}</td>
+                                    <td></td>
+                                    <td class="number" style="color:#28a745;">${fmt(secEnd)}</td>
+                                    <td></td>
+                                </tr>`;
+                                })()}`;
                             }).join('')}
                         </tbody>
                     </table>
