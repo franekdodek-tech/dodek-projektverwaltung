@@ -4351,7 +4351,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.61';
+        const APP_VERSION = 'v1.6.62';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5616,8 +5616,9 @@ function applyPermissions() {
                     const st = statusList.find(s => s.id === (t.status || 'open')) || statusList[0];
                     return `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;">
                         <span class="kpi-link" data-pn="${esc(pn)}" onclick="openProject(this.dataset.pn)" title="Projekt öffnen">${esc(pn)}</span>
+                        ${(all[pn] && all[pn].customer) ? `<span style="color:#555;">${esc(all[pn].customer)}</span>` : ''}
                         <span style="font-size:11px;color:#666;background:#f0f0f0;border-radius:3px;padding:1px 6px;">${kind === 'ek' ? 'Einkauf' : 'Aufgabe'}</span>
-                        <span>${esc(t.description || '')}${kind === 'ek' && t.supplier ? ` <span style="color:#666;">(${esc(t.supplier)})</span>` : ''}</span>
+                        <span>${kind === 'ek' && t.quantity != null && t.quantity !== '' ? `${esc(t.quantity)}× ` : ''}${esc(t.description || '')}${kind === 'ek' && t.supplier ? ` <span style="color:#666;">(${esc(t.supplier)})</span>` : ''}</span>
                         <span style="font-weight:600;color:${st.color};">${st.label}</span>
                     </div>`;
                 };

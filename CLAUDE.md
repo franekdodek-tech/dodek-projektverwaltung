@@ -31,7 +31,7 @@ Lies diese Datei vollständig, bevor du irgendeine Änderung machst.
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.61 |
+| `Projektuebersicht_APP.html` | v1.6.62 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -124,7 +124,7 @@ Claude-Session: https://claude.ai/code/session_0112q721THq4Xa5MtZn82Y5R
 ### Dashboard (KPI) — `dashboardKpiView`, `renderDashboardKpi()`
 - Zeigt immer das laufende Kalenderjahr (`new Date().getFullYear()`), Jahr per `getYearFromProjectNumber()`, Daten aus `window.allProjects`. Aufruf in `showView('dashboardKpi')` und in `loadFromSharePoint()` direkt nach `renderDashboard()`.
 - **Kacheln** (`#kpiTiles`, Flex mit Umbruch): VK Umsatz lfd. Jahr (mit Abgerechnet/Offen über `hasInvoice`), Deckungsbeitrag nur nachkalkulierter Projekte (`hasPostCalc`; grün nur bei DB > 0, sonst rot), Aktive Projekte (`!hasInvoice`).
-- **Meine offenen Aufgaben** (`#kpiMyTasks`): Member-ID = `email.split('.')[0]` aus `msalInstance.getAllAccounts()[0].username`, Abgleich mit `TEAM_MEMBERS`. **Bewusste Entscheidung des Entwicklers: kein Mapping-Objekt einführen, auch nicht bei zukünftigen Änderungen.** Ohne Treffer in `TEAM_MEMBERS` wird die Zone ausgeblendet. Angezeigt werden `project.tasks` und `project.purchasePositions` mit `assignedTo === Member-ID` und Status `open`.
+- **Meine offenen Aufgaben** (`#kpiMyTasks`): Member-ID = `email.split('.')[0]` aus `msalInstance.getAllAccounts()[0].username`, Abgleich mit `TEAM_MEMBERS`. **Bewusste Entscheidung des Entwicklers: kein Mapping-Objekt einführen, auch nicht bei zukünftigen Änderungen.** Ohne Treffer in `TEAM_MEMBERS` wird die Zone ausgeblendet. Angezeigt werden `project.tasks` und `project.purchasePositions` mit `assignedTo === Member-ID` und Status `open`. Je Zeile steht neben der Projektnummer der Kunde (`project.customer`), bei Einkaufspositionen zusätzlich die Stückzahl (`quantity`, als „5× Beschreibung“); `project.tasks` haben kein Mengenfeld.
 - **Aktionsliste** (`#kpiActions`): ohne Nachkalkulation (`!hasPostCalc`), geliefert aber nicht abgerechnet, ohne AB (`!hasAB && !hasInvoice`), offene Aufgaben je Mitglied (`project.tasks` mit Status ≠ `done`), Liefertermine der nächsten 14 Tage (ohne `hasDelivered`). Projektnummern öffnen das Projekt per `openProject()`.
 
 ### Kalkulationsvarianten — `quotesView` (ab v1.6.58)
