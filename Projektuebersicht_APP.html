@@ -4941,7 +4941,7 @@ function applyPermissions() {
         }
 
         // ========== UVV-PRÜFUNGEN (Phase 2) ==========
-        // Annahme (nicht gegen die Listen geprüft): DodekUVVModule hat die Spalten Title (= ModulNr) und ModulData (JSON);
+        // Annahme (nicht gegen die Listen geprüft): DodekUVVModule hat die Spalten Title (= ModulNr als Text), ModulNr (Zahl), ModulName, Aktiv (Ja/Nein), Pflicht (Ja/Nein), Pruefpunkte (Mehrzeilentext, JSON-Array);
         // DodekUVVPruefungen hat Title, AnlagenNr, PruefDatum, Pruefer, Status (Choice: Offen / In Bearbeitung / Abgeschlossen), Ergebnisse.
         // Die Spalte AnlagenNr enthält (aktuelles Verhalten, nicht die Anlagen-Nr. selbst) die SharePoint-Id der Anlage (Text oder Zahl; Lookup-Spalten werden nicht unterstützt).
 
@@ -4980,9 +4980,15 @@ function applyPermissions() {
         // ----- Module (DodekUVVModule) -----
         async function getUVVModule(force) {
             if (uvvModuleCache && !force) return uvvModuleCache;
-            const data = await spFetch(`${uvvListUrl(SP_CONFIG.guidUVVModule)}?$select=Id,Title,ModulData&$top=100`);
+            const data = await spFetch(`${uvvListUrl(SP_CONFIG.guidUVVModule)}?$select=Id,Title,ModulNr,ModulName,Aktiv,Pflicht,Pruefpunkte&$top=100`);
             uvvModuleCache = (data.value || []).map(item => {
-                try { const d = JSON.parse(item.ModulData); d._spId = item.Id; return d; } catch (e) { return null; }
+                try {
+                    const nr = item.ModulNr != null ? Number(item.ModulNr) : Number(item.Title);
+                    if (isNaN(nr)) return null;
+                    let punkte = [];
+                    try { const v = JSON.parse(item.Pruefpunkte); if (Array.isArray(v)) punkte = v; } catch (e) { /* leer */ }
+                    return { _spId: item.Id, ModulNr: nr, ModulName: item.ModulName || '', Aktiv: !!item.Aktiv, Pflicht: !!item.Pflicht, Pruefpunkte: punkte };
+                } catch (e) { return null; }
             }).filter(Boolean).sort((a, b) => a.ModulNr - b.ModulNr);
             return uvvModuleCache;
         }
@@ -5021,9 +5027,8 @@ function applyPermissions() {
         async function toggleUVVModulAktiv(nr, aktiv) {
             const m = (uvvModuleCache || []).find(x => x.ModulNr === nr);
             if (!m || m.Pflicht) return;
-            const data = { ...m }; delete data._spId; data.Aktiv = !!aktiv;
             try {
-                await uvvPatch(SP_CONFIG.guidUVVModule, m._spId, { ModulData: JSON.stringify(data) });
+                await uvvPatch(SP_CONFIG.guidUVVModule, m._spId, { Aktiv: !!aktiv });
                 m.Aktiv = !!aktiv;
                 showMessage(`Modul ${nr} ${aktiv ? 'aktiviert' : 'deaktiviert'}`, 'success');
             } catch (e) {
@@ -5046,7 +5051,11 @@ function applyPermissions() {
                 if (btn) btn.disabled = true;
                 let created = 0, updated = 0;
                 for (const def of UVV_MODULE_DEFAULTS) {
-                    const payload = { Title: String(def.nr), ModulData: JSON.stringify(buildUvvModulObject(def)) };
+                    const obj = buildUvvModulObject(def);
+                    const payload = {
+                        Title: String(def.nr), ModulNr: obj.ModulNr, ModulName: obj.ModulName,
+                        Aktiv: obj.Aktiv, Pflicht: obj.Pflicht, Pruefpunkte: JSON.stringify(obj.Pruefpunkte)
+                    };
                     const ex = existing.find(m => m.ModulNr === def.nr);
                     if (ex) { await uvvPatch(SP_CONFIG.guidUVVModule, ex._spId, payload); updated++; }
                     else { await spFetch(uvvListUrl(SP_CONFIG.guidUVVModule), { method: 'POST', body: JSON.stringify(payload) }); created++; }
@@ -5885,7 +5894,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.68';
+        const APP_VERSION = 'v1.6.69';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
