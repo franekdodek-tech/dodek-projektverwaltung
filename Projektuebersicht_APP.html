@@ -1819,6 +1819,13 @@
 
                 <button class="nav-item" data-view="articles" onclick="showView('articles')">🗂️ Artikelstamm</button>
 
+                <!-- Anlagen mit Subnav nach Inbetriebnahmejahr -->
+                <button class="nav-item" data-view="anlagen" onclick="toggleSubnav('subnavAnlagen'); showView('anlagen')">🏭 Anlagen</button>
+                <div class="subnav" id="subnavAnlagen">
+                    <button class="subnav-item" data-subnav-anlagen-year="all" onclick="navToAnlagenYear('all')">📋 Alle</button>
+                    <!-- Jahreszahleinträge werden per JS befüllt (updateAnlagenSubnav) -->
+                </div>
+
                 <!-- Tools mit Subnav -->
                 <button class="nav-item" data-view="tools" onclick="toggleSubnav('subnavTools'); showView('tools')">🛠️ Tools</button>
                 <div class="subnav" id="subnavTools">
@@ -2511,6 +2518,97 @@
             <div id="contactListContainer"></div>
         </div>
 
+        <!-- ANLAGEN VIEW -->
+        <div id="anlagenView" class="view">
+            <!-- Liste -->
+            <div id="anlagenListPane">
+                <div style="background: white; padding: 20px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                        <h2 style="margin:0;">🏭 Anlagen <span id="anlagenFilterInfo" style="font-size:14px;color:#666;font-weight:400;"></span></h2>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                            <button onclick="openAnlageModal()" class="btn-success">＋ Neue Anlage</button>
+                            <button onclick="loadAnlagenFromSharePoint()" class="btn-secondary" title="Neu laden">🔄</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="anlagenListContainer"></div>
+            </div>
+            <!-- Detail -->
+            <div id="anlagenDetailPane" style="display:none;"></div>
+        </div>
+
+        <!-- ANLAGE MODAL (Neuanlage) -->
+        <div id="anlageModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto;">
+            <div style="background:white; max-width:700px; margin:40px auto; border-radius:6px; padding:30px; position:relative;">
+                <button onclick="closeAnlageModal()" style="position:absolute; top:15px; right:15px; background:none; border:none; font-size:22px; cursor:pointer; color:#666;">✕</button>
+                <h3 style="margin-bottom:20px; color:#366092;">Neue Anlage</h3>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+                    <div class="form-group">
+                        <label>Anlagen-Nr. *</label>
+                        <input type="text" id="am_anlagenNr">
+                    </div>
+                    <div class="form-group">
+                        <label>Bezeichnung *</label>
+                        <input type="text" id="am_bezeichnung">
+                    </div>
+                    <div class="form-group">
+                        <label>Kunde</label>
+                        <input type="text" id="am_kunde" list="customerSuggestions" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label>Standort</label>
+                        <input type="text" id="am_standort">
+                    </div>
+                    <div class="form-group">
+                        <label>Ursprungsprojekt</label>
+                        <input type="text" id="am_ursprungsprojekt" placeholder="Projektnummer (optional)">
+                    </div>
+                    <div class="form-group">
+                        <label>Inbetriebnahme</label>
+                        <input type="date" id="am_inbetriebnahme">
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label>Aktive Module</label>
+                        <div id="am_modules" style="display:grid; grid-template-columns:1fr 1fr; gap:4px 16px; margin-top:4px;"></div>
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label>Notizen</label>
+                        <textarea id="am_notizen" rows="3"></textarea>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:20px; justify-content:flex-end;">
+                    <button onclick="closeAnlageModal()" class="btn-secondary">Abbrechen</button>
+                    <button id="am_saveBtn" onclick="saveAnlage()">💾 Speichern</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ANLAGE: Projekt verknüpfen (Mini-Modal) -->
+        <div id="anlageLinkModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto;">
+            <div style="background:white; max-width:420px; margin:80px auto; border-radius:6px; padding:30px; position:relative;">
+                <button onclick="closeAnlageLinkModal()" style="position:absolute; top:15px; right:15px; background:none; border:none; font-size:22px; cursor:pointer; color:#666;">✕</button>
+                <h3 style="margin-bottom:20px; color:#366092;">Projekt verknüpfen</h3>
+                <div class="form-group">
+                    <label>Projektnummer *</label>
+                    <input type="text" id="al_projektnr" list="anlageProjectSuggestions" autocomplete="off">
+                    <datalist id="anlageProjectSuggestions"></datalist>
+                </div>
+                <div class="form-group">
+                    <label>Typ *</label>
+                    <select id="al_typ">
+                        <option value="Erstverkauf">Erstverkauf</option>
+                        <option value="UVV-Prüfung">UVV-Prüfung</option>
+                        <option value="Ersatzteile">Ersatzteile</option>
+                        <option value="Sonstiges">Sonstiges</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:20px; justify-content:flex-end;">
+                    <button onclick="closeAnlageLinkModal()" class="btn-secondary">Abbrechen</button>
+                    <button id="al_saveBtn" onclick="saveAnlageLink()">💾 Speichern</button>
+                </div>
+            </div>
+        </div>
+
         <!-- CONTACT MODAL -->
         <div id="contactModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto;">
             <div style="background:white; max-width:700px; margin:40px auto; border-radius:6px; padding:30px; position:relative;">
@@ -2683,6 +2781,7 @@
                     <button onclick="saveProject()">💾 Speichern</button>
                     <button onclick="showView('dashboard')" class="btn-secondary">⬅️ Zurück zur Übersicht</button>
                     <button onclick="closeProject()" class="btn-secondary" title="Alle EK-Positionen auf Lager/Fakturiert setzen">✅ Projekt abschließen</button>
+                    <button id="anlageCaptureBtn" onclick="openAnlageModal(document.getElementById('projectNumber').value.trim())" class="btn-secondary" title="Aus diesem Projekt eine Anlage erfassen">🏭 Anlage erfassen</button>
                     <button onclick="deleteCurrentProject()" class="btn-danger">🗑️ Projekt löschen</button>
                 </div>
             </div>
@@ -3124,6 +3223,8 @@ function applyPermissions() {
                 disable('button[onclick="saveMultiPositions()"]');
                 disable('button[onclick="openMultiPositionDialog()"]');
                 disable('button[onclick="confirmBOMImport()"]');
+                disable('button[onclick="openAnlageModal()"]');
+                disable('button[onclick="openAnlageLinkModal()"]');
                 // Alle Inputs und Selects in editierbaren Zellen
                 document.querySelectorAll('.editable-cell input, .editable-cell select').forEach(el => {
                     el.disabled = true;
@@ -3147,6 +3248,10 @@ function applyPermissions() {
                     disable('button[onclick^="copyProject"]');
                 }
             }
+
+            // "Anlage erfassen" im Projekt: nur Admin und Editor
+            const anlageCaptureBtn = document.getElementById('anlageCaptureBtn');
+            if (anlageCaptureBtn) anlageCaptureBtn.style.display = isEditor ? '' : 'none';
 
             // Settings-Tab nur für Admin
             const settingsBtn = document.getElementById('settingsBtn');
@@ -3205,7 +3310,10 @@ function applyPermissions() {
             guidStock:    'df491bc5-f23b-493a-a8d0-37a15024cf29',
             guidQuotes:   '39105ce6-473c-4af0-bab0-68659edcbed3',
             guidSettings: '89b9fdeb-6907-4cfc-a1f5-2bc8bc0bdbe2',
-            guidContacts: '3D2F7AE7-A6DE-4F84-A1EB-6FC7DDDDB70F'
+            guidContacts: '3D2F7AE7-A6DE-4F84-A1EB-6FC7DDDDB70F',
+            guidAnlagen:       'E7192882-A021-4BD4-86C5-F387B053D134',
+            guidUVVPruefungen: '201B460E-3768-4401-A2F0-D1CD2A9BEB6E',
+            guidUVVModule:     'DE98FE5E-7A10-4E5E-80A1-9BEC4F88D527'
         };
 
 
@@ -3359,6 +3467,37 @@ function applyPermissions() {
                 `<button class="subnav-item" data-subnav-year="all" onclick="navToDashboardYear('all')">📋 Alle</button>` +
                 years.map(y =>
                     `<button class="subnav-item" data-subnav-year="${y}" onclick="navToDashboardYear('${y}')">${y}</button>`
+                ).join('');
+        }
+
+        // Anlagen: Filter nach Inbetriebnahmejahr ('all' oder Jahreszahl)
+        window._anlagenYearFilter = 'all';
+
+        function navToAnlagenYear(year) {
+            window._anlagenYearFilter = String(year);
+            openSubnav('subnavAnlagen');
+            if (typeof showView === 'function') showView('anlagen');
+            document.querySelectorAll('[data-subnav-anlagen-year]').forEach(b => {
+                b.classList.toggle('nav-active', b.dataset.subnavAnlagenYear === String(year));
+            });
+            if (document.body.classList.contains('sidebar-unpinned')) closeSidebar();
+        }
+
+        // Sidebar-Subnav für Anlagen mit Inbetriebnahmejahren befüllen (wird nach dem Laden der Anlagen aufgerufen)
+        function updateAnlagenSubnav() {
+            const container = document.getElementById('subnavAnlagen');
+            if (!container) return;
+            const yearSet = new Set();
+            Object.values(window.anlagenDatabase || {}).forEach(a => {
+                const y = parseInt(String(a.inbetriebnahme || '').substring(0, 4), 10);
+                if (y) yearSet.add(y);
+            });
+            const years = Array.from(yearSet).sort((a, b) => a - b);
+            const active = String(window._anlagenYearFilter || 'all');
+            container.innerHTML =
+                `<button class="subnav-item ${active === 'all' ? 'nav-active' : ''}" data-subnav-anlagen-year="all" onclick="navToAnlagenYear('all')">📋 Alle</button>` +
+                years.map(y =>
+                    `<button class="subnav-item ${active === String(y) ? 'nav-active' : ''}" data-subnav-anlagen-year="${y}" onclick="navToAnlagenYear('${y}')">${y}</button>`
                 ).join('');
         }
 
@@ -3882,6 +4021,347 @@ function applyPermissions() {
         window.saveContactToSharePoint = saveContactToSharePoint;
         window.deleteContactFromSharePoint = deleteContactFromSharePoint;
 
+        // ========== SHAREPOINT ANLAGEN (DodekAnlagen) ==========
+        // Annahme (nicht verifiziert): interne Spaltennamen = AnlagenNr, Bezeichnung, Kunde, Standort, Ursprungsprojekt,
+        // Inbetriebnahme, AktiveModule, Notizen, VerknuepfteProjekte. Fehlt "AnlagenNr", wird die Standardspalte Title verwendet.
+
+        window.anlagenDatabase = {};
+        const ANLAGEN_MODULE_NAMES = {
+            0: 'Modul 0', 1: 'Filter mit Komponenten', 2: 'Ventilator', 3: 'Staubaustrag', 4: 'Brenntisch',
+            5: 'Kratzereinheit', 6: 'Wechseltisch', 7: 'Hydraulikanlage', 8: 'Querförderer', 9: 'WRG',
+            10: 'Portalanlage', 11: 'Kran', 12: 'Manipulator', 13: 'Elektroinstallation', 14: 'Modul 14'
+        };
+        let anlagenFieldTypes = null; // interner Spaltenname → Typ (einmalig aus der Liste gelesen)
+
+        async function getAnlagenFieldTypes() {
+            if (anlagenFieldTypes) return anlagenFieldTypes;
+            const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidAnlagen}')/fields?$select=InternalName,TypeAsString&$filter=Hidden eq false`;
+            const data = await spFetch(url);
+            const map = {};
+            (data.value || []).forEach(f => { map[f.InternalName] = f.TypeAsString; });
+            anlagenFieldTypes = map;
+            return map;
+        }
+
+        // values: logische Feldnamen → Payload mit tatsächlichen internen Spaltennamen
+        async function buildAnlagePayload(values) {
+            const fields = await getAnlagenFieldTypes();
+            const payload = {};
+            Object.keys(values).forEach(logical => {
+                let value = values[logical];
+                let name = logical;
+                if (logical === 'AnlagenNr' && !fields.AnlagenNr) {
+                    name = 'Title';
+                } else if (!fields[logical]) {
+                    throw new Error(`Spalte "${logical}" fehlt in der SharePoint-Liste DodekAnlagen`);
+                }
+                if (logical === 'Inbetriebnahme') {
+                    value = value ? (fields[name] === 'DateTime' ? `${value}T00:00:00Z` : value) : null;
+                }
+                payload[name] = value;
+            });
+            // Eigene Spalte AnlagenNr vorhanden: Title (Pflichtspalte) mit derselben Nummer füllen
+            if (values.AnlagenNr !== undefined && fields.AnlagenNr && fields.Title) payload.Title = values.AnlagenNr;
+            return payload;
+        }
+
+        function parseJsonArray(raw) {
+            if (!raw) return [];
+            try { const v = JSON.parse(raw); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+        }
+
+        function anlageFromItem(item) {
+            return {
+                _spId:               item.Id,
+                id:                  item.Id,
+                anlagenNr:           item.AnlagenNr || item.Title || '',
+                bezeichnung:         item.Bezeichnung || '',
+                kunde:               item.Kunde || '',
+                standort:            item.Standort || '',
+                ursprungsprojekt:    item.Ursprungsprojekt || '',
+                inbetriebnahme:      String(item.Inbetriebnahme || '').substring(0, 10),
+                aktiveModule:        parseJsonArray(item.AktiveModule),
+                notizen:             item.Notizen || '',
+                verknuepfteProjekte: parseJsonArray(item.VerknuepfteProjekte)
+            };
+        }
+
+        async function loadAnlagenFromSharePoint() {
+            try {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidAnlagen}')/items?$top=500`;
+                const data = await spFetch(url);
+                window.anlagenDatabase = {};
+                (data.value || []).forEach(item => {
+                    try {
+                        const a = anlageFromItem(item);
+                        window.anlagenDatabase[a.id] = a;
+                    } catch (e) {
+                        console.error('Fehler beim Parsen von Anlage', item.Id, e);
+                    }
+                });
+                console.log('Anlagen geladen:', Object.keys(window.anlagenDatabase).length);
+                updateAnlagenSubnav();
+                if (document.getElementById('anlagenView')?.classList.contains('active')) {
+                    if (window._anlagenDetailId && window.anlagenDatabase[window._anlagenDetailId]) renderAnlageDetail();
+                    else showAnlagenList();
+                }
+            } catch (e) {
+                console.error('Fehler beim Laden der Anlagen:', e);
+                showMessage('Anlagen konnten nicht geladen werden: ' + e.message, 'error');
+            }
+        }
+
+        async function createAnlageInSharePoint(values) {
+            const payload = await buildAnlagePayload(values);
+            const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidAnlagen}')/items`;
+            return await spFetch(url, { method: 'POST', body: JSON.stringify(payload) });
+        }
+
+        async function updateAnlageInSharePoint(spId, values) {
+            const payload = await buildAnlagePayload(values);
+            const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidAnlagen}')/items(${spId})`;
+            await spFetch(url, {
+                method: 'PATCH',
+                headers: { 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' },
+                body: JSON.stringify(payload)
+            });
+        }
+
+        const fmtAnlageDate = d => {
+            const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || ''));
+            return m ? `${m[3]}.${m[2]}.${m[1]}` : '';
+        };
+
+        // ----- Liste -----
+        function showAnlagenList() {
+            window._anlagenDetailId = null;
+            document.getElementById('anlagenListPane').style.display = '';
+            document.getElementById('anlagenDetailPane').style.display = 'none';
+            renderAnlagen();
+        }
+
+        function renderAnlagen() {
+            const container = document.getElementById('anlagenListContainer');
+            if (!container) return;
+            const filter = String(window._anlagenYearFilter || 'all');
+            const info = document.getElementById('anlagenFilterInfo');
+            if (info) info.textContent = filter === 'all' ? '' : `· Inbetriebnahme ${filter}`;
+
+            const list = Object.values(window.anlagenDatabase || {})
+                .filter(a => filter === 'all' || String(a.inbetriebnahme || '').substring(0, 4) === filter)
+                .sort((a, b) => (a.anlagenNr || '').localeCompare(b.anlagenNr || '', 'de', { numeric: true }));
+
+            if (list.length === 0) {
+                container.innerHTML = '<div id="contactsEmptyState">😶 Keine Anlagen gefunden</div>';
+                return;
+            }
+            const rows = list.map(a => `<tr onclick="openAnlageDetail(${a.id})">
+                    <td><strong>${escapeHtml(a.anlagenNr)}</strong></td>
+                    <td>${escapeHtml(a.bezeichnung)}</td>
+                    <td>${escapeHtml(a.kunde)}</td>
+                    <td>${escapeHtml(a.standort)}</td>
+                    <td>${escapeHtml(a.ursprungsprojekt)}</td>
+                    <td>${fmtAnlageDate(a.inbetriebnahme)}</td>
+                    <td>—</td>
+                </tr>`).join('');
+            container.innerHTML = `<div class="contact-table-wrapper">
+                <table class="contact-table">
+                    <thead><tr>
+                        <th>Anlagen-Nr.</th><th>Bezeichnung</th><th>Kunde</th><th>Standort</th><th>Ursprungsprojekt</th><th>Inbetriebnahme</th><th>Prüfungen</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+        }
+
+        // ----- Neuanlage -----
+        function suggestAnlagenNr() {
+            const year = new Date().getFullYear();
+            const re = new RegExp(`^ANL-${year}-(\\d+)$`);
+            let max = 0;
+            Object.values(window.anlagenDatabase || {}).forEach(a => {
+                const m = re.exec(a.anlagenNr || '');
+                if (m) max = Math.max(max, parseInt(m[1], 10));
+            });
+            return `ANL-${year}-${String(max + 1).padStart(3, '0')}`;
+        }
+
+        function openAnlageModal(originProject) {
+            document.getElementById('am_anlagenNr').value = suggestAnlagenNr();
+            ['am_bezeichnung', 'am_kunde', 'am_standort', 'am_inbetriebnahme', 'am_notizen'].forEach(id => { document.getElementById(id).value = ''; });
+            document.getElementById('am_ursprungsprojekt').value = originProject || '';
+            // Aus dem Projekt heraus: Kunde vorbelegen, falls das Projekt geladen ist
+            const proj = originProject && window.allProjects ? window.allProjects[originProject] : null;
+            if (proj && proj.customer) document.getElementById('am_kunde').value = proj.customer;
+            document.getElementById('am_modules').innerHTML = Object.keys(ANLAGEN_MODULE_NAMES).map(Number).map(n => {
+                if (n === 0 || n === 14) {
+                    return `<label style="display:flex;align-items:center;gap:6px;color:#999;"><input type="checkbox" checked disabled> ${n} – ${escapeHtml(ANLAGEN_MODULE_NAMES[n])} <em style="font-size:11px;">(immer enthalten)</em></label>`;
+                }
+                return `<label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="am-module-cb" value="${n}"> ${n} – ${escapeHtml(ANLAGEN_MODULE_NAMES[n])}</label>`;
+            }).join('');
+            document.getElementById('am_saveBtn').disabled = false;
+            document.getElementById('anlageModal').style.display = 'block';
+            document.getElementById('am_bezeichnung').focus();
+        }
+
+        function closeAnlageModal() {
+            document.getElementById('anlageModal').style.display = 'none';
+        }
+
+        async function saveAnlage() {
+            const val = id => document.getElementById(id).value.trim();
+            const anlagenNr   = val('am_anlagenNr');
+            const bezeichnung = val('am_bezeichnung');
+            if (!anlagenNr)   { showMessage('Anlagen-Nr. erforderlich', 'error'); return; }
+            if (!bezeichnung) { showMessage('Bezeichnung erforderlich', 'error'); return; }
+            if (Object.values(window.anlagenDatabase || {}).some(a => (a.anlagenNr || '').toLowerCase() === anlagenNr.toLowerCase())) {
+                showMessage(`Anlagen-Nr. ${anlagenNr} existiert bereits`, 'error');
+                return;
+            }
+            const modules = [0, ...Array.from(document.querySelectorAll('.am-module-cb:checked')).map(cb => parseInt(cb.value, 10)).sort((a, b) => a - b), 14];
+            const values = {
+                AnlagenNr:        anlagenNr,
+                Bezeichnung:      bezeichnung,
+                Kunde:            val('am_kunde'),
+                Standort:         val('am_standort'),
+                Ursprungsprojekt: val('am_ursprungsprojekt'),
+                Inbetriebnahme:   document.getElementById('am_inbetriebnahme').value,
+                AktiveModule:     JSON.stringify(modules),
+                Notizen:          document.getElementById('am_notizen').value,
+                VerknuepfteProjekte: '[]'
+            };
+            const btn = document.getElementById('am_saveBtn');
+            btn.disabled = true;
+            try {
+                const result = await createAnlageInSharePoint(values);
+                const newId = result && (result.id || result.Id);
+                const a = {
+                    _spId: newId, id: newId, anlagenNr, bezeichnung,
+                    kunde: values.Kunde, standort: values.Standort, ursprungsprojekt: values.Ursprungsprojekt,
+                    inbetriebnahme: values.Inbetriebnahme, aktiveModule: modules, notizen: values.Notizen, verknuepfteProjekte: []
+                };
+                window.anlagenDatabase[newId] = a;
+                updateAnlagenSubnav();
+                if (document.getElementById('anlagenView').classList.contains('active')) showAnlagenList();
+                closeAnlageModal();
+                showMessage(`Anlage ${anlagenNr} angelegt`, 'success');
+            } catch (e) {
+                console.error('Anlage speichern fehlgeschlagen:', e);
+                showMessage('Anlage konnte nicht gespeichert werden: ' + e.message, 'error');
+                btn.disabled = false;
+            }
+        }
+
+        // ----- Detail -----
+        function openAnlageDetail(id) {
+            if (!window.anlagenDatabase[id]) return;
+            window._anlagenDetailId = id;
+            document.getElementById('anlagenListPane').style.display = 'none';
+            document.getElementById('anlagenDetailPane').style.display = '';
+            renderAnlageDetail();
+            window.scrollTo({ top: 0, behavior: 'instant' });
+        }
+
+        function renderAnlageDetail() {
+            const a = window.anlagenDatabase[window._anlagenDetailId];
+            const pane = document.getElementById('anlagenDetailPane');
+            if (!a || !pane) return;
+            const canEdit = window.currentUserRole === 'admin' || window.currentUserRole === 'editor';
+            const field = (label, value) => `<div><div style="font-size:11px;color:#888;">${label}</div><div>${value ? escapeHtml(value) : '—'}</div></div>`;
+            const modules = (a.aktiveModule || []).slice().sort((x, y) => x - y)
+                .map(n => `<span style="display:inline-block;background:#e8f0f8;color:#1a3a5c;border-radius:3px;padding:2px 8px;margin:2px 4px 2px 0;font-size:12px;">${n} – ${escapeHtml(ANLAGEN_MODULE_NAMES[n] || ('Modul ' + n))}</span>`).join('');
+            const links = (a.verknuepfteProjekte || []).map(l => `<tr>
+                    <td><span class="kpi-link" data-pn="${escapeHtml(l.projektnr)}" onclick="openAnlageProject(this.dataset.pn)" title="Projekt öffnen">${escapeHtml(l.projektnr)}</span></td>
+                    <td>${escapeHtml(l.typ || '')}</td>
+                </tr>`).join('');
+            pane.innerHTML = `
+                <div style="background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);margin-bottom:20px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+                        <h2 style="margin:0;">🏭 ${escapeHtml(a.anlagenNr)} — ${escapeHtml(a.bezeichnung)}</h2>
+                        <button onclick="showAnlagenList()" class="btn-secondary">⬅️ Zurück zur Liste</button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">
+                        ${field('Kunde', a.kunde)}
+                        ${field('Standort', a.standort)}
+                        ${field('Ursprungsprojekt', a.ursprungsprojekt)}
+                        ${field('Inbetriebnahme', fmtAnlageDate(a.inbetriebnahme))}
+                    </div>
+                    <div style="margin-top:14px;"><div style="font-size:11px;color:#888;margin-bottom:2px;">Aktive Module</div>${modules || '—'}</div>
+                    <div style="margin-top:14px;"><div style="font-size:11px;color:#888;">Notizen</div><div style="white-space:pre-wrap;">${a.notizen ? escapeHtml(a.notizen) : '—'}</div></div>
+                </div>
+                <div style="background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);margin-bottom:20px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:10px;">
+                        <h3 style="margin:0;color:#366092;">Verknüpfte Projekte</h3>
+                        <button onclick="openAnlageLinkModal()" class="btn-secondary" ${canEdit ? '' : 'disabled title="Keine Berechtigung" style="opacity:0.4;cursor:not-allowed;"'}>＋ Projekt verknüpfen</button>
+                    </div>
+                    ${links ? `<div class="contact-table-wrapper"><table class="contact-table"><thead><tr><th>Projektnummer</th><th>Typ</th></tr></thead><tbody>${links}</tbody></table></div>` : '<div style="color:#888;">Keine Projekte verknüpft.</div>'}
+                </div>
+                <div style="background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                    <h3 style="margin:0 0 10px 0;color:#366092;">Prüfungen</h3>
+                    <div style="color:#888;">Prüfungen folgen in Phase 2</div>
+                </div>`;
+        }
+
+        function openAnlageProject(pn) {
+            if (!window.allProjects || !window.allProjects[pn]) {
+                showMessage(`Projekt ${pn} nicht gefunden`, 'error');
+                return;
+            }
+            openProject(pn);
+        }
+
+        // ----- Projekt verknüpfen -----
+        function openAnlageLinkModal() {
+            document.getElementById('al_projektnr').value = '';
+            document.getElementById('al_typ').value = 'Erstverkauf';
+            document.getElementById('anlageProjectSuggestions').innerHTML = Object.keys(window.allProjects || {}).sort()
+                .map(pn => `<option value="${escapeHtml(pn)}">`).join('');
+            document.getElementById('al_saveBtn').disabled = false;
+            document.getElementById('anlageLinkModal').style.display = 'block';
+            document.getElementById('al_projektnr').focus();
+        }
+
+        function closeAnlageLinkModal() {
+            document.getElementById('anlageLinkModal').style.display = 'none';
+        }
+
+        async function saveAnlageLink() {
+            const a = window.anlagenDatabase[window._anlagenDetailId];
+            if (!a) return;
+            const projektnr = document.getElementById('al_projektnr').value.trim();
+            const typ = document.getElementById('al_typ').value;
+            if (!projektnr) { showMessage('Projektnummer erforderlich', 'error'); return; }
+            if ((a.verknuepfteProjekte || []).some(l => l.projektnr === projektnr && l.typ === typ)) {
+                showMessage('Diese Verknüpfung existiert bereits', 'error');
+                return;
+            }
+            const newLinks = [...(a.verknuepfteProjekte || []), { projektnr, typ }];
+            const btn = document.getElementById('al_saveBtn');
+            btn.disabled = true;
+            try {
+                await updateAnlageInSharePoint(a._spId, { VerknuepfteProjekte: JSON.stringify(newLinks) });
+                a.verknuepfteProjekte = newLinks;
+                closeAnlageLinkModal();
+                renderAnlageDetail();
+                showMessage('Projekt verknüpft', 'success');
+            } catch (e) {
+                console.error('Verknüpfung speichern fehlgeschlagen:', e);
+                showMessage('Verknüpfung konnte nicht gespeichert werden: ' + e.message, 'error');
+                btn.disabled = false;
+            }
+        }
+
+        window.loadAnlagenFromSharePoint = loadAnlagenFromSharePoint;
+        window.showAnlagenList        = showAnlagenList;
+        window.openAnlageModal        = openAnlageModal;
+        window.closeAnlageModal       = closeAnlageModal;
+        window.saveAnlage             = saveAnlage;
+        window.openAnlageDetail       = openAnlageDetail;
+        window.openAnlageProject      = openAnlageProject;
+        window.openAnlageLinkModal    = openAnlageLinkModal;
+        window.closeAnlageLinkModal   = closeAnlageLinkModal;
+        window.saveAnlageLink         = saveAnlageLink;
+
         // ===== CONTACTS UI =====
 
         function renderContacts() {
@@ -4337,6 +4817,7 @@ function applyPermissions() {
             await loadQuotesFromSharePoint();
             await loadSettingsFromSharePoint();
             await loadContactsFromSharePoint();
+            await loadAnlagenFromSharePoint();
             await loadArticleGroupsFromSharePoint();
 
             applyPermissions();
@@ -4351,7 +4832,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.62';
+        const APP_VERSION = 'v1.6.63';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -5406,6 +5887,11 @@ function applyPermissions() {
                 document.getElementById('contactsView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
                 renderContacts();
+            } else if (viewName === 'anlagen') {
+                document.getElementById('anlagenView').classList.add('active');
+                document.getElementById('editorButton').style.display = 'none';
+                showAnlagenList();
+                window.scrollTo({ top: 0, behavior: 'instant' });
             } else if (viewName === 'settings') {
                 document.getElementById('settingsView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';

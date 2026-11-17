@@ -31,7 +31,7 @@ Lies diese Datei vollständig, bevor du irgendeine Änderung machst.
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.62 |
+| `Projektuebersicht_APP.html` | v1.6.63 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -56,7 +56,10 @@ const SP_CONFIG = {
     guidArticles: '26a0bbca-31bf-4a0d-8bd2-abe07d614725',
     guidStock:    'df491bc5-f23b-493a-a8d0-37a15024cf29',
     guidSettings: '89b9fdeb-6907-4cfc-a1f5-2bc8bc0bdbe2',
-    guidContacts: '3D2F7AE7-A6DE-4F84-A1EB-6FC7DDDDB70F'
+    guidContacts: '3D2F7AE7-A6DE-4F84-A1EB-6FC7DDDDB70F',
+    guidAnlagen:       'E7192882-A021-4BD4-86C5-F387B053D134',
+    guidUVVPruefungen: '201B460E-3768-4401-A2F0-D1CD2A9BEB6E',
+    guidUVVModule:     'DE98FE5E-7A10-4E5E-80A1-9BEC4F88D527'
 };
 ```
 
@@ -146,6 +149,14 @@ Claude-Session: https://claude.ai/code/session_0112q721THq4Xa5MtZn82Y5R
 - **Alternativpositionen (ab v1.6.61):** Feld `included` an Positionen (nur `item`); fehlt es oder ist es nicht `false`, gilt die Position als einbezogen (`isQuoteIncluded(p)`). `included: false` schließt die Position aus EK/VK/DB, Abschnitts-Zwischensummen, Vergleichsleiste/-modal und Druck-Summen aus; sie bleibt sichtbar, editierbar (gelber Zeilenhintergrund) und im Druck mit „Alt."-Label und Gelbton. Checkbox ganz links (`toggleQuotePositionIncluded()`), Zustand je Variante. `convertQuoteToProject()` wurde nicht angepasst (übernimmt weiterhin alle Positionen, auch nicht einbezogene — offen). Pfeil-Buttons ↑/↓ je Position und Titel (`moveQuotePosition()`); an Listenanfang/-ende entfällt der jeweilige Pfeil.
 - Anzeige je Variante: EK, Rabatt, VK Wiederverkauf und VK Endkunde mit DB € und DB %, bei Titeln zusätzlich VK-Zwischensummen je Abschnitt (Zuordnung über den Titeltext). Differenz zur vorherigen Variante absolut und prozentual; Farbe aus Kundensicht: VK höher = rot, VK niedriger = grün, Rabatt höher = grün; EK und DB bewusst neutral grau.
 
+
+### Anlagen — `anlagenView` (ab v1.6.63)
+- Daten aus SharePoint-Liste `DodekAnlagen` (`guidAnlagen`); `guidUVVPruefungen` und `guidUVVModule` sind in `SP_CONFIG` eingetragen, werden aber noch nicht verwendet (Phase 2). `window.anlagenDatabase` (Schlüssel = SharePoint-Id), geladen von `loadAnlagenFromSharePoint()` in `initAppAfterLogin()`.
+- **Annahme (nicht gegen die Liste geprüft):** interne Spaltennamen `AnlagenNr`, `Bezeichnung`, `Kunde`, `Standort`, `Ursprungsprojekt`, `Inbetriebnahme`, `AktiveModule`, `Notizen`, `VerknuepfteProjekte`. Gibt es keine Spalte `AnlagenNr`, wird die Standardspalte `Title` verwendet; ist `Title` zusätzlich zu `AnlagenNr` vorhanden, wird sie mit derselben Nummer befüllt. Fehlt eine andere Spalte, bricht das Speichern mit einer Fehlermeldung ab (`buildAnlagePayload()`, liest die Spalten einmalig über `/fields`). Ist `Inbetriebnahme` vom Typ DateTime, wird `YYYY-MM-DDT00:00:00Z` geschrieben.
+- `AktiveModule` und `VerknuepfteProjekte` liegen als JSON-Text in der Liste: `[0,1,2,14]` (0 und 14 immer enthalten) bzw. `[{ "projektnr": "…", "typ": "Erstverkauf|UVV-Prüfung|Ersatzteile|Sonstiges" }]`. Modulnamen 1–13 in `ANLAGEN_MODULE_NAMES`; für 0 und 14 ist kein Name vorgegeben (Anzeige „Modul 0“ / „Modul 14“).
+- Sidebar: „🏭 Anlagen“ mit Subnav „📋 Alle“ + Inbetriebnahmejahre (`updateAnlagenSubnav()`, `navToAnlagenYear()`, Filter in `window._anlagenYearFilter`). `showView('anlagen')` zeigt immer die Liste; Detail ist eine Unteransicht innerhalb der View (`#anlagenDetailPane`).
+- Liste: AnlagenNr, Bezeichnung, Kunde, Standort, Ursprungsprojekt, Inbetriebnahme, Prüfungen (zeigt „—“, Phase 2). Neuanlage-Modal (`openAnlageModal(originProject)`): Nummernvorschlag `ANL-<Jahr>-<laufend 3-stellig>`, doppelte Nummern werden abgelehnt. Button „Anlage erfassen“ im `editorView` (nur admin/editor) öffnet dasselbe Modal mit vorbefülltem Ursprungsprojekt (und Kunde, falls das Projekt geladen ist).
+- Detail: Stammdaten, aktive Module, „Verknüpfte Projekte“ (Projektnummer öffnet per `openProject()`, nur wenn das Projekt geladen ist), „Prüfungen“ als Platzhalter. Bearbeiten/Löschen von Anlagen und Entfernen von Verknüpfungen gibt es noch nicht (offen).
 ---
 
 ## Bekannte offene Punkte (Stand 2026-11-05)
@@ -202,6 +213,7 @@ print(f'Endtiefe: {depth}')
 | `quotesView` | Kalkulation (BOM, VK/EK-Positionen) |
 | `contactsView` | Kunden & Lieferanten |
 | `articlesView` | Artikelstamm |
+| `anlagenView` | Anlagen (Liste, Detail, Neuanlage; ab v1.6.63) |
 | `toolsView` | iframe-Einbettung spedition.html / bestellung.html |
 | `editorView` | Projektbearbeitung (admin/editor) |
 | `settingsView` | Einstellungen (admin only) |

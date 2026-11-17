@@ -10,7 +10,7 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.62 |
+| `Projektuebersicht_APP.html` | v1.6.63 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -54,6 +54,9 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 
 ### 📦 Lagerverwaltung
 - Bestand, Mindestmenge, kritische Artikel in Aufgabenliste
+
+### 🏭 Anlagen
+- Anlagenliste mit Filter nach Inbetriebnahmejahr, Neuanlage (auch aus dem Projekt heraus), Detailansicht mit verknüpften Projekten; Prüfungen folgen in Phase 2
 
 ### 🗂️ Artikelstamm
 - ID, Bezeichnung, EK/VK-Preis, Marge, Gewerk, Typ
