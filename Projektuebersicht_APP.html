@@ -3471,6 +3471,14 @@ function applyPermissions() {
             if (document.body.classList.contains('sidebar-unpinned')) closeSidebar();
         }
 
+        // Easter Egg: chinesisches Tierkreiszeichen zum Jahr (12-Jahres-Zyklus, 2020 = Ratte)
+        function getZodiacEmoji(year) {
+            const animals = ['🐭', '🐮', '🐯', '🐰', '🐉', '🐍', '🐴', '🐐', '🐵', '🐓', '🐕', '🐷'];
+            const y = parseInt(year, 10);
+            if (isNaN(y)) return '';
+            return animals[(((y - 2020) % 12) + 12) % 12];
+        }
+
         // Sidebar-Subnav für Dashboard mit Jahreszahlen befüllen (wird nach Datenladen aufgerufen)
         function updateDashboardSubnav() {
             const yearSet = new Set();
@@ -3487,7 +3495,7 @@ function applyPermissions() {
             container.innerHTML =
                 `<button class="subnav-item" data-subnav-year="all" onclick="navToDashboardYear('all')">📋 Alle</button>` +
                 years.map(y =>
-                    `<button class="subnav-item" data-subnav-year="${y}" onclick="navToDashboardYear('${y}')">${y}</button>`
+                    `<button class="subnav-item" data-subnav-year="${y}" onclick="navToDashboardYear('${y}')">${getZodiacEmoji(y)} ${y}</button>`
                 ).join('');
         }
 
@@ -3518,7 +3526,7 @@ function applyPermissions() {
             container.innerHTML =
                 `<button class="subnav-item ${active === 'all' ? 'nav-active' : ''}" data-subnav-anlagen-year="all" onclick="navToAnlagenYear('all')">📋 Alle</button>` +
                 years.map(y =>
-                    `<button class="subnav-item ${active === String(y) ? 'nav-active' : ''}" data-subnav-anlagen-year="${y}" onclick="navToAnlagenYear('${y}')">${y}</button>`
+                    `<button class="subnav-item ${active === String(y) ? 'nav-active' : ''}" data-subnav-anlagen-year="${y}" onclick="navToAnlagenYear('${y}')">${getZodiacEmoji(y)} ${y}</button>`
                 ).join('');
         }
 
@@ -5023,7 +5031,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.65';
+        const APP_VERSION = 'v1.6.66';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
