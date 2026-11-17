@@ -406,6 +406,11 @@
         .pf-btn.entf.sel { background: #757575; border-color: #757575; color: #fff; }
         .pf-input { width: 100%; min-height: 44px; font-size: 15px; box-sizing: border-box; }
         .pf-einheit { align-self: center; color: #555; font-weight: 600; min-width: 40px; }
+        .pf-vj { margin-top: 6px; font-size: 12px; color: #888; }
+        .pf-vj-badge { background: #f0f0f0; border-radius: 3px; padding: 2px 8px; }
+        .pf-uebern-tag { display: none; margin-left: 8px; color: #2e7d32; font-weight: 600; }
+        .pf-row.pf-uebern { border-left: 4px solid #2e7d32; padding-left: 8px; }
+        .pf-row.pf-uebern .pf-uebern-tag { display: inline; }
         .pf-btn:disabled, .pf-note-btn:disabled { cursor: default; }
         .pf-btn:disabled:not(.sel) { opacity: 0.5; }
         .pf-note-btn { min-width: 44px; min-height: 44px; border: 2px solid #ccc; background: #fff; border-radius: 6px; font-size: 16px; cursor: pointer; }
@@ -5219,14 +5224,32 @@ function applyPermissions() {
             const canEdit = canEditUvv();
             const rows = list.map(p => `<tr onclick="openPruefung(${p.id})" style="cursor:pointer;">
                     <td>${fmtAnlageDate(p.datum)}</td><td>${escapeHtml(p.pruefer)}</td><td>${uvvStatusBadge(p.status)}</td>
+                    <td style="width:50px;"><button onclick="event.stopPropagation(); deletePruefung(${p.id})" class="btn-danger btn-small" title="Prüfung löschen">🗑️</button></td>
                 </tr>`).join('');
             return `<div style="background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:10px;">
                         <h3 style="margin:0;color:#366092;">Prüfungen</h3>
                         <button onclick="openNeuePruefung()" class="btn-secondary" ${canEdit ? '' : 'disabled title="Keine Berechtigung" style="opacity:0.4;cursor:not-allowed;"'}>＋ Neue Prüfung</button>
                     </div>
-                    ${rows ? `<div class="contact-table-wrapper"><table class="contact-table"><thead><tr><th>Datum</th><th>Prüfer</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div style="color:#888;">Noch keine Prüfungen.</div>'}
+                    ${rows ? `<div class="contact-table-wrapper"><table class="contact-table"><thead><tr><th>Datum</th><th>Prüfer</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div style="color:#888;">Noch keine Prüfungen.</div>'}
                 </div>`;
+        }
+
+        // Prüfung löschen (jeder angemeldete Nutzer, keine Rollenprüfung)
+        async function deletePruefung(id) {
+            const p = window.uvvPruefungen[id];
+            if (!p) return;
+            const a = window.anlagenDatabase[p.anlagenId];
+            if (!confirm(`Prüfung ${fmtAnlageDate(p.datum)} / ${a ? a.anlagenNr : p.anlagenId} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) return;
+            try {
+                await spFetch(uvvListUrl(SP_CONFIG.guidUVVPruefungen, p._spId), { method: 'DELETE', headers: { 'IF-MATCH': '*' } });
+                delete window.uvvPruefungen[id];
+                await loadUVVPruefungenFromSharePoint(); // Liste neu laden
+                showMessage('Prüfung gelöscht', 'success');
+            } catch (e) {
+                console.error('Prüfung löschen fehlgeschlagen:', e);
+                showMessage('Prüfung konnte nicht gelöscht werden: ' + e.message, 'error');
+            }
         }
 
         // ----- Neue Prüfung (Kopfdaten) -----
@@ -5275,8 +5298,9 @@ function applyPermissions() {
             let obj = null;
             try { obj = p.ergebnisRaw ? JSON.parse(p.ergebnisRaw) : null; } catch (e) { obj = null; }
             const ergebnisse = {};
-            ((obj && obj.ergebnisse) || []).forEach(e => { ergebnisse[`${e.modulNr}_${e.pruefpunktId}`] = { modulNr: e.modulNr, pruefpunktId: e.pruefpunktId, bewertung: e.bewertung ? (PF_LEGACY_WERTE[e.bewertung] || e.bewertung) : null, bemerkung: e.bemerkung || '' }; });
+            ((obj && obj.ergebnisse) || []).forEach(e => { ergebnisse[`${e.modulNr}_${e.pruefpunktId}`] = { modulNr: e.modulNr, pruefpunktId: e.pruefpunktId, bewertung: e.bewertung ? (PF_LEGACY_WERTE[e.bewertung] || e.bewertung) : null, bemerkung: e.bemerkung || '', uebernommen: !!e.uebernommen }; });
             window._pf = {
+                prev: pfFindVorjahr(p),
                 id: p.id, anlageId: p.anlagenId, datum: p.datum, pruefer: (obj && obj.pruefer) || p.pruefer, status: p.status,
                 readonly: p.status === 'Abgeschlossen' || !canEditUvv(),
                 module: obj && Array.isArray(obj.module) ? obj.module : null,
@@ -5289,6 +5313,70 @@ function applyPermissions() {
             pfPane().style.display = '';
             if (window._pf.module) renderPruefungForm(); else renderPruefungSelection();
             window.scrollTo({ top: 0, behavior: 'instant' });
+        }
+
+        // Vorjahresprüfung: zuletzt abgeschlossene, frühere Prüfung derselben Anlage (nach PruefDatum absteigend, erster Treffer)
+        function pfFindVorjahr(p) {
+            const prev = Object.values(window.uvvPruefungen || {})
+                .filter(x => x.anlagenId === p.anlagenId && x.id !== p.id && x.status === 'Abgeschlossen' &&
+                    (x.datum < p.datum || (x.datum === p.datum && x.id < p.id)))
+                .sort((a, b) => (b.datum || '').localeCompare(a.datum || '') || b.id - a.id)[0];
+            if (!prev) return null;
+            let obj = null;
+            try { obj = prev.ergebnisRaw ? JSON.parse(prev.ergebnisRaw) : null; } catch (e) { obj = null; }
+            const werte = {};
+            ((obj && obj.ergebnisse) || []).forEach(e => { if (e.bewertung) werte[`${e.modulNr}_${e.pruefpunktId}`] = PF_LEGACY_WERTE[e.bewertung] || String(e.bewertung); });
+            return { id: prev.id, datum: prev.datum, module: obj && Array.isArray(obj.module) ? obj.module : null, werte };
+        }
+
+        // Vorjahreswert-Bereich unter einem Prüfpunkt (nur wenn das Modul in der Vorjahresprüfung enthalten war)
+        function pfVorjahrHtml(nr, pid, pp) {
+            const prev = window._pf.prev;
+            if (!prev || (prev.module && !prev.module.includes(nr))) return '';
+            const w = prev.werte[`${nr}_${pid}`];
+            const einheit = w && pfPunktTyp(pp) === 'messwert' && pp.einheit ? ` ${pp.einheit}` : '';
+            return `<div class="pf-vj"><span class="pf-vj-badge">↩ Vorjahr: ${w ? escapeHtml(w + einheit) : '—'}</span><span class="pf-uebern-tag">✓ übernommen</span></div>`;
+        }
+
+        // Übernahme-Markierung wird nur durch "Aus Vorjahr übernehmen" gesetzt; jede manuelle Eingabe am Prüfpunkt entfernt sie
+        // (unabhängig davon, ob der eingegebene Wert dem Vorjahreswert entspricht)
+        function pfUebernommenEntfernen(nr, pid, e) {
+            e.uebernommen = false;
+            const row = document.getElementById(`pfr_${nr}_${pid}`);
+            if (row) row.classList.remove('pf-uebern');
+        }
+
+        function pfRerender() {
+            const open = Array.from(document.querySelectorAll('.pf-module')).map(d => d.open);
+            const y = window.scrollY;
+            renderPruefungForm();
+            document.querySelectorAll('.pf-module').forEach((d, i) => { d.open = open[i]; });
+            window.scrollTo({ top: y, behavior: 'instant' });
+        }
+
+        // Alle Prüfpunkte eines Moduls auf die Vorjahreswerte setzen und als übernommen markieren
+        function pfUebernehmen(nr) {
+            const pf = window._pf;
+            const m = pfModuleDef(nr);
+            if (!pf || pf.readonly || !pf.prev || !m) return;
+            let n = 0;
+            m.Pruefpunkte.forEach(pp => {
+                const pid = pfPunktId(pp);
+                const v = pf.prev.werte[`${nr}_${pid}`];
+                if (!v) return;
+                const e = pfEnsureEntry(nr, pid);
+                e.bewertung = v; e.uebernommen = true; n++;
+            });
+            pfRerender();
+            showMessage(`${n} Werte aus dem Vorjahr übernommen`, 'success');
+        }
+
+        // Übernahme-Markierungen eines Moduls entfernen (Werte bleiben erhalten)
+        function pfMarkierungenEntfernen(nr) {
+            const pf = window._pf;
+            if (!pf || pf.readonly) return;
+            Object.values(pf.ergebnisse).filter(e => e.modulNr === nr).forEach(e => { e.uebernommen = false; });
+            document.querySelectorAll(`[id^="pfr_${nr}_"]`).forEach(r => r.classList.remove('pf-uebern'));
         }
 
         function closePruefung() {
@@ -5305,7 +5393,7 @@ function applyPermissions() {
                     <h2 style="margin:0;">📝 Prüfung ${a ? escapeHtml(a.anlagenNr) : ''}</h2>
                     <button onclick="closePruefung()" class="btn-secondary">⬅️ Zurück zur Anlage</button>
                 </div>
-                <div style="margin-top:10px;color:#555;">${a ? escapeHtml(a.bezeichnung) + ' · ' : ''}${fmtAnlageDate(pf.datum)} · Prüfer: ${escapeHtml(pf.pruefer)} · ${uvvStatusBadge(pf.status)}</div>
+                <div style="margin-top:10px;color:#555;">${a ? escapeHtml(a.bezeichnung) + ' · ' : ''}${fmtAnlageDate(pf.datum)} · Prüfer: ${escapeHtml(pf.pruefer)} · ${uvvStatusBadge(pf.status)}${pf.prev ? ` · <span style="color:#777;">Vorjahr: Prüfung vom ${fmtAnlageDate(pf.prev.datum)}</span>` : ''}</div>
             </div>`;
         }
 
@@ -5380,27 +5468,32 @@ function applyPermissions() {
                     const text = pfPunktText(pp);
                     const e = pfEntry(nr, pid) || {};
                     const val = e.bewertung || '';
+                    const vj = pfVorjahrHtml(nr, pid, pp);
                     const titel = `<div class="pf-text">${pid}. ${escapeHtml(text)}${typ === 'messwert' && pp.einheit ? ` <span class="pf-int">${escapeHtml(pp.einheit)}</span>` : ''}${pp.intervall && pp.intervall !== 'jährlich' ? `<span class="pf-int">${escapeHtml(pp.intervall)}</span>` : ''}</div>`;
                     if (typ === 'freitext') {
                         const input = /^Bemerkung/.test(text)
                             ? `<textarea class="pf-note" style="display:block;" ${ro ? 'readonly' : ''} oninput="pfSetValue(${nr},${pid},this.value)">${escapeHtml(val)}</textarea>`
                             : `<input type="text" class="pf-input" value="${escapeHtml(val)}" ${ro ? 'readonly' : ''} oninput="pfSetValue(${nr},${pid},this.value)">`;
-                        return `<div class="pf-row" id="pfr_${nr}_${pid}">${titel}${input}</div>`;
+                        return `<div class="pf-row ${e.uebernommen ? 'pf-uebern' : ''}" id="pfr_${nr}_${pid}">${titel}${input}${vj}</div>`;
                     }
                     const noteBtn = `<button class="pf-note-btn" ${ro ? 'disabled' : ''} onclick="pfToggleNote(${nr},${pid})" title="Bemerkung">✏️</button>`;
                     const showNote = !!(e.bemerkung || val === 'n.i.O.');
                     const note = `<textarea class="pf-note" id="pfn_${nr}_${pid}" placeholder="Bemerkung…" ${ro ? 'readonly' : ''} style="${showNote ? '' : 'display:none;'}" oninput="pfSetNote(${nr},${pid},this.value)">${escapeHtml(e.bemerkung || '')}</textarea>`;
                     if (typ === 'messwert') {
-                        return `<div class="pf-row" id="pfr_${nr}_${pid}">${titel}
+                        return `<div class="pf-row ${e.uebernommen ? 'pf-uebern' : ''}" id="pfr_${nr}_${pid}">${titel}
                             <div class="pf-btns"><input type="number" step="any" class="pf-input" style="flex:1 1 140px;" value="${escapeHtml(val)}" ${ro ? 'readonly' : ''} oninput="pfSetValue(${nr},${pid},this.value)">
-                            ${pp.einheit ? `<span class="pf-einheit">${escapeHtml(pp.einheit)}</span>` : ''}${noteBtn}</div>${note}</div>`;
+                            ${pp.einheit ? `<span class="pf-einheit">${escapeHtml(pp.einheit)}</span>` : ''}${noteBtn}</div>${note}${vj}</div>`;
                     }
                     const btns = pfPunktOptionen(pp).map(opt => `<button class="pf-btn ${opt === 'entfällt' ? 'entf' : ''} ${val === opt ? 'sel' : ''}" data-nr="${nr}" data-pid="${pid}" data-val="${escapeHtml(opt)}" ${ro ? 'disabled' : ''} onclick="pfPick(this)">${escapeHtml(opt)}</button>`).join('');
-                    return `<div class="pf-row" id="pfr_${nr}_${pid}">${titel}<div class="pf-btns">${btns}${noteBtn}</div>${note}</div>`;
+                    return `<div class="pf-row ${e.uebernommen ? 'pf-uebern' : ''}" id="pfr_${nr}_${pid}">${titel}<div class="pf-btns">${btns}${noteBtn}</div>${note}${vj}</div>`;
                 }).join('');
                 return `<details class="pf-module" ${idx === 0 || ro ? 'open' : ''}>
                     <summary>${nr} – ${escapeHtml(m.ModulName)} <span class="pf-prog" id="pfp_${nr}">${pfProgressText(nr)}</span></summary>
-                    <div style="padding:6px 14px 14px;">${rows}
+                    <div style="padding:6px 14px 14px;">
+                        ${pf.prev && !ro && (!pf.prev.module || pf.prev.module.includes(nr)) ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;">
+                            <button class="btn-secondary" style="min-height:44px;" onclick="pfUebernehmen(${nr})">↩ Aus Vorjahr übernehmen</button>
+                            <button class="btn-secondary" style="min-height:44px;" onclick="pfMarkierungenEntfernen(${nr})">Markierungen entfernen</button>
+                        </div>` : ''}${rows}
                         <div style="margin-top:12px;"><label style="font-size:12px;color:#666;">Bemerkung zum Modul</label>
                         <textarea class="pf-note" ${ro ? 'readonly' : ''} style="display:block;" oninput="pfSetModulNote(${nr}, this.value)">${escapeHtml(pf.modulBemerkungen[nr] || '')}</textarea></div>
                     </div>
@@ -5428,6 +5521,7 @@ function applyPermissions() {
             if (!pf || pf.readonly) return;
             const e = pfEnsureEntry(nr, pid);
             e.bewertung = e.bewertung === val ? null : val;
+            pfUebernommenEntfernen(nr, pid, e);
             const row = document.getElementById(`pfr_${nr}_${pid}`);
             if (row) {
                 row.querySelectorAll('.pf-btn').forEach(b => b.classList.toggle('sel', !!e.bewertung && b.dataset.val === e.bewertung));
@@ -5444,6 +5538,7 @@ function applyPermissions() {
             if (!pf || pf.readonly) return;
             const e = pfEnsureEntry(nr, pid);
             e.bewertung = String(text).trim() === '' ? null : String(text);
+            pfUebernommenEntfernen(nr, pid, e);
             pfRefreshProgress(nr);
         }
 
@@ -5472,7 +5567,7 @@ function applyPermissions() {
             const pf = window._pf;
             const ergebnisse = Object.values(pf.ergebnisse)
                 .filter(e => e.bewertung || e.bemerkung)
-                .map(e => ({ modulNr: e.modulNr, pruefpunktId: e.pruefpunktId, bewertung: e.bewertung || null, bemerkung: e.bemerkung || '' }))
+                .map(e => ({ modulNr: e.modulNr, pruefpunktId: e.pruefpunktId, bewertung: e.bewertung || null, bemerkung: e.bemerkung || '', ...(e.uebernommen ? { uebernommen: true } : {}) }))
                 .sort((x, y) => x.modulNr - y.modulNr || x.pruefpunktId - y.pruefpunktId);
             const modulBemerkungen = {};
             Object.keys(pf.modulBemerkungen).forEach(k => { if (pf.modulBemerkungen[k]) modulBemerkungen[k] = pf.modulBemerkungen[k]; });
@@ -5548,6 +5643,9 @@ function applyPermissions() {
         window.pfSet = pfSet;
         window.pfPick = pfPick;
         window.pfSetValue = pfSetValue;
+        window.deletePruefung = deletePruefung;
+        window.pfUebernehmen = pfUebernehmen;
+        window.pfMarkierungenEntfernen = pfMarkierungenEntfernen;
         window.pfToggleNote = pfToggleNote;
         window.pfSetNote = pfSetNote;
         window.pfSetModulNote = pfSetModulNote;
@@ -6042,7 +6140,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.70';
+        const APP_VERSION = 'v1.6.71';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
