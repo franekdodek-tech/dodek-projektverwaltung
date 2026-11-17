@@ -4255,8 +4255,8 @@ function applyPermissions() {
 
             const nrEl = document.getElementById('am_anlagenNr');
             nrEl.dataset.userEdited = '';
-            nrEl.disabled = !!a; // AnlagenNr ist der eindeutige Schlüssel und beim Bearbeiten nicht änderbar
-            nrEl.style.background = a ? '#f0f0f0' : '';
+            nrEl.disabled = false; // auch beim Bearbeiten änderbar (Tippfehler); Eindeutigkeit wird beim Speichern geprüft
+            nrEl.style.background = '';
             nrEl.value = a ? a.anlagenNr : '';
 
             const set = (id, v) => { document.getElementById(id).value = v || ''; };
@@ -4296,12 +4296,13 @@ function applyPermissions() {
             const editId      = document.getElementById('am_editId').value;
             const existing    = editId ? window.anlagenDatabase[editId] : null;
             const anlagenTyp  = document.getElementById('am_anlagenTyp').value;
-            const anlagenNr   = existing ? existing.anlagenNr : val('am_anlagenNr'); // beim Bearbeiten unveränderlich
+            const anlagenNr   = val('am_anlagenNr');
             const bezeichnung = val('am_bezeichnung');
             if (!anlagenTyp)  { showMessage('Anlagentyp erforderlich', 'error'); return; }
             if (!anlagenNr)   { showMessage('Anlagen-Nr. erforderlich', 'error'); return; }
             if (!bezeichnung) { showMessage('Bezeichnung erforderlich', 'error'); return; }
-            if (!existing && Object.values(window.anlagenDatabase || {}).some(a => (a.anlagenNr || '').toLowerCase() === anlagenNr.toLowerCase())) {
+            // Eindeutigkeit: Nummer darf bei keiner anderen Anlage vergeben sein
+            if (Object.values(window.anlagenDatabase || {}).some(a => String(a.id) !== String(editId) && (a.anlagenNr || '').toLowerCase() === anlagenNr.toLowerCase())) {
                 showMessage(`Anlagen-Nr. ${anlagenNr} existiert bereits`, 'error');
                 return;
             }
@@ -4325,7 +4326,7 @@ function applyPermissions() {
                     inbetriebnahme: values.Inbetriebnahme, aktiveModule: modules, notizen: values.Notizen
                 };
                 if (existing) {
-                    await updateAnlageInSharePoint(existing._spId, values); // PATCH; AnlagenNr und Verknüpfungen bleiben unberührt
+                    await updateAnlageInSharePoint(existing._spId, { AnlagenNr: anlagenNr, ...values }); // PATCH; Verknüpfungen bleiben unberührt
                     Object.assign(existing, local);
                 } else {
                     const result = await createAnlageInSharePoint({ AnlagenNr: anlagenNr, ...values, VerknuepfteProjekte: '[]' });
@@ -4366,9 +4367,10 @@ function applyPermissions() {
             const field = (label, value) => `<div><div style="font-size:11px;color:#888;">${label}</div><div>${value ? escapeHtml(value) : '—'}</div></div>`;
             const modules = (a.aktiveModule || []).slice().sort((x, y) => x - y)
                 .map(n => `<span style="display:inline-block;background:#e8f0f8;color:#1a3a5c;border-radius:3px;padding:2px 8px;margin:2px 4px 2px 0;font-size:12px;">${n} – ${escapeHtml(ANLAGEN_MODULE_NAMES[n] || ('Modul ' + n))}</span>`).join('');
-            const links = (a.verknuepfteProjekte || []).map(l => `<tr>
+            const links = (a.verknuepfteProjekte || []).map((l, i) => `<tr>
                     <td><span class="kpi-link" data-pn="${escapeHtml(l.projektnr)}" onclick="openAnlageProject(this.dataset.pn)" title="Projekt öffnen">${escapeHtml(l.projektnr)}</span></td>
                     <td>${escapeHtml(l.typ || '')}</td>
+                    <td style="width:40px;"><button onclick="removeAnlageLink(${i})" class="btn-danger btn-small" title="Verknüpfung entfernen" ${canEdit ? '' : 'disabled style="opacity:0.4;cursor:not-allowed;"'}>×</button></td>
                 </tr>`).join('');
             pane.innerHTML = `
                 <div style="background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);margin-bottom:20px;">
@@ -4376,6 +4378,7 @@ function applyPermissions() {
                         <h2 style="margin:0;">🏭 ${escapeHtml(a.anlagenNr)} — ${escapeHtml(a.bezeichnung)}</h2>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;">
                             <button onclick="openAnlageEdit()" class="btn-secondary" ${canEdit ? '' : 'disabled title="Keine Berechtigung" style="opacity:0.4;cursor:not-allowed;"'}>✏️ Bearbeiten</button>
+                            ${window.currentUserRole === 'admin' ? '<button onclick="deleteAnlage()" class="btn-danger">🗑️ Anlage löschen</button>' : ''}
                             <button onclick="showAnlagenList()" class="btn-secondary">⬅️ Zurück zur Liste</button>
                         </div>
                     </div>
@@ -4394,7 +4397,7 @@ function applyPermissions() {
                         <h3 style="margin:0;color:#366092;">Verknüpfte Projekte</h3>
                         <button onclick="openAnlageLinkModal()" class="btn-secondary" ${canEdit ? '' : 'disabled title="Keine Berechtigung" style="opacity:0.4;cursor:not-allowed;"'}>＋ Projekt verknüpfen</button>
                     </div>
-                    ${links ? `<div class="contact-table-wrapper"><table class="contact-table"><thead><tr><th>Projektnummer</th><th>Typ</th></tr></thead><tbody>${links}</tbody></table></div>` : '<div style="color:#888;">Keine Projekte verknüpft.</div>'}
+                    ${links ? `<div class="contact-table-wrapper"><table class="contact-table"><thead><tr><th>Projektnummer</th><th>Typ</th><th></th></tr></thead><tbody>${links}</tbody></table></div>` : '<div style="color:#888;">Keine Projekte verknüpft.</div>'}
                 </div>
                 <div style="background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
                     <h3 style="margin:0 0 10px 0;color:#366092;">Prüfungen</h3>
@@ -4451,6 +4454,45 @@ function applyPermissions() {
             }
         }
 
+        async function removeAnlageLink(index) {
+            const a = window.anlagenDatabase[window._anlagenDetailId];
+            if (!a) return;
+            const link = (a.verknuepfteProjekte || [])[index];
+            if (!link) return;
+            if (!confirm(`Verknüpfung mit Projekt ${link.projektnr} (${link.typ || '—'}) entfernen?`)) return;
+            const newLinks = a.verknuepfteProjekte.filter((_, i) => i !== index);
+            try {
+                await updateAnlageInSharePoint(a._spId, { VerknuepfteProjekte: JSON.stringify(newLinks) });
+                a.verknuepfteProjekte = newLinks;
+                renderAnlageDetail();
+                showMessage('Verknüpfung entfernt', 'success');
+            } catch (e) {
+                console.error('Verknüpfung entfernen fehlgeschlagen:', e);
+                showMessage('Verknüpfung konnte nicht entfernt werden: ' + e.message, 'error');
+            }
+        }
+
+        // Nur Admin; Bestätigung durch Eintippen der Anlagen-Nr.
+        async function deleteAnlage() {
+            if (window.currentUserRole !== 'admin') { showMessage('Keine Berechtigung', 'error'); return; }
+            const a = window.anlagenDatabase[window._anlagenDetailId];
+            if (!a) return;
+            const input = prompt(`Anlage ${a.anlagenNr} wirklich löschen? Das kann nicht rückgängig gemacht werden.\nPrüfungen dieser Anlage bleiben erhalten und müssen manuell entfernt werden.\n\nZur Bestätigung die Anlagen-Nr. eintippen:`, '');
+            if (input === null) return;
+            if (input.trim() !== a.anlagenNr) { showMessage('Anlagen-Nr. stimmt nicht überein — nicht gelöscht', 'error'); return; }
+            try {
+                const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidAnlagen}')/items(${a._spId})`;
+                await spFetch(url, { method: 'DELETE', headers: { 'IF-MATCH': '*' } });
+                delete window.anlagenDatabase[a.id];
+                updateAnlagenSubnav();
+                showAnlagenList();
+                showMessage(`Anlage ${a.anlagenNr} gelöscht`, 'success');
+            } catch (e) {
+                console.error('Anlage löschen fehlgeschlagen:', e);
+                showMessage('Anlage konnte nicht gelöscht werden: ' + e.message, 'error');
+            }
+        }
+
         // ----- Einstellungen: Anlagentypen (DodekEinstellungen, SettingKey "anlagenTypen") -----
         function renderAnlagenTypenSettings() {
             const el = document.getElementById('settingsAnlagenTypenList');
@@ -4498,6 +4540,8 @@ function applyPermissions() {
         window.showAnlagenList        = showAnlagenList;
         window.openAnlageModal        = openAnlageModal;
         window.openAnlageEdit         = openAnlageEdit;
+        window.removeAnlageLink       = removeAnlageLink;
+        window.deleteAnlage           = deleteAnlage;
         window.updateAnlagenNrSuggestion = updateAnlagenNrSuggestion;
         window.addAnlagenTyp          = addAnlagenTyp;
         window.removeAnlagenTyp       = removeAnlagenTyp;
@@ -4979,7 +5023,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.64';
+        const APP_VERSION = 'v1.6.65';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
