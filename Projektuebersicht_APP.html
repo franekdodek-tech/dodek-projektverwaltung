@@ -2369,6 +2369,22 @@
                 </div>
             </div>
 
+            <!-- Anlagentypen -->
+            <div class="positions-section" style="margin-bottom: 20px;">
+                <div class="section-header"><h3>🏭 Anlagentypen</h3></div>
+                <div style="padding: 20px;">
+                    <div id="settingsAnlagenTypenList" style="margin-bottom: 15px;"></div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                        <div>
+                            <label>Typ</label>
+                            <input type="text" id="newAnlagenTyp" placeholder="z.B. DTL" style="width:140px;">
+                        </div>
+                        <button onclick="addAnlagenTyp()" class="btn-success">＋ Typ hinzufügen</button>
+                    </div>
+                    <p style="font-size:12px;color:#888;margin-top:8px;">Änderungen werden sofort gespeichert. Bestehende Anlagen behalten ihren Typ.</p>
+                </div>
+            </div>
+
             <!-- Team-Mitglieder -->
             <div class="positions-section" style="margin-bottom: 20px;">
                 <div class="section-header"><h3>👥 Team-Mitglieder</h3></div>
@@ -2541,11 +2557,16 @@
         <div id="anlageModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto;">
             <div style="background:white; max-width:700px; margin:40px auto; border-radius:6px; padding:30px; position:relative;">
                 <button onclick="closeAnlageModal()" style="position:absolute; top:15px; right:15px; background:none; border:none; font-size:22px; cursor:pointer; color:#666;">✕</button>
-                <h3 style="margin-bottom:20px; color:#366092;">Neue Anlage</h3>
+                <h3 id="am_title" style="margin-bottom:20px; color:#366092;">Neue Anlage</h3>
+                <input type="hidden" id="am_editId">
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
                     <div class="form-group">
+                        <label>Anlagentyp *</label>
+                        <select id="am_anlagenTyp" onchange="updateAnlagenNrSuggestion()"></select>
+                    </div>
+                    <div class="form-group">
                         <label>Anlagen-Nr. *</label>
-                        <input type="text" id="am_anlagenNr">
+                        <input type="text" id="am_anlagenNr" oninput="this.dataset.userEdited = '1'">
                     </div>
                     <div class="form-group">
                         <label>Bezeichnung *</label>
@@ -2561,7 +2582,7 @@
                     </div>
                     <div class="form-group">
                         <label>Ursprungsprojekt</label>
-                        <input type="text" id="am_ursprungsprojekt" placeholder="Projektnummer (optional)">
+                        <input type="text" id="am_ursprungsprojekt" placeholder="Projektnummer (optional)" oninput="updateAnlagenNrSuggestion()">
                     </div>
                     <div class="form-group">
                         <label>Inbetriebnahme</label>
@@ -4027,10 +4048,17 @@ function applyPermissions() {
 
         window.anlagenDatabase = {};
         const ANLAGEN_MODULE_NAMES = {
-            0: 'Modul 0', 1: 'Filter mit Komponenten', 2: 'Ventilator', 3: 'Staubaustrag', 4: 'Brenntisch',
+            0: 'Deckblatt / Prüfzertifikat', 1: 'Filter mit Komponenten', 2: 'Ventilator', 3: 'Staubaustrag', 4: 'Brenntisch',
             5: 'Kratzereinheit', 6: 'Wechseltisch', 7: 'Hydraulikanlage', 8: 'Querförderer', 9: 'WRG',
-            10: 'Portalanlage', 11: 'Kran', 12: 'Manipulator', 13: 'Elektroinstallation', 14: 'Modul 14'
+            10: 'Portalanlage', 11: 'Kran', 12: 'Manipulator', 13: 'Elektroinstallation', 14: 'Allgemeine Angaben'
         };
+        const ANLAGEN_TYPEN_FALLBACK = ['DTL', 'DTZ', 'DTS', 'DTM'];
+
+        // Anlagentypen aus DodekEinstellungen (SettingKey "anlagenTypen", JSON-Array); Fallback: fest hinterlegte Werte
+        function getAnlagenTypen() {
+            const v = window.settingsCache?.anlagenTypen?.value;
+            return Array.isArray(v) && v.length > 0 ? v.map(String) : ANLAGEN_TYPEN_FALLBACK.slice();
+        }
         let anlagenFieldTypes = null; // interner Spaltenname → Typ (einmalig aus der Liste gelesen)
 
         async function getAnlagenFieldTypes() {
@@ -4044,7 +4072,9 @@ function applyPermissions() {
         }
 
         // values: logische Feldnamen → Payload mit tatsächlichen internen Spaltennamen
+        let anlagenTypColumnMissing = false; // wird von buildAnlagePayload gesetzt
         async function buildAnlagePayload(values) {
+            anlagenTypColumnMissing = false;
             const fields = await getAnlagenFieldTypes();
             const payload = {};
             Object.keys(values).forEach(logical => {
@@ -4052,6 +4082,10 @@ function applyPermissions() {
                 let name = logical;
                 if (logical === 'AnlagenNr' && !fields.AnlagenNr) {
                     name = 'Title';
+                } else if (logical === 'AnlagenTyp' && !fields.AnlagenTyp) {
+                    // Spalte AnlagenTyp ist (noch) nicht angelegt: Typ steckt nur in der Anlagen-Nr.
+                    anlagenTypColumnMissing = true;
+                    return;
                 } else if (!fields[logical]) {
                     throw new Error(`Spalte "${logical}" fehlt in der SharePoint-Liste DodekAnlagen`);
                 }
@@ -4070,11 +4104,21 @@ function applyPermissions() {
             try { const v = JSON.parse(raw); return Array.isArray(v) ? v : []; } catch (e) { return []; }
         }
 
+        // Typ aus der Nummer ableiten (DT-[Projekt-]TYP-n), falls die Spalte AnlagenTyp fehlt oder leer ist
+        function anlagenTypFromNr(nr) {
+            const parts = String(nr || '').split('-');
+            if (parts.length < 3 || parts[0] !== 'DT' || !/^\d+$/.test(parts[parts.length - 1])) return '';
+            const typ = parts[parts.length - 2];
+            return getAnlagenTypen().includes(typ) ? typ : '';
+        }
+
         function anlageFromItem(item) {
+            const nr = item.AnlagenNr || item.Title || '';
             return {
                 _spId:               item.Id,
                 id:                  item.Id,
-                anlagenNr:           item.AnlagenNr || item.Title || '',
+                anlagenNr:           nr,
+                anlagenTyp:          item.AnlagenTyp || anlagenTypFromNr(nr),
                 bezeichnung:         item.Bezeichnung || '',
                 kunde:               item.Kunde || '',
                 standort:            item.Standort || '',
@@ -4175,33 +4219,72 @@ function applyPermissions() {
         }
 
         // ----- Neuanlage -----
-        function suggestAnlagenNr() {
-            const year = new Date().getFullYear();
-            const re = new RegExp(`^ANL-${year}-(\\d+)$`);
-            let max = 0;
+        // Vorschlag: DT-[Ursprungsprojekt]-[Typ]-[lfd. Nr.]; ohne Projekt: DT-[Typ]-[lfd. Nr.].
+        // Laufende Nummer = höhere von (Anzahl vorhandener Anlagen mit gleicher Projekt/Typ-Kombination, größte vorhandene Nummer mit gleichem Präfix) + 1.
+        function suggestAnlagenNr(projekt, typ) {
+            if (!typ) return '';
+            const prefix = projekt ? `DT-${projekt}-${typ}-` : `DT-${typ}-`;
+            let count = 0, maxNr = 0;
             Object.values(window.anlagenDatabase || {}).forEach(a => {
-                const m = re.exec(a.anlagenNr || '');
-                if (m) max = Math.max(max, parseInt(m[1], 10));
+                if ((a.ursprungsprojekt || '') === (projekt || '') && (a.anlagenTyp || '') === typ) count++;
+                const nr = a.anlagenNr || '';
+                if (nr.startsWith(prefix) && /^\d+$/.test(nr.slice(prefix.length))) maxNr = Math.max(maxNr, parseInt(nr.slice(prefix.length), 10));
             });
-            return `ANL-${year}-${String(max + 1).padStart(3, '0')}`;
+            return `${prefix}${Math.max(count, maxNr) + 1}`;
         }
 
-        function openAnlageModal(originProject) {
-            document.getElementById('am_anlagenNr').value = suggestAnlagenNr();
-            ['am_bezeichnung', 'am_kunde', 'am_standort', 'am_inbetriebnahme', 'am_notizen'].forEach(id => { document.getElementById(id).value = ''; });
-            document.getElementById('am_ursprungsprojekt').value = originProject || '';
+        // Nummer neu vorschlagen, solange sie nicht von Hand geändert wurde (nur bei Neuanlage)
+        function updateAnlagenNrSuggestion() {
+            if (document.getElementById('am_editId').value) return;
+            const nrEl = document.getElementById('am_anlagenNr');
+            if (nrEl.dataset.userEdited) return;
+            nrEl.value = suggestAnlagenNr(document.getElementById('am_ursprungsprojekt').value.trim(), document.getElementById('am_anlagenTyp').value);
+        }
+
+        // Modal für Neuanlage (editId leer) oder Bearbeiten (editId = Id der Anlage)
+        function openAnlageModal(originProject, editId) {
+            const a = editId ? window.anlagenDatabase[editId] : null;
+            document.getElementById('am_editId').value = a ? a.id : '';
+            document.getElementById('am_title').textContent = a ? 'Anlage bearbeiten' : 'Neue Anlage';
+
+            const typen = getAnlagenTypen();
+            if (a && a.anlagenTyp && !typen.includes(a.anlagenTyp)) typen.push(a.anlagenTyp); // Typ, der inzwischen aus den Einstellungen entfernt wurde
+            document.getElementById('am_anlagenTyp').innerHTML = '<option value="">— bitte wählen —</option>' +
+                typen.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+            document.getElementById('am_anlagenTyp').value = a ? (a.anlagenTyp || '') : '';
+
+            const nrEl = document.getElementById('am_anlagenNr');
+            nrEl.dataset.userEdited = '';
+            nrEl.disabled = !!a; // AnlagenNr ist der eindeutige Schlüssel und beim Bearbeiten nicht änderbar
+            nrEl.style.background = a ? '#f0f0f0' : '';
+            nrEl.value = a ? a.anlagenNr : '';
+
+            const set = (id, v) => { document.getElementById(id).value = v || ''; };
+            set('am_bezeichnung', a?.bezeichnung);
+            set('am_kunde', a?.kunde);
+            set('am_standort', a?.standort);
+            set('am_ursprungsprojekt', a ? a.ursprungsprojekt : (originProject || ''));
+            set('am_inbetriebnahme', a?.inbetriebnahme);
+            set('am_notizen', a?.notizen);
             // Aus dem Projekt heraus: Kunde vorbelegen, falls das Projekt geladen ist
-            const proj = originProject && window.allProjects ? window.allProjects[originProject] : null;
-            if (proj && proj.customer) document.getElementById('am_kunde').value = proj.customer;
+            if (!a) {
+                const proj = originProject && window.allProjects ? window.allProjects[originProject] : null;
+                if (proj && proj.customer) set('am_kunde', proj.customer);
+            }
+            const active = a ? (a.aktiveModule || []) : [];
             document.getElementById('am_modules').innerHTML = Object.keys(ANLAGEN_MODULE_NAMES).map(Number).map(n => {
                 if (n === 0 || n === 14) {
                     return `<label style="display:flex;align-items:center;gap:6px;color:#999;"><input type="checkbox" checked disabled> ${n} – ${escapeHtml(ANLAGEN_MODULE_NAMES[n])} <em style="font-size:11px;">(immer enthalten)</em></label>`;
                 }
-                return `<label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="am-module-cb" value="${n}"> ${n} – ${escapeHtml(ANLAGEN_MODULE_NAMES[n])}</label>`;
+                return `<label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="am-module-cb" value="${n}" ${active.includes(n) ? 'checked' : ''}> ${n} – ${escapeHtml(ANLAGEN_MODULE_NAMES[n])}</label>`;
             }).join('');
             document.getElementById('am_saveBtn').disabled = false;
             document.getElementById('anlageModal').style.display = 'block';
-            document.getElementById('am_bezeichnung').focus();
+            (a ? document.getElementById('am_bezeichnung') : document.getElementById('am_anlagenTyp')).focus();
+        }
+
+        function openAnlageEdit() {
+            if (window._anlagenDetailId) openAnlageModal(null, window._anlagenDetailId);
         }
 
         function closeAnlageModal() {
@@ -4210,41 +4293,54 @@ function applyPermissions() {
 
         async function saveAnlage() {
             const val = id => document.getElementById(id).value.trim();
-            const anlagenNr   = val('am_anlagenNr');
+            const editId      = document.getElementById('am_editId').value;
+            const existing    = editId ? window.anlagenDatabase[editId] : null;
+            const anlagenTyp  = document.getElementById('am_anlagenTyp').value;
+            const anlagenNr   = existing ? existing.anlagenNr : val('am_anlagenNr'); // beim Bearbeiten unveränderlich
             const bezeichnung = val('am_bezeichnung');
+            if (!anlagenTyp)  { showMessage('Anlagentyp erforderlich', 'error'); return; }
             if (!anlagenNr)   { showMessage('Anlagen-Nr. erforderlich', 'error'); return; }
             if (!bezeichnung) { showMessage('Bezeichnung erforderlich', 'error'); return; }
-            if (Object.values(window.anlagenDatabase || {}).some(a => (a.anlagenNr || '').toLowerCase() === anlagenNr.toLowerCase())) {
+            if (!existing && Object.values(window.anlagenDatabase || {}).some(a => (a.anlagenNr || '').toLowerCase() === anlagenNr.toLowerCase())) {
                 showMessage(`Anlagen-Nr. ${anlagenNr} existiert bereits`, 'error');
                 return;
             }
             const modules = [0, ...Array.from(document.querySelectorAll('.am-module-cb:checked')).map(cb => parseInt(cb.value, 10)).sort((a, b) => a - b), 14];
             const values = {
-                AnlagenNr:        anlagenNr,
                 Bezeichnung:      bezeichnung,
+                AnlagenTyp:       anlagenTyp,
                 Kunde:            val('am_kunde'),
                 Standort:         val('am_standort'),
                 Ursprungsprojekt: val('am_ursprungsprojekt'),
                 Inbetriebnahme:   document.getElementById('am_inbetriebnahme').value,
                 AktiveModule:     JSON.stringify(modules),
-                Notizen:          document.getElementById('am_notizen').value,
-                VerknuepfteProjekte: '[]'
+                Notizen:          document.getElementById('am_notizen').value
             };
             const btn = document.getElementById('am_saveBtn');
             btn.disabled = true;
             try {
-                const result = await createAnlageInSharePoint(values);
-                const newId = result && (result.id || result.Id);
-                const a = {
-                    _spId: newId, id: newId, anlagenNr, bezeichnung,
+                const local = {
+                    anlagenNr, anlagenTyp, bezeichnung,
                     kunde: values.Kunde, standort: values.Standort, ursprungsprojekt: values.Ursprungsprojekt,
-                    inbetriebnahme: values.Inbetriebnahme, aktiveModule: modules, notizen: values.Notizen, verknuepfteProjekte: []
+                    inbetriebnahme: values.Inbetriebnahme, aktiveModule: modules, notizen: values.Notizen
                 };
-                window.anlagenDatabase[newId] = a;
+                if (existing) {
+                    await updateAnlageInSharePoint(existing._spId, values); // PATCH; AnlagenNr und Verknüpfungen bleiben unberührt
+                    Object.assign(existing, local);
+                } else {
+                    const result = await createAnlageInSharePoint({ AnlagenNr: anlagenNr, ...values, VerknuepfteProjekte: '[]' });
+                    const newId = result && (result.id || result.Id);
+                    window.anlagenDatabase[newId] = { _spId: newId, id: newId, ...local, verknuepfteProjekte: [] };
+                }
                 updateAnlagenSubnav();
-                if (document.getElementById('anlagenView').classList.contains('active')) showAnlagenList();
+                if (document.getElementById('anlagenView').classList.contains('active')) {
+                    if (existing) renderAnlageDetail(); else showAnlagenList();
+                }
                 closeAnlageModal();
-                showMessage(`Anlage ${anlagenNr} angelegt`, 'success');
+                showMessage(
+                    (existing ? `Anlage ${anlagenNr} gespeichert` : `Anlage ${anlagenNr} angelegt`) +
+                    (anlagenTypColumnMissing ? ' — Hinweis: Spalte "AnlagenTyp" fehlt in DodekAnlagen, der Typ steckt nur in der Anlagen-Nr.' : ''),
+                    anlagenTypColumnMissing ? 'error' : 'success');
             } catch (e) {
                 console.error('Anlage speichern fehlgeschlagen:', e);
                 showMessage('Anlage konnte nicht gespeichert werden: ' + e.message, 'error');
@@ -4278,9 +4374,13 @@ function applyPermissions() {
                 <div style="background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);margin-bottom:20px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
                         <h2 style="margin:0;">🏭 ${escapeHtml(a.anlagenNr)} — ${escapeHtml(a.bezeichnung)}</h2>
-                        <button onclick="showAnlagenList()" class="btn-secondary">⬅️ Zurück zur Liste</button>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button onclick="openAnlageEdit()" class="btn-secondary" ${canEdit ? '' : 'disabled title="Keine Berechtigung" style="opacity:0.4;cursor:not-allowed;"'}>✏️ Bearbeiten</button>
+                            <button onclick="showAnlagenList()" class="btn-secondary">⬅️ Zurück zur Liste</button>
+                        </div>
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">
+                        ${field('Anlagentyp', a.anlagenTyp)}
                         ${field('Kunde', a.kunde)}
                         ${field('Standort', a.standort)}
                         ${field('Ursprungsprojekt', a.ursprungsprojekt)}
@@ -4351,9 +4451,56 @@ function applyPermissions() {
             }
         }
 
+        // ----- Einstellungen: Anlagentypen (DodekEinstellungen, SettingKey "anlagenTypen") -----
+        function renderAnlagenTypenSettings() {
+            const el = document.getElementById('settingsAnlagenTypenList');
+            if (!el) return;
+            const typen = getAnlagenTypen();
+            el.innerHTML = `<table style="font-size:13px;border-collapse:collapse;">
+                <tbody>${typen.map((t, i) => `<tr>
+                    <td style="padding:4px 14px 4px 8px;">${escapeHtml(t)}</td>
+                    <td style="padding:4px 8px;"><button onclick="removeAnlagenTyp(${i})" class="btn-danger btn-small" title="Typ löschen">🗑️</button></td>
+                </tr>`).join('')}</tbody></table>`;
+        }
+
+        async function saveAnlagenTypen(newList) {
+            try {
+                await saveSetting('anlagenTypen', newList);
+                showMessage('Anlagentypen gespeichert', 'success');
+            } catch (e) {
+                console.error('Anlagentypen speichern fehlgeschlagen:', e);
+                showMessage('Anlagentypen konnten nicht gespeichert werden: ' + e.message, 'error');
+            }
+            renderAnlagenTypenSettings();
+        }
+
+        async function addAnlagenTyp() {
+            const input = document.getElementById('newAnlagenTyp');
+            const typ = (input.value || '').trim();
+            if (!typ) { showMessage('Typ erforderlich', 'error'); return; }
+            if (typ.includes('-')) { showMessage('Typ darf keinen Bindestrich enthalten (Teil der Anlagen-Nr.)', 'error'); return; }
+            const list = getAnlagenTypen();
+            if (list.some(t => t.toLowerCase() === typ.toLowerCase())) { showMessage('Typ existiert bereits', 'error'); return; }
+            input.value = '';
+            await saveAnlagenTypen([...list, typ]);
+        }
+
+        async function removeAnlagenTyp(index) {
+            const list = getAnlagenTypen();
+            const typ = list[index];
+            if (typ === undefined) return;
+            if (!confirm(`Anlagentyp "${typ}" löschen? Bestehende Anlagen behalten ihren Typ.`)) return;
+            list.splice(index, 1);
+            await saveAnlagenTypen(list);
+        }
+
         window.loadAnlagenFromSharePoint = loadAnlagenFromSharePoint;
         window.showAnlagenList        = showAnlagenList;
         window.openAnlageModal        = openAnlageModal;
+        window.openAnlageEdit         = openAnlageEdit;
+        window.updateAnlagenNrSuggestion = updateAnlagenNrSuggestion;
+        window.addAnlagenTyp          = addAnlagenTyp;
+        window.removeAnlagenTyp       = removeAnlagenTyp;
         window.closeAnlageModal       = closeAnlageModal;
         window.saveAnlage             = saveAnlage;
         window.openAnlageDetail       = openAnlageDetail;
@@ -4832,7 +4979,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.63';
+        const APP_VERSION = 'v1.6.64';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -10157,6 +10304,7 @@ function applyPermissions() {
         });
 
         function renderSettingsView() {
+            renderAnlagenTypenSettings();
             renderArticleGroupsSettings();
             renderRolePermissionsTable();
             // Rechteverwaltung rendern
