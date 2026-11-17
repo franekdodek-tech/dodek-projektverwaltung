@@ -4942,8 +4942,8 @@ function applyPermissions() {
 
         // ========== UVV-PRÜFUNGEN (Phase 2) ==========
         // Annahme (nicht gegen die Listen geprüft): DodekUVVModule hat die Spalten Title (= ModulNr) und ModulData (JSON);
-        // DodekUVVPruefungen hat Title, AnlagenID, Datum, Pruefer, Status (Choice: Offen / In Bearbeitung / Abgeschlossen), ErgebnisJSON.
-        // AnlagenID enthält die SharePoint-Id der Anlage (Text oder Zahl; Lookup-Spalten werden nicht unterstützt).
+        // DodekUVVPruefungen hat Title, AnlagenNr, PruefDatum, Pruefer, Status (Choice: Offen / In Bearbeitung / Abgeschlossen), Ergebnisse.
+        // Die Spalte AnlagenNr enthält (aktuelles Verhalten, nicht die Anlagen-Nr. selbst) die SharePoint-Id der Anlage (Text oder Zahl; Lookup-Spalten werden nicht unterstützt).
 
         window.uvvPruefungen = {};
         let uvvModuleCache = null;          // Module werden einmal pro Sitzung geladen
@@ -4965,8 +4965,8 @@ function applyPermissions() {
             Object.keys(values).forEach(name => {
                 if (!fields[name]) throw new Error(`Spalte "${name}" fehlt in der SharePoint-Liste ${listName}`);
                 let v = values[name];
-                if (name === 'Datum' && v) v = fields[name] === 'DateTime' ? `${v}T00:00:00Z` : v;
-                if (name === 'AnlagenID') v = fields[name] === 'Number' ? Number(v) : String(v);
+                if (name === 'PruefDatum' && v) v = fields[name] === 'DateTime' ? `${v}T00:00:00Z` : v;
+                if (name === 'AnlagenNr') v = fields[name] === 'Number' ? Number(v) : String(v);
                 payload[name] = v;
             });
             return payload;
@@ -5066,11 +5066,11 @@ function applyPermissions() {
         function pruefungFromItem(item) {
             return {
                 _spId: item.Id, id: item.Id,
-                anlagenId: String(item.AnlagenID == null ? '' : item.AnlagenID),
-                datum: String(item.Datum || '').substring(0, 10),
+                anlagenId: String(item.AnlagenNr == null ? '' : item.AnlagenNr),
+                datum: String(item.PruefDatum || '').substring(0, 10),
                 pruefer: item.Pruefer || '',
                 status: item.Status || 'Offen',
-                ergebnisRaw: item.ErgebnisJSON || ''
+                ergebnisRaw: item.Ergebnisse || ''
             };
         }
 
@@ -5141,7 +5141,7 @@ function applyPermissions() {
             btn.disabled = true;
             try {
                 const payload = await buildUvvPayload(SP_CONFIG.guidUVVPruefungen, 'DodekUVVPruefungen', {
-                    Title: `${a.anlagenNr} – ${datum}`, AnlagenID: a.id, Datum: datum, Pruefer: pruefer, Status: 'Offen', ErgebnisJSON: ''
+                    Title: `${a.anlagenNr} – ${datum}`, AnlagenNr: a.id, PruefDatum: datum, Pruefer: pruefer, Status: 'Offen', Ergebnisse: ''
                 });
                 const result = await spFetch(uvvListUrl(SP_CONFIG.guidUVVPruefungen), { method: 'POST', body: JSON.stringify(payload) });
                 const newId = result && (result.id || result.Id);
@@ -5327,7 +5327,7 @@ function applyPermissions() {
         async function pfPersist(status, abgeschlossenAm) {
             const pf = window._pf;
             const json = pfBuildJson(abgeschlossenAm);
-            const payload = await buildUvvPayload(SP_CONFIG.guidUVVPruefungen, 'DodekUVVPruefungen', { Status: status, ErgebnisJSON: JSON.stringify(json) });
+            const payload = await buildUvvPayload(SP_CONFIG.guidUVVPruefungen, 'DodekUVVPruefungen', { Status: status, Ergebnisse: JSON.stringify(json) });
             await uvvPatch(SP_CONFIG.guidUVVPruefungen, pf.id, payload);
             const p = window.uvvPruefungen[pf.id];
             p.status = status; p.ergebnisRaw = JSON.stringify(json);
@@ -5885,7 +5885,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.67';
+        const APP_VERSION = 'v1.6.68';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
