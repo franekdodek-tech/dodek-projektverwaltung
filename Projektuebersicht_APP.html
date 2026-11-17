@@ -402,9 +402,10 @@
         .pf-int { font-size: 11px; color: #888; margin-left: 8px; background: #f0f0f0; border-radius: 3px; padding: 1px 6px; }
         .pf-btns { display: flex; gap: 6px; flex-wrap: wrap; align-items: stretch; }
         .pf-btn { flex: 1 1 80px; min-height: 44px; border: 2px solid #ccc; background: #fff; color: #444; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; }
-        .pf-btn.io.sel   { background: #2e7d32; border-color: #2e7d32; color: #fff; }
-        .pf-btn.nio.sel  { background: #c62828; border-color: #c62828; color: #fff; }
+        .pf-btn.sel      { background: #366092; border-color: #366092; color: #fff; }
         .pf-btn.entf.sel { background: #757575; border-color: #757575; color: #fff; }
+        .pf-input { width: 100%; min-height: 44px; font-size: 15px; box-sizing: border-box; }
+        .pf-einheit { align-self: center; color: #555; font-weight: 600; min-width: 40px; }
         .pf-btn:disabled, .pf-note-btn:disabled { cursor: default; }
         .pf-btn:disabled:not(.sel) { opacity: 0.5; }
         .pf-note-btn { min-width: 44px; min-height: 44px; border: 2px solid #ccc; background: #fff; border-radius: 6px; font-size: 16px; cursor: pointer; }
@@ -4594,351 +4595,451 @@ function applyPermissions() {
             await saveAnlagenTypen(list);
         }
 
-        // Initialbefüllung DodekUVVModule (Admin-Aktion in den Einstellungen). Prüfpunkt: Text oder [Text, Intervall]; Standard-Intervall "jährlich", id = position = laufende Nummer.
+        // Initialbefüllung DodekUVVModule (Admin-Aktion in den Einstellungen). Prüfpunkt: { nr, bezeichnung, typ (freitext | auswahl | messwert | ja_nein), optionen, einheit }.
         const UVV_MODULE_DEFAULTS = [
-            { nr: 0, name: "Deckblatt / Prüfzertifikat", pflicht: true, punkte: [
-                "Auftraggeber: Firma, Adresse, Telefon, Telefax",
-                "Angaben zur Anlage: Kommissions-Nr., Bestell-Nr., Projekt",
-                "Datum der Prüfung eintragen",
-                "Firmenstempel und Unterschrift des Prüfers",
-                "Nächsten empfohlenen Prüftermin festlegen"
-            ] },
-            { nr: 1, name: "Filter mit Komponenten", pflicht: false, punkte: [
-                "Filtertyp erfassen (Fabrikat, Typ, Serien-Nr.)",
-                "Zustand des Filters prüfen (gut / zufriedenstellend / instandsetzen)",
-                "Wirkungsweise prüfen (gut / zufriedenstellend)",
-                "Dichtungen Inspektionstüren prüfen (gut / zufriedenstellend / ersetzen)",
-                "Dichtungen Austragssysteme prüfen (gut / zufriedenstellend)",
-                "Dichtungen Rohrleitungen prüfen (gut / zufriedenstellend)",
-                "Filterelemente prüfen (ok / instandsetzen)",
-                "Steuerplatine prüfen (ok / instandsetzen)",
-                "Schaltschrank prüfen (ok / instandsetzen)",
-                "Magnetventile prüfen (ok / instandsetzen)",
-                "Membranventile prüfen (ok / instandsetzen)",
-                "Ölabscheider prüfen (ok / instandsetzen)",
-                "Wasserabscheider prüfen (ok / instandsetzen)",
-                "Luftleitungen prüfen (ok / instandsetzen)",
-                "Elektrische Verkabelung prüfen (ok / instandsetzen)",
-                "Ventilator prüfen (ok / instandsetzen)",
-                "Staubaustrag prüfen (ok / instandsetzen)",
-                "Ex-Schutz-Teile prüfen (ok / instandsetzen)",
-                "Schallschutz prüfen (ok / instandsetzen)",
-                "Abmessungen und Ablesewerte: Volumenstrom Q erfassen (Ist / Soll)",
-                "Magnehelic Differenzdruck Δp erfassen (Ist / Soll)",
-                "Δp Abreinigung: P min, P max, P alarm erfassen (Ist / Soll)",
-                "Zeitintervall t erfassen (Ist / Soll)",
-                "Pulstärke t erfassen (Ist / Soll)",
-                "Pressluft p erfassen (Ist / Soll)",
-                "Absperrklappen A erfassen (Ist / Soll)",
-                "Benötigte Aktivitäten dokumentieren (JA / NEIN)"
-            ] },
-            { nr: 2, name: "Ventilator", pflicht: false, punkte: [
-                "Ventilatortyp erfassen (Fabrikat, Typ, Serien-Nr., Spannung/Frequenz, kW)",
-                "Zustand des Ventilators prüfen (gut)",
-                "Änderungen im Vergleich mit letzter Inspektion (JA / NEIN)",
-                "Drehrichtung prüfen (links / rechts)",
-                "Schwingmetallpuffer prüfen (ok / instandsetzen)",
-                "Flex. Manschette Saugseite prüfen (ok / instandsetzen)",
-                "Flex. Manschette Auslass prüfen (ok / instandsetzen)",
-                "Schalldämpfer prüfen (ok / instandsetzen)",
-                "Luftregulierschieber prüfen (ok / instandsetzen)",
-                "Elektrische Verkabelung prüfen (ok / instandsetzen)",
-                "Antrieb prüfen (direkt / Keilriemen)",
-                "Sicherheitsschutz prüfen (ok / instandsetzen)",
-                "Lärmpegel messen (dB(A))",
-                "Lager prüfen (ok / instandsetzen)",
-                "Ex-Schutz-Teile prüfen (ok / instandsetzen)",
-                "Öl/Fett prüfen (JA / NEIN, Termin eintragen)",
-                "Benötigte Aktivitäten dokumentieren (JA / NEIN)"
-            ] },
-            { nr: 3, name: "Staubaustrag", pflicht: false, punkte: [
-                "Zellenradschleuse Typ erfassen (Fabrikat, Typ, Serien-Nr., kW, Spannung/Frequenz)",
-                "Zellenradschleuse Zustand prüfen (gut)",
-                "Zellenradschleuse: Änderungen zur letzten Inspektion (nein / ja)",
-                "Zellenradschleuse Lager prüfen – erhöhter Lärmpegel/Abnutzung",
-                "Zellenradschleuse Wellendichtung prüfen – Staubaustritt",
-                "Zellenradschleuse Motor prüfen – Leckage, Lärm (Öl nachfüllen / Öl wechseln)",
-                "Zellenradschleuse Flügel prüfen – Luftleckage",
-                "Staubschnecke Typ erfassen (Fabrikat, Typ, Serien-Nr., kW, Spannung/Frequenz)",
-                "Staubschnecke Zustand prüfen (gut)",
-                "Staubschnecke: Änderungen zur letzten Inspektion (nein / ja)",
-                "Staubschnecke Lager prüfen – erhöhter Lärmpegel/Abnutzung",
-                "Staubschnecke Wellendichtung prüfen – Staubaustritt",
-                "Staubschnecke Motor prüfen – Leckage, Lärm (Öl nachfüllen / Öl wechseln)",
-                "Staubschnecke (Beschädigung/Abnutzung) prüfen – kein Staubaustrag",
-                "Doppelpendelklappe Typ erfassen (Fabrikat, Typ, Serien-Nr., kW, Spannung/Frequenz)",
-                "Doppelpendelklappe Zustand prüfen (gut)",
-                "Doppelpendelklappe: Änderungen zur letzten Inspektion (nein / ja)",
-                "Doppelpendelklappe Lager prüfen – erhöhter Lärmpegel/Abnutzung",
-                "Doppelpendelklappe Wellendichtung prüfen – Staubaustritt",
-                "Doppelpendelklappe Motor prüfen – Leckage, Lärm (Öl nachfüllen / Öl wechseln)",
-                "Doppelpendelklappe (Beschädigung/Abnutzung) prüfen – Luftleckage",
-                "Pneumatische Klappe: Pneumatischer Zylinder prüfen (ok)",
-                "Pneumatische Klappe: Pneumatische Regelung prüfen (ok)",
-                "Pneumatische Klappe: Pneumatischer Druck prüfen (ok)",
-                "Pneumatische Klappe: Steuerung prüfen (ok)"
-            ] },
-            { nr: 4, name: "Brenntisch", pflicht: false, punkte: [
-                "Mechanik: Tisch mit Fundament verdübelt prüfen (ok)",
-                "Mechanik: Tisch Ebenheit messen (mm, ok)",
-                "Mechanik: Parallelität zur Laufbahn messen (mm, ok)",
-                "Pneumatik: Funktion der Pneumatikklappen prüfen (ok)",
-                "Pneumatik: Dämpfer eingestellt (im Betrieb) prüfen (ok)",
-                "Pneumatik: Druckluftversorgung messen (bar, Sollwert 3,5–6,0 bar, ok)",
-                "Pneumatik: Steuerung – Rollenhebelventile und Schaltleiste prüfen (ok)",
-                "Pneumatik: Steuerung – Näherungsschalter und Schaltleiste prüfen (ok)",
-                "Pneumatik: Steuerung über Steuerung der Maschine prüfen (ok)",
-                "Messungen: Erfassungsgeschwindigkeit erstes Segment messen (m/s)",
-                "Messungen: Erfassungsgeschwindigkeit mittleres Segment messen (m/s)",
-                "Messungen: Erfassungsgeschwindigkeit letztes Segment messen (m/s)",
-                "Messungen: Erdpotential-Prüfung durchführen (ok)",
-                "Benötigte Aktivität dokumentieren (JA / NEIN)"
-            ] },
-            { nr: 5, name: "Kratzereinheit", pflicht: false, punkte: [
-                "Mechanik: Führungsschienen – Befestigung prüfen (ok / instandsetzen)",
-                "Mechanik: Kratzerschienen prüfen (ok / instandsetzen)",
-                "Mechanik: Führungs-Stahlgliederketten prüfen (ok / instandsetzen)",
-                "Mechanik: Antriebswelle mit Kettenräder prüfen (ok / instandsetzen)",
-                "Mechanik: Umlenkrolle prüfen (ok / instandsetzen)",
-                "Mechanik: Kettenspanneinheit prüfen (ok / instandsetzen)",
-                "Mechanik: Kratzerplatte Ebenheit messen (mm, ok)",
-                "Antrieb Typ erfassen (Fabrikat, Typ, Serien-Nr., kW, Spannung/Frequenz)",
-                "Antrieb Zustand prüfen (gut)",
-                "Antrieb: Änderungen zur letzten Inspektion (nein / ja)",
-                "Elektronische Anbauteile: Näherungsschalter – Funktion prüfen (ok / instandsetzen)",
-                "Messungen: Erdpotential-Prüfung durchführen (ok / instandsetzen)"
-            ] },
-            { nr: 6, name: "Wechseltisch", pflicht: false, punkte: [
-                "Mechanik: Führungswagen prüfen (ok / instandsetzen)",
-                "Mechanik: Linear-Führungsschienen prüfen (ok / instandsetzen)",
-                "Mechanik: Transportschienen prüfen (ok / instandsetzen)",
-                "Mechanik: Lauf- und Kombirollen prüfen (ok / instandsetzen)",
-                "Mechanik: Kettenräder mit Antrieb prüfen (ok / instandsetzen)",
-                "Mechanik: Führungs-Stahlgliederketten prüfen (ok / instandsetzen)",
-                "Mechanik: Abschott-Pendelbleche prüfen (ok / instandsetzen)",
-                "Antrieb Typ erfassen (Fabrikat, Typ, Serien-Nr., kW, Spannung/Frequenz)",
-                "Antrieb Zustand prüfen (gut)",
-                "Antrieb: Änderungen zur letzten Inspektion (nein / ja)",
-                "Elektronische Anbauteile: Näherungsschalter – Funktion prüfen (ok / instandsetzen)",
-                "Elektronische Anbauteile: Lichttaster – Funktion prüfen (ok / instandsetzen)",
-                "Messungen: Erdpotential-Prüfung durchführen (ok / instandsetzen)"
-            ] },
-            { nr: 7, name: "Hydraulikanlage", pflicht: false, punkte: [
-                "Hydraulikaggregat Typ erfassen",
-                "Hydraulikaggregat Zustand prüfen (gut / zufriedenstellend)",
-                "Hydraulikaggregat Wirkungsweise prüfen (gut / zufriedenstellend)",
-                "Ölvorrat: Leckstellen prüfen (nein / ja – instandsetzen)",
-                "Ölvorrat: Dichtheitsprüfung (ok / instandsetzen)",
-                "Ölvorrat: Kontrolle der Ölmenge (ok / instandsetzen)",
-                "Leitungen und Leitungsverbindungen: Befestigung prüfen (ok / instandsetzen)",
-                "Leitungen und Leitungsverbindungen: Beschädigung prüfen (nein / ja – instandsetzen)",
-                "Leitungen und Leitungsverbindungen: Verformung prüfen (ok / instandsetzen)",
-                "Leitungen und Leitungsverbindungen: Korrosion prüfen (nein / ja – instandsetzen)",
-                "Schläuche: Befestigung prüfen (ok / instandsetzen)",
-                "Schläuche: Brüchigkeit prüfen (nein / ja – instandsetzen)",
-                "Schläuche: Beschädigung prüfen (nein / ja – instandsetzen)",
-                "Schläuche: Alter erfassen (Jahre, spätestens nach 6 Jahren austauschen)",
-                "Drücke: Systemdruck nach Hydraulikplan prüfen (ok / instandsetzen)",
-                "Drücke: Sekundärdrücke prüfen (ok / instandsetzen)",
-                "Lasthalteventile: Zylinder ohne Nachlauf halten (ja / nein – instandsetzen)",
-                "Zylinder: Befestigung prüfen (ok / instandsetzen)",
-                "Zylinder: Risse prüfen (nein / ja – instandsetzen)",
-                "Zylinder: Anschlüsse prüfen (ok / instandsetzen)",
-                "Zylinder: Dichtigkeit der Manschetten prüfen (ok / instandsetzen)",
-                "Zylinder: Oberfläche der Kolbenstange prüfen (ok / instandsetzen)",
-                "Benötigte Aktivität dokumentieren (JA / NEIN)"
-            ] },
-            { nr: 8, name: "Querförderer", pflicht: false, punkte: [
-                "Mechanik: Scharnierband prüfen (ok / instandsetzen)",
-                "Mechanik: Linear-Führungsschienen prüfen (ok / instandsetzen)",
-                "Mechanik: Antriebswelle mit Kettenräder prüfen (ok / instandsetzen)",
-                "Mechanik: Umlenkrolle prüfen (ok / instandsetzen)",
-                "Mechanik: Sonstiges prüfen (ok / instandsetzen)",
-                "Antrieb Typ erfassen (Fabrikat, Typ, Serien-Nr., kW, Spannung/Frequenz)",
-                "Antrieb Zustand prüfen (gut)",
-                "Antrieb: Änderungen zur letzten Inspektion (nein / ja)",
-                "Elektronische Anbauteile: Näherungsschalter – Funktion prüfen (ok / instandsetzen)",
-                "Elektronische Anbauteile: Lichttaster – Funktion prüfen (ok / instandsetzen)",
-                "Messungen: Erdpotential-Prüfung durchführen (ok / instandsetzen)"
-            ] },
-            { nr: 9, name: "WRG (Wärmerückgewinnung)", pflicht: false, punkte: [
-                ["Hygieninspektion nach DIN VDI 6022 Blatt 2 durchführen (alle 2 Jahre mit / alle 3 Jahre ohne zentrale Luftbefeuchtung)", "2–3 Jahre"],
-                "Zu-/Abluftgerät Typ erfassen",
-                "Zu-/Abluftgerät Zustand prüfen (gut / zufriedenstellend / instandsetzen)",
-                "Zu-/Abluftgerät Wirkungsweise prüfen (gut / zufriedenstellend)",
-                "Dichtungen Gerätegehäuse: Inspektionstüren prüfen (gut / zufriedenstellend / ersetzen)",
-                "Dichtungen Gerätegehäuse: Anschlussteile prüfen (gut / zufriedenstellend / ersetzen)",
-                "Dichtungen Gerätegehäuse: Rohrleitungen prüfen (gut / zufriedenstellend)",
-                "Entkopplungsstutzen Zustand prüfen (ok / instandsetzen)",
-                "Entkopplungsstutzen Dichtigkeit prüfen (ok / instandsetzen)",
-                "Jalousienklappe Zustand prüfen (Korrosion, Verschmutzung, Beschädigung, ok / instandsetzen)",
-                "Jalousienklappe mechanische Funktion prüfen (ok / instandsetzen)",
-                "Jalousienklappe Stellantrieb prüfen (ok / instandsetzen)",
-                "Luftfilter: Filterelemente prüfen (ok / instandsetzen)",
-                "Luftfilter: Differenzdruck prüfen (ok / instandsetzen)",
-                "Luftfilter: Hygienezustand prüfen (ok / instandsetzen)",
-                "Rotationswärmetauscher: Luftseitiger Zustand prüfen (Verschmutzung, Korrosion, ok / instandsetzen)",
-                "Rotationswärmetauscher: Rotor auf Unwucht prüfen (ok / instandsetzen)",
-                "Rotationswärmetauscher: Lager prüfen (ok / instandsetzen)",
-                "Rotationswärmetauscher: Bürstendichtung prüfen (ok / instandsetzen)",
-                "Rotationswärmetauscher: Dichtungsfilze prüfen (ok / instandsetzen)",
-                "Rotationswärmetauscher: Hygienezustand prüfen (ok / instandsetzen)",
-                "Rotationswärmetauscher: Drehrichtung prüfen (ok / instandsetzen)",
-                "Antrieb: Keilriemen prüfen (ok / instandsetzen)",
-                "Antrieb: Keilriemenscheibe prüfen (ok / instandsetzen)",
-                "Antrieb: Motor prüfen (ok / instandsetzen)",
-                "Antrieb: Feder-Motorwippe prüfen (ok / instandsetzen)",
-                "Antrieb: Lager prüfen (ok / instandsetzen)",
-                "Schalldämpfer Zustand prüfen (gut / zufriedenstellend)",
-                "Schalldämpfer innere Luftleitflächen prüfen (gut / zufriedenstellend)",
-                "WRG-Ventilator Typ erfassen (Fabrikat, Typ, Serien-Nr., kW, Spannung/Frequenz)",
-                "WRG-Ventilator Drehrichtung prüfen (links / rechts)",
-                "WRG-Ventilator: Schwingmetallpuffer prüfen (ok)",
-                "WRG-Ventilator: Flex. Manschette Saugseite prüfen (ok)",
-                "WRG-Ventilator: Lärmpegel messen (dB(A))",
-                "WRG-Ventilator: Öl/Fett prüfen (nein / ja – beim nächsten Besuch)"
-            ] },
-            { nr: 10, name: "Portalanlage", pflicht: false, punkte: [
-                "Sicherheitsprüfung nach DIN EN 10204 durchführen (jährlich)",
-                "Portalanlagen-Typ erfassen, Nutzungsdauer (Betriebsstunden)",
-                "Zustand und Wirkungsweise prüfen (gut / zufriedenstellend / instandsetzen)",
-                "Mechanik: Funktion der Bremsen prüfen (ok / instandsetzen)",
-                "Mechanik: Transportschienen prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Hub- und Antriebskette prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Bremsverschleiß prüfen (ok / instandsetzen)",
-                "Mechanik: Funktion Endschalter Heben und Senken prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Antriebsmotor prüfen (ok / instandsetzen)",
-                "Mechanik: Kabelschleppkanal prüfen (ok / instandsetzen)",
-                "Mechanik: Längsfahrwerk – Spur Parallelität prüfen (ok / instandsetzen)",
-                "Mechanik: Querfahrwerk – Spur Parallelität prüfen (ok / instandsetzen)",
-                "Mechanik: Vakuumpumpe prüfen (ok / instandsetzen)",
-                "Vakuumtraverse: Druckluftversorgung prüfen (3,5–6,0 bar, ok / instandsetzen)",
-                "Vakuumtraverse: Saugteller prüfen – Verschleiß, Verschmutzung (ok / instandsetzen)",
-                "Vakuumtraverse: Verschraubungen – Dichtheit prüfen (ok / instandsetzen)",
-                "Vakuumtraverse: Vakuumpumpe und Vakuumgreifer prüfen (ok / instandsetzen)",
-                "Benötigte Aktivität dokumentieren (JA / NEIN)"
-            ] },
-            { nr: 11, name: "Kran", pflicht: false, punkte: [
-                "Sicherheitsprüfung nach DIN EN 10204 durchführen (jährlich)",
-                "Kran-Typ erfassen, Nutzungsdauer (Betriebsstunden)",
-                "Zustand und Wirkungsweise prüfen (gut / zufriedenstellend / instandsetzen)",
-                "Mechanik: Not-Halt – Prüfung (ok / instandsetzen)",
-                "Mechanik: Kettenstrang – Prüfung (ok / instandsetzen / ersetzen)",
-                "Mechanik: Kettenschmierung prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Funktion Endschalter Heben und Senken prüfen (ok / instandsetzen)",
-                "Mechanik: Steuerschalter – Leitung und Gehäuse prüfen (ok / instandsetzen)",
-                "Mechanik: Funktion der Bremse prüfen (ok / instandsetzen)",
-                "Mechanik: Haken und Hakenmaulsicherung prüfen (ok / instandsetzen)",
-                "Mechanik: Elektrische Schaltgeräte prüfen (ok / instandsetzen)",
-                "Mechanik: Elektrische Installation prüfen (ok / instandsetzen)",
-                "Mechanik: Rutschkupplung prüfen (ok / instandsetzen)",
-                ["Mechanik: Bremsverschleiß prüfen (ok / instandsetzen) – alle 5 Jahre notwendig", "5 Jahre"],
-                "Mechanik: Aufhängung, Aufhängbügel und Befestigungselemente prüfen (ok / instandsetzen)",
-                "Mechanik: Befestigungsschrauben am Hakengeschirr prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Haken auf Anrisse, Verformung, Abnutzung prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Hakenmaulsicherung auf Verformung prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Hakenlager auf Abnutzung prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Kettenrad und Kettenführung prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Befestigung der Kette und des Kettenspeichers prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Kette auf Verformung, Beschädigung, Anrisse, Verschleiß prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Befestigungselemente – fester Sitz, Korrosion prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Kontrolle und Ausbesserung Ergänzung (ok / instandsetzen)",
-                "Mechanik: Dichtigkeit Elektroraum und Getriebe prüfen (ok / instandsetzen)",
-                "Mechanik: Fahrwerk, Traverse und Zustand der Puffer prüfen (ok / instandsetzen / ersetzen)",
-                "Messungen: Haupthub Geschwindigkeit messen (m/min, ok / instandsetzen)",
-                "Messungen: Feinhub Geschwindigkeit messen (m/min, ok / instandsetzen)",
-                "Messungen: Haltelast 0,25 t ohne Nachlauf prüfen (ok / instandsetzen)"
-            ] },
-            { nr: 12, name: "Manipulator", pflicht: false, punkte: [
-                "Sicherheitsprüfung nach DIN EN 10204 durchführen (jährlich)",
-                "Manipulator-Typ erfassen, Nutzungsdauer (Betriebsstunden)",
-                "Zustand und Wirkungsweise prüfen (gut / zufriedenstellend / instandsetzen)",
-                "Mechanik: Not-Halt – Prüfung (ok / instandsetzen)",
-                "Mechanik: Kettenstrang – Prüfung (ok / instandsetzen / ersetzen)",
-                "Mechanik: Kettenschmierung prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Funktion Endschalter Heben und Senken prüfen (ok / instandsetzen)",
-                "Mechanik: Steuerschalter – Leitung und Gehäuse prüfen (ok / instandsetzen)",
-                "Mechanik: Funktion der Bremse prüfen (ok / instandsetzen)",
-                "Mechanik: Haken und Hakenmaulsicherung prüfen (ok / instandsetzen)",
-                "Mechanik: Elektrische Schaltgeräte prüfen (ok / instandsetzen)",
-                "Mechanik: Elektrische Installation prüfen (ok / instandsetzen)",
-                "Mechanik: Rutschkupplung prüfen (ok / instandsetzen)",
-                ["Mechanik: Bremsverschleiß prüfen (ok / instandsetzen) – alle 5 Jahre notwendig", "5 Jahre"],
-                "Mechanik: Aufhängung, Aufhängbügel und Befestigungselemente prüfen (ok / instandsetzen)",
-                "Mechanik: Befestigungsschrauben am Hakengeschirr prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Haken auf Anrisse, Verformung, Abnutzung prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Hakenmaulsicherung auf Verformung prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Hakenlager auf Abnutzung prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Kettenrad und Kettenführung prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Befestigung der Kette und des Kettenspeichers prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Kette auf Verformung, Beschädigung, Anrisse, Verschleiß prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Befestigungselemente – fester Sitz, Korrosion prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Kontrolle und Ausbesserung Ergänzung (ok / instandsetzen)",
-                "Mechanik: Dichtigkeit Elektroraum und Getriebe prüfen (ok / instandsetzen)",
-                "Mechanik: Fahrwerk, Traverse und Zustand der Puffer prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Energiekette – Führung und Abnutzung prüfen (ok / instandsetzen / ersetzen)",
-                "Mechanik: Magnet prüfen (ok / instandsetzen / ersetzen)",
-                "Messungen: Haltelast-Magnet messen (kg, ok / instandsetzen / ersetzen)"
-            ] },
-            { nr: 13, name: "Elektroinstallation", pflicht: false, punkte: [
-                "Besichtigung: Schutz gegen direktes Berühren prüfen",
-                "Besichtigung: Leite (Strombelastbarkeit) prüfen",
-                "Besichtigung: Querschnitt der Schutz-, Erdungs- und Potentialausgleichsleiter prüfen",
-                "Besichtigung: Trenn- und Schalteinrichtungen prüfen",
-                "Besichtigung: Auswahl/Einstellung von Schutz- und Überwachungseinrichtungen prüfen",
-                "Besichtigung: Schaltungsunterlagen, Warnhinweise, sonstige Informationen vorhanden prüfen",
-                "Besichtigung: Kennzeichnung Stromkreise prüfen",
-                "Besichtigung: Kennzeichnung Betriebsmittel prüfen",
-                "Besichtigung: Kennzeichnung Klemmen prüfen",
-                "Besichtigung: Zugänglichkeit prüfen",
-                "Erprobung: Funktionsprüfung der elektrischen Anlage",
-                "Erprobung: Funktionsprobe der Prüftasten der Schutzeinrichtungen",
-                "Erprobung: Spannungspolarität prüfen",
-                "Erprobung: Rechtsdrehfeld vor Einspeisung prüfen",
-                "Erprobung: Rechtsdrehfeld der Abgänge prüfen",
-                "Erprobung: Hochspannungsprüfung durchführen",
-                ["Prüfung nach DIN VDE 0100 T610 / VDE 0113 / VDE 0660 T500 / BGV A3 durchführen", "4 Jahre"],
-                "Messtabelle: Sichtprüfung – Durchgeführt, Messwert, Bemerkung erfassen",
-                "Messtabelle: Schutzleiter / Potenzialausgleich – Durchgeführt, Messwert, Bemerkung erfassen",
-                "Messtabelle: Isolationswiderstand – Durchgeführt, Messwert, Bemerkung erfassen",
-                "Messtabelle: Spannungsprüfung – Durchgeführt, Messwert, Bemerkung erfassen",
-                "Messtabelle: Netzinnenwiderstand – Durchgeführt, Messwert, Bemerkung erfassen",
-                "Messtabelle: Schutz gegen Restspannungen – Durchgeführt, Messwert, Bemerkung erfassen",
-                "Messtabelle: Funktionsprüfung – Durchgeführt, Messwert, Bemerkung erfassen"
-            ] },
-            { nr: 14, name: "Allgemeine Angaben", pflicht: true, punkte: [
-                "Auftraggeber: Firma, Straße, PLZ/Ort, Telefon, Telefax erfassen",
-                "Interne Angaben: Kommissions-Nr., Bestell-Nr., Projekt erfassen",
-                ["Verantwortlich bei ersten Abnahme: Kontaktperson Auftraggeber und Ansprechpartner Dodek erfassen", "einmalig"],
-                "Verantwortlich bei nachfolgenden Prüfungen: Kontaktperson, Sachkundiger Dodek, Datum eintragen"
-            ] },
-            { nr: 15, name: "Sonstiges", pflicht: false, punkte: [
-                "Technische Dokumentation: vorhanden (JA / NEIN)",
-                "Technische Dokumentation: zugänglich (JA / NEIN)",
-                "Ersatzlieferung gegen Aufpreis: Ersatz nötig (JA / NEIN)",
-                "Ersatzlieferung gegen Aufpreis: Ersatz anfordern (JA / NEIN)",
-                "Bestell-Liste: benötigte Ersatzteile auflisten",
-                "Bestätigung der Bestellung durch den Kunden einholen",
-                "Mängelbericht: Bemerkungen zu allen festgestellten Mängeln dokumentieren",
-                "Angebotsabgabe: Wird ein Angebot benötigt (NEIN / JA, innerhalb von __ Wochen)"
-            ] }
-        ];
-
-        // Datensatz-Objekt im Format { ModulNr, ModulName, Aktiv, Pflicht, Pruefpunkte:[{id,text,intervall,position}] }
-        function buildUvvModulObject(def) {
-            return {
-                ModulNr: def.nr,
-                ModulName: def.name,
-                Aktiv: true,
-                Pflicht: def.pflicht,
-                Pruefpunkte: def.punkte.map((p, i) => ({
-                    id: i + 1,
-                    text: Array.isArray(p) ? p[0] : p,
-                    intervall: Array.isArray(p) ? p[1] : 'jährlich',
-                    position: i + 1
-                }))
-            };
-        }
+          {
+            "ModulNr": 0,
+            "ModulName": "Prüfzertifikat",
+            "Aktiv": true,
+            "Pflicht": true,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Auftraggeber – Firma", "typ": "freitext" },
+              { "nr": 2, "bezeichnung": "Auftraggeber – Strasse", "typ": "freitext" },
+              { "nr": 3, "bezeichnung": "Auftraggeber – PLZ / Ort", "typ": "freitext" },
+              { "nr": 4, "bezeichnung": "Auftraggeber – Telefon", "typ": "freitext" },
+              { "nr": 5, "bezeichnung": "Auftraggeber – Telefax", "typ": "freitext" },
+              { "nr": 6, "bezeichnung": "Angaben zur Anlage – Kommissions-Nr.", "typ": "freitext" },
+              { "nr": 7, "bezeichnung": "Angaben zur Anlage – Bestell-Nr.", "typ": "freitext" },
+              { "nr": 8, "bezeichnung": "Angaben zur Anlage – Projekt", "typ": "freitext" },
+              { "nr": 9, "bezeichnung": "Nächster empfohlener Prüftermin", "typ": "freitext" }
+            ]
+          },
+          {
+            "ModulNr": 1,
+            "ModulName": "Filter mit Komponenten",
+            "Aktiv": true,
+            "Pflicht": true,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Filter-Typ – Zustand", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend", "instandsetzen"] },
+              { "nr": 2, "bezeichnung": "Filter-Typ – Wirkungsweise", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend"] },
+              { "nr": 3, "bezeichnung": "Dichtungen – Inspektionstüren", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend", "ersetzen"] },
+              { "nr": 4, "bezeichnung": "Dichtungen – Austragssysteme", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend", "ersetzen"] },
+              { "nr": 5, "bezeichnung": "Dichtungen – Rohrleitung", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend"] },
+              { "nr": 6, "bezeichnung": "Filterelemente", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 7, "bezeichnung": "Steuerplatine", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 8, "bezeichnung": "Schaltschrank", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 9, "bezeichnung": "Magnetventile", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 10, "bezeichnung": "Membranventile", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 11, "bezeichnung": "Öl-/Wasserabscheider", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 12, "bezeichnung": "Luftleitungen", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 13, "bezeichnung": "Elektr. Verkabelung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 14, "bezeichnung": "Ventilator", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 15, "bezeichnung": "Staubaustrag", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 16, "bezeichnung": "Ex-Schutz-Komponenten", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 17, "bezeichnung": "Schallschutz", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 18, "bezeichnung": "Volumenstrom Q (Ist-Wert)", "typ": "messwert", "einheit": "m³/h" },
+              { "nr": 19, "bezeichnung": "Magnehelic Δp (Ist-Wert)", "typ": "messwert", "einheit": "Pa" },
+              { "nr": 20, "bezeichnung": "Pressluft p (Ist-Wert)", "typ": "messwert", "einheit": "bar" },
+              { "nr": 21, "bezeichnung": "Benötigte Aktivitäten", "typ": "auswahl", "optionen": ["ja", "nein"] },
+              { "nr": 22, "bezeichnung": "Bemerkungen", "typ": "freitext" }
+            ]
+          },
+          {
+            "ModulNr": 2,
+            "ModulName": "Ventilator",
+            "Aktiv": true,
+            "Pflicht": false,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Ventilatortyp – Fabrikat", "typ": "freitext" },
+              { "nr": 2, "bezeichnung": "Ventilatortyp – Typ / Serien-Nr.", "typ": "freitext" },
+              { "nr": 3, "bezeichnung": "Ventilatortyp – Spannung / Frequenz", "typ": "freitext" },
+              { "nr": 4, "bezeichnung": "Ventilatortyp – kW", "typ": "freitext" },
+              { "nr": 5, "bezeichnung": "Ventilatortyp – Zustand", "typ": "auswahl", "optionen": ["gut"] },
+              { "nr": 6, "bezeichnung": "Ventilatortyp – Änderungen gegenüber letzter Inspektion", "typ": "auswahl", "optionen": ["JA", "NEIN"] },
+              { "nr": 7, "bezeichnung": "Inspektionsteile – Drehrichtung", "typ": "auswahl", "optionen": ["links", "rechts"] },
+              { "nr": 8, "bezeichnung": "Inspektionsteile – Schwingmetallpuffer", "typ": "auswahl", "optionen": ["ok", "instandsetzen"] },
+              { "nr": 9, "bezeichnung": "Inspektionsteile – Flex. Manschette Saugseite", "typ": "auswahl", "optionen": ["ok", "instandsetzen"] },
+              { "nr": 10, "bezeichnung": "Inspektionsteile – Flex. Manschette Auslaß", "typ": "auswahl", "optionen": ["ok", "instandsetzen"] },
+              { "nr": 11, "bezeichnung": "Inspektionsteile – Schalldämpfer", "typ": "auswahl", "optionen": ["ok", "instandsetzen"] },
+              { "nr": 12, "bezeichnung": "Inspektionsteile – Luftregulierschieber", "typ": "auswahl", "optionen": ["ok", "instandsetzen"] },
+              { "nr": 13, "bezeichnung": "Inspektionsteile – Elektr. Verkabelung", "typ": "auswahl", "optionen": ["ok", "instandsetzen"] },
+              { "nr": 14, "bezeichnung": "Inspektionsteile – Antrieb", "typ": "auswahl", "optionen": ["direkt", "Keilriemen"] },
+              { "nr": 15, "bezeichnung": "Inspektionsteile – Sicherheitsschutz", "typ": "auswahl", "optionen": ["ok", "instandsetzen"] },
+              { "nr": 16, "bezeichnung": "Inspektionsteile – Lärmpegel", "typ": "messwert", "einheit": "dB(A)" },
+              { "nr": 17, "bezeichnung": "Inspektionsteile – Lager", "typ": "auswahl", "optionen": ["ok", "instandsetzen"] },
+              { "nr": 18, "bezeichnung": "Inspektionsteile – Ex-Schutz-Teile", "typ": "auswahl", "optionen": ["ok", "instandsetzen"] },
+              { "nr": 19, "bezeichnung": "Inspektionsteile – Öl/Fett", "typ": "auswahl", "optionen": ["JA", "NEIN", "TERMIN"] },
+              { "nr": 20, "bezeichnung": "Benötigte Aktivitäten", "typ": "auswahl", "optionen": ["JA", "NEIN"] }
+            ]
+          },
+          {
+            "ModulNr": 3,
+            "ModulName": "Staubentsorgungssystem (Zellenradschleuse / Staubschnecke / Doppelpendelklappe)",
+            "Aktiv": true,
+            "Pflicht": false,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Zellenradschleuse – Fabrikat", "typ": "freitext" },
+              { "nr": 2, "bezeichnung": "Zellenradschleuse – Typ / Serien-Nr.", "typ": "freitext" },
+              { "nr": 3, "bezeichnung": "Zellenradschleuse – kW / Spannung", "typ": "freitext" },
+              { "nr": 4, "bezeichnung": "Zellenradschleuse – Zustand", "typ": "auswahl", "optionen": ["gut"] },
+              { "nr": 5, "bezeichnung": "Zellenradschleuse – Änderungen gegenüber letzter Inspektion", "typ": "auswahl", "optionen": ["nein", "ja"] },
+              { "nr": 6, "bezeichnung": "Zellenradschleuse – Lager", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 7, "bezeichnung": "Zellenradschleuse – Wellendichtung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 8, "bezeichnung": "Zellenradschleuse – Motor", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 9, "bezeichnung": "Zellenradschleuse – Motor Öl nachfüllen", "typ": "auswahl", "optionen": ["nein", "ja"] },
+              { "nr": 10, "bezeichnung": "Zellenradschleuse – Flügel", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 11, "bezeichnung": "Staubschnecke – Fabrikat", "typ": "freitext" },
+              { "nr": 12, "bezeichnung": "Staubschnecke – Typ / Serien-Nr.", "typ": "freitext" },
+              { "nr": 13, "bezeichnung": "Staubschnecke – kW / Spannung", "typ": "freitext" },
+              { "nr": 14, "bezeichnung": "Staubschnecke – Zustand", "typ": "auswahl", "optionen": ["gut"] },
+              { "nr": 15, "bezeichnung": "Staubschnecke – Änderungen gegenüber letzter Inspektion", "typ": "auswahl", "optionen": ["nein", "ja"] },
+              { "nr": 16, "bezeichnung": "Staubschnecke – Lager", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 17, "bezeichnung": "Staubschnecke – Wellendichtung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 18, "bezeichnung": "Staubschnecke – Motor", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 19, "bezeichnung": "Staubschnecke – Motor Öl nachfüllen", "typ": "auswahl", "optionen": ["nein", "ja"] },
+              { "nr": 20, "bezeichnung": "Staubschnecke – Schnecke (Beschädigung/Abnutzung)", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 21, "bezeichnung": "Doppelpendelklappe – Zustand", "typ": "auswahl", "optionen": ["gut"] },
+              { "nr": 22, "bezeichnung": "Doppelpendelklappe – Änderungen", "typ": "auswahl", "optionen": ["nein", "ja"] },
+              { "nr": 23, "bezeichnung": "Doppelpendelklappe – Lager", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 24, "bezeichnung": "Doppelpendelklappe – Wellendichtung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 25, "bezeichnung": "Doppelpendelklappe – Motor", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 26, "bezeichnung": "Doppelpendelklappe – Klappe (Beschädigung/Abnutzung)", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 27, "bezeichnung": "Bemerkung des Kunden", "typ": "freitext" }
+            ]
+          },
+          {
+            "ModulNr": 4,
+            "ModulName": "Brennschneidtisch",
+            "Aktiv": true,
+            "Pflicht": false,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Mechanik – Tisch mit Fundament verdübelt", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 2, "bezeichnung": "Mechanik – Tisch Ebenheit", "typ": "messwert", "einheit": "mm" },
+              { "nr": 3, "bezeichnung": "Mechanik – Parallelität zur Laufbahn", "typ": "messwert", "einheit": "mm" },
+              { "nr": 4, "bezeichnung": "Pneumatik – Funktion der Pneumatikklappen", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 5, "bezeichnung": "Pneumatik – Dämpfer eingestellt (im Betrieb)", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 6, "bezeichnung": "Pneumatik – Druckluftversorgung (3,5–6,0 bar)", "typ": "messwert", "einheit": "bar" },
+              { "nr": 7, "bezeichnung": "Steuerung Pneumatikklappen – Rollenhebelventile und Schaltleiste", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 8, "bezeichnung": "Steuerung Pneumatikklappen – Näherungsschalter und Schaltleiste", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 9, "bezeichnung": "Steuerung Pneumatikklappen – über Steuerung der Maschine", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 10, "bezeichnung": "Messungen – Erfassungsgeschwindigkeit Erstes Segment", "typ": "messwert", "einheit": "m/s" },
+              { "nr": 11, "bezeichnung": "Messungen – Erfassungsgeschwindigkeit Mittleres Segment", "typ": "messwert", "einheit": "m/s" },
+              { "nr": 12, "bezeichnung": "Messungen – Erfassungsgeschwindigkeit Letztes Segment", "typ": "messwert", "einheit": "m/s" },
+              { "nr": 13, "bezeichnung": "Messungen – Erdpotential-Prüfung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 14, "bezeichnung": "Benötigte Aktivität", "typ": "auswahl", "optionen": ["JA", "NEIN"] }
+            ]
+          },
+          {
+            "ModulNr": 5,
+            "ModulName": "Kratzereinheit",
+            "Aktiv": true,
+            "Pflicht": false,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Mechanik – Führungsschienen Befestigung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 2, "bezeichnung": "Mechanik – Kratzerschienen", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 3, "bezeichnung": "Mechanik – Führungs-Stahlgliederketten", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 4, "bezeichnung": "Mechanik – Antriebswelle mit Kettenräder", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 5, "bezeichnung": "Mechanik – Umlenkrolle", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 6, "bezeichnung": "Mechanik – Kettenspanneinheit", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 7, "bezeichnung": "Mechanik – Kratzerplatte Ebenheit", "typ": "messwert", "einheit": "mm" },
+              { "nr": 8, "bezeichnung": "Antrieb – Fabrikat", "typ": "freitext" },
+              { "nr": 9, "bezeichnung": "Antrieb – Typ / Serien-Nr.", "typ": "freitext" },
+              { "nr": 10, "bezeichnung": "Antrieb – kW / Spannung", "typ": "freitext" },
+              { "nr": 11, "bezeichnung": "Antrieb – Zustand", "typ": "auswahl", "optionen": ["gut"] },
+              { "nr": 12, "bezeichnung": "Antrieb – Änderungen gegenüber letzter Inspektion", "typ": "auswahl", "optionen": ["nein", "ja"] },
+              { "nr": 13, "bezeichnung": "Elektronik – Näherungsschalter Funktion", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 14, "bezeichnung": "Messungen – Erdpotential-Prüfung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] }
+            ]
+          },
+          {
+            "ModulNr": 6,
+            "ModulName": "Wechseltischeinheit",
+            "Aktiv": true,
+            "Pflicht": false,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Mechanik – Führungswagen", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 2, "bezeichnung": "Mechanik – Linear-Führungsschienen", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 3, "bezeichnung": "Mechanik – Transportschienen", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 4, "bezeichnung": "Mechanik – Lauf- und Kombirollen", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 5, "bezeichnung": "Mechanik – Kettenräder mit Antrieb", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 6, "bezeichnung": "Mechanik – Führungs-Stahlgliederketten", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 7, "bezeichnung": "Mechanik – Abschott-Pendelbleche", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 8, "bezeichnung": "Antrieb – Fabrikat", "typ": "freitext" },
+              { "nr": 9, "bezeichnung": "Antrieb – Typ / Serien-Nr.", "typ": "freitext" },
+              { "nr": 10, "bezeichnung": "Antrieb – kW / Spannung", "typ": "freitext" },
+              { "nr": 11, "bezeichnung": "Antrieb – Zustand", "typ": "auswahl", "optionen": ["gut"] },
+              { "nr": 12, "bezeichnung": "Antrieb – Änderungen gegenüber letzter Inspektion", "typ": "auswahl", "optionen": ["nein", "ja"] },
+              { "nr": 13, "bezeichnung": "Elektronik – Näherungsschalter Funktion", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 14, "bezeichnung": "Elektronik – Lichttaster Funktion", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 15, "bezeichnung": "Messungen – Erdpotential-Prüfung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] }
+            ]
+          },
+          {
+            "ModulNr": 7,
+            "ModulName": "Hydraulikanlage",
+            "Aktiv": true,
+            "Pflicht": false,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Hydraulikaggregat – Anlagen Typ", "typ": "freitext" },
+              { "nr": 2, "bezeichnung": "Hydraulikaggregat – Zustand", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend"] },
+              { "nr": 3, "bezeichnung": "Hydraulikaggregat – Wirkungsweise", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend"] },
+              { "nr": 4, "bezeichnung": "Ölvorrat – Leckstellen", "typ": "auswahl", "optionen": ["nein", "ja – instandsetzen"] },
+              { "nr": 5, "bezeichnung": "Ölvorrat – Dichtheitsprüfung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 6, "bezeichnung": "Ölvorrat – Kontrolle Ölmenge", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 7, "bezeichnung": "Leitungen – Befestigung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 8, "bezeichnung": "Leitungen – Beschädigung", "typ": "auswahl", "optionen": ["nein", "ja – instandsetzen"] },
+              { "nr": 9, "bezeichnung": "Leitungen – Verformung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 10, "bezeichnung": "Leitungen – Korrosion", "typ": "auswahl", "optionen": ["nein", "ja – instandsetzen"] },
+              { "nr": 11, "bezeichnung": "Schläuche – Befestigung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 12, "bezeichnung": "Schläuche – Brüchigkeit", "typ": "auswahl", "optionen": ["nein", "ja – instandsetzen"] },
+              { "nr": 13, "bezeichnung": "Schläuche – Beschädigung", "typ": "auswahl", "optionen": ["nein", "ja – instandsetzen"] },
+              { "nr": 14, "bezeichnung": "Schläuche – Alter", "typ": "messwert", "einheit": "Jahre" },
+              { "nr": 15, "bezeichnung": "Drücke – Systemdruck", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 16, "bezeichnung": "Drücke – Sekundärdrücke", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 17, "bezeichnung": "Lasthalteventile halten Zylinder ohne Nachlauf", "typ": "auswahl", "optionen": ["ja", "nein – instandsetzen"] },
+              { "nr": 18, "bezeichnung": "Zylinder – Befestigung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 19, "bezeichnung": "Zylinder – Risse", "typ": "auswahl", "optionen": ["nein", "ja – instandsetzen"] },
+              { "nr": 20, "bezeichnung": "Zylinder – Anschlüsse", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 21, "bezeichnung": "Zylinder – Dichtigkeit der Manschetten", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 22, "bezeichnung": "Zylinder – Oberfläche der Kolbenstange", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 23, "bezeichnung": "Benötigte Aktivität", "typ": "auswahl", "optionen": ["JA", "NEIN"] }
+            ]
+          },
+          {
+            "ModulNr": 8,
+            "ModulName": "Querförderer",
+            "Aktiv": true,
+            "Pflicht": false,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Mechanik – Scharnierband", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 2, "bezeichnung": "Mechanik – Linear-Führungsschienen", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 3, "bezeichnung": "Mechanik – Antriebswelle mit Kettenräder", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 4, "bezeichnung": "Mechanik – Umlenkrolle", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 5, "bezeichnung": "Mechanik – Sonstiges", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 6, "bezeichnung": "Antrieb – Fabrikat", "typ": "freitext" },
+              { "nr": 7, "bezeichnung": "Antrieb – Typ / Serien-Nr.", "typ": "freitext" },
+              { "nr": 8, "bezeichnung": "Antrieb – kW / Spannung", "typ": "freitext" },
+              { "nr": 9, "bezeichnung": "Antrieb – Zustand", "typ": "auswahl", "optionen": ["gut"] },
+              { "nr": 10, "bezeichnung": "Antrieb – Änderungen gegenüber letzter Inspektion", "typ": "auswahl", "optionen": ["nein", "ja"] },
+              { "nr": 11, "bezeichnung": "Elektronik – Näherungsschalter Funktion", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 12, "bezeichnung": "Elektronik – Lichttaster Funktion", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 13, "bezeichnung": "Messungen – Erdpotential-Prüfung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] }
+            ]
+          },
+          {
+            "ModulNr": 9,
+            "ModulName": "WRG – Zu- und Abluftgerät",
+            "Aktiv": true,
+            "Pflicht": false,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Gerät-Typ – Zustand", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend", "instandsetzen"] },
+              { "nr": 2, "bezeichnung": "Gerät-Typ – Wirkungsweise", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend"] },
+              { "nr": 3, "bezeichnung": "Dichtungen – Inspektionstüren", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend", "ersetzen"] },
+              { "nr": 4, "bezeichnung": "Dichtungen – Anschlussteile", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend", "ersetzen"] },
+              { "nr": 5, "bezeichnung": "Dichtungen – Rohrleitung", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend"] },
+              { "nr": 6, "bezeichnung": "Entkopplungsstutzen – Zustand", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 7, "bezeichnung": "Entkopplungsstutzen – Dichtigkeit", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 8, "bezeichnung": "Jalousienklappe – Zustand", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 9, "bezeichnung": "Jalousienklappe – Mechanische Funktion", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 10, "bezeichnung": "Jalousienklappe – Stellantrieb", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 11, "bezeichnung": "Luftfilter – Filterelemente", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 12, "bezeichnung": "Luftfilter – Differenzdruck", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 13, "bezeichnung": "Luftfilter – Hygienezustand", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 14, "bezeichnung": "Rotationswärmetauscher – Luftseitiger Zustand", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 15, "bezeichnung": "Rotationswärmetauscher – Rotor / Unwucht", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 16, "bezeichnung": "Rotationswärmetauscher – Lager", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 17, "bezeichnung": "Rotationswärmetauscher – Bürstendichtung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 18, "bezeichnung": "Rotationswärmetauscher – Dichtungsfilze", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 19, "bezeichnung": "Rotationswärmetauscher – Hygienezustand", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 20, "bezeichnung": "Rotationswärmetauscher – Drehrichtung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 21, "bezeichnung": "Antrieb – Keilriemen", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 22, "bezeichnung": "Antrieb – Keilriemenscheibe", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 23, "bezeichnung": "Antrieb – Motor", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 24, "bezeichnung": "Antrieb – Feder-Motorwippe", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 25, "bezeichnung": "Antrieb – Lager", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 26, "bezeichnung": "Schalldämpfer – Zustand", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend"] },
+              { "nr": 27, "bezeichnung": "Schalldämpfer – Innere Luftleitflächen", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend"] },
+              { "nr": 28, "bezeichnung": "Ventilator – Fabrikat", "typ": "freitext" },
+              { "nr": 29, "bezeichnung": "Ventilator – Typ / Serien-Nr.", "typ": "freitext" },
+              { "nr": 30, "bezeichnung": "Ventilator – kW / Spannung", "typ": "freitext" },
+              { "nr": 31, "bezeichnung": "Ventilator – Zustand", "typ": "auswahl", "optionen": ["gut"] },
+              { "nr": 32, "bezeichnung": "Ventilator – Änderungen gegenüber letzter Inspektion", "typ": "auswahl", "optionen": ["nein", "ja"] },
+              { "nr": 33, "bezeichnung": "Ventilator – Drehrichtung", "typ": "auswahl", "optionen": ["links", "rechts"] },
+              { "nr": 34, "bezeichnung": "Ventilator – Schwingmetallpuffer", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 35, "bezeichnung": "Ventilator – Flex. Manschette Saugseite", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 36, "bezeichnung": "Ventilator – Flex. Manschette Ausblas", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 37, "bezeichnung": "Ventilator – Schalldämpfer", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 38, "bezeichnung": "Ventilator – Luftregulierschieber", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 39, "bezeichnung": "Ventilator – Elektr. Verkabelung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 40, "bezeichnung": "Ventilator – Antrieb", "typ": "auswahl", "optionen": ["direkt", "Keilriemen"] },
+              { "nr": 41, "bezeichnung": "Ventilator – Sicherheitsschutz", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 42, "bezeichnung": "Ventilator – Lärmpegel", "typ": "messwert", "einheit": "dB(A)" },
+              { "nr": 43, "bezeichnung": "Ventilator – Lager", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 44, "bezeichnung": "Ventilator – Öl/Fett", "typ": "auswahl", "optionen": ["nein", "ja", "beim nächsten Besuch"] },
+              { "nr": 45, "bezeichnung": "Benötigte Aktivitäten", "typ": "auswahl", "optionen": ["nein", "ja"] }
+            ]
+          },
+          {
+            "ModulNr": 10,
+            "ModulName": "Portalanlage",
+            "Aktiv": true,
+            "Pflicht": false,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Portalanlagen-Typ – Nutzungsdauer", "typ": "messwert", "einheit": "Betriebsstunden" },
+              { "nr": 2, "bezeichnung": "Portalanlagen-Typ – Zustand", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend", "instandsetzen"] },
+              { "nr": 3, "bezeichnung": "Portalanlagen-Typ – Wirkungsweise", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend"] },
+              { "nr": 4, "bezeichnung": "Mechanik – Funktion der Bremsen", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 5, "bezeichnung": "Mechanik – Transportschienen", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 6, "bezeichnung": "Mechanik – Hub- u. Antriebskette", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 7, "bezeichnung": "Mechanik – Bremsverschleiß prüfen", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 8, "bezeichnung": "Mechanik – Funktion Endschalter Heben/Senken", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 9, "bezeichnung": "Mechanik – Antriebsmotor", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 10, "bezeichnung": "Mechanik – Kabelschleppkanal", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 11, "bezeichnung": "Mechanik – Längsfahrwerk Spurparallelität", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 12, "bezeichnung": "Mechanik – Querfahrwerk Spurparallelität", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 13, "bezeichnung": "Mechanik – Vakuumpumpe", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 14, "bezeichnung": "Vakuumtraverse – Druckluftversorgung (3,5–6,0 bar)", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 15, "bezeichnung": "Vakuumtraverse – Saugteller (Verschleiß/Verschmutzung)", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 16, "bezeichnung": "Vakuumtraverse – Verschraubungen Dichtheit", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 17, "bezeichnung": "Vakuumtraverse – Vakuumpumpe und Vakuumgreifer", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 18, "bezeichnung": "Benötigte Aktivität", "typ": "auswahl", "optionen": ["JA", "NEIN"] }
+            ]
+          },
+          {
+            "ModulNr": 11,
+            "ModulName": "Kran",
+            "Aktiv": true,
+            "Pflicht": false,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Kran-Typ – Nutzungsdauer", "typ": "messwert", "einheit": "Betriebsstunden" },
+              { "nr": 2, "bezeichnung": "Kran-Typ – Zustand", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend", "instandsetzen"] },
+              { "nr": 3, "bezeichnung": "Kran-Typ – Wirkungsweise", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend"] },
+              { "nr": 4, "bezeichnung": "Mechanik – Not-Halt-Prüfung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 5, "bezeichnung": "Mechanik – Kettenstrang-Prüfung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 6, "bezeichnung": "Mechanik – Kettenschmierung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 7, "bezeichnung": "Mechanik – Funktion Endschalter Heben/Senken", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 8, "bezeichnung": "Mechanik – Prüfung Steuerschalter Leitung/Gehäuse", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 9, "bezeichnung": "Mechanik – Funktion der Bremse", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 10, "bezeichnung": "Mechanik – Haken und Hakenmaulsicherung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 11, "bezeichnung": "Mechanik – Elektrische Schaltgeräte", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 12, "bezeichnung": "Mechanik – Elektrische Installation", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 13, "bezeichnung": "Mechanik – Rutschkupplung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 14, "bezeichnung": "Mechanik – Bremsverschleiß (alle 5 Jahre)", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 15, "bezeichnung": "Mechanik – Aufhängung/Aufhängbügel/Befestigungselemente", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 16, "bezeichnung": "Mechanik – Befestigungsschrauben am Hakengeschirr", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 17, "bezeichnung": "Mechanik – Haken auf Anrisse/Verformung/Abnutzung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 18, "bezeichnung": "Mechanik – Hakenmaulsicherung auf Verformung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 19, "bezeichnung": "Mechanik – Hakenlager auf Abnutzung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 20, "bezeichnung": "Mechanik – Kettenrad und Kettenführung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 21, "bezeichnung": "Mechanik – Befestigung Kette und Kettenspeicher", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 22, "bezeichnung": "Mechanik – Kette auf Verformung/Beschädigung/Verschleiß", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 23, "bezeichnung": "Mechanik – Befestigungselemente fester Sitz/Korrosion", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 24, "bezeichnung": "Mechanik – Kontrolle/Ausbesserung/Ergänzung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 25, "bezeichnung": "Mechanik – Dichtigkeit Elektroraum und Getriebe", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 26, "bezeichnung": "Mechanik – Fahrwerk/Traverse/Puffer", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 27, "bezeichnung": "Messungen – Haupthub Geschwindigkeit", "typ": "messwert", "einheit": "m/min" },
+              { "nr": 28, "bezeichnung": "Messungen – Feinhub Geschwindigkeit", "typ": "messwert", "einheit": "m/min" },
+              { "nr": 29, "bezeichnung": "Messungen – Haltelast 0,25 t ohne Nachlauf", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] }
+            ]
+          },
+          {
+            "ModulNr": 12,
+            "ModulName": "Manipulator",
+            "Aktiv": true,
+            "Pflicht": false,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Manipulator-Typ – Nutzungsdauer", "typ": "messwert", "einheit": "Betriebsstunden" },
+              { "nr": 2, "bezeichnung": "Manipulator-Typ – Zustand", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend", "instandsetzen"] },
+              { "nr": 3, "bezeichnung": "Manipulator-Typ – Wirkungsweise", "typ": "auswahl", "optionen": ["gut", "zufriedenstellend"] },
+              { "nr": 4, "bezeichnung": "Mechanik – Not-Halt-Prüfung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 5, "bezeichnung": "Mechanik – Kettenstrang-Prüfung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 6, "bezeichnung": "Mechanik – Kettenschmierung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 7, "bezeichnung": "Mechanik – Funktion Endschalter Heben/Senken", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 8, "bezeichnung": "Mechanik – Prüfung Steuerschalter Leitung/Gehäuse", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 9, "bezeichnung": "Mechanik – Funktion der Bremse", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 10, "bezeichnung": "Mechanik – Haken und Hakenmaulsicherung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 11, "bezeichnung": "Mechanik – Elektrische Schaltgeräte", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 12, "bezeichnung": "Mechanik – Elektrische Installation", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 13, "bezeichnung": "Mechanik – Rutschkupplung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 14, "bezeichnung": "Mechanik – Bremsverschleiß (alle 5 Jahre)", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 15, "bezeichnung": "Mechanik – Aufhängung/Aufhängbügel/Befestigungselemente", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 16, "bezeichnung": "Mechanik – Befestigungsschrauben am Hakengeschirr", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 17, "bezeichnung": "Mechanik – Haken auf Anrisse/Verformung/Abnutzung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 18, "bezeichnung": "Mechanik – Hakenmaulsicherung auf Verformung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 19, "bezeichnung": "Mechanik – Hakenlager auf Abnutzung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 20, "bezeichnung": "Mechanik – Kettenrad und Kettenführung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 21, "bezeichnung": "Mechanik – Befestigung Kette und Kettenspeicher", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 22, "bezeichnung": "Mechanik – Kette auf Verformung/Beschädigung/Verschleiß", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 23, "bezeichnung": "Mechanik – Befestigungselemente fester Sitz/Korrosion", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 24, "bezeichnung": "Mechanik – Kontrolle/Ausbesserung/Ergänzung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 25, "bezeichnung": "Mechanik – Dichtigkeit Elektroraum und Getriebe", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen"] },
+              { "nr": 26, "bezeichnung": "Mechanik – Fahrwerk/Traverse/Puffer", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 27, "bezeichnung": "Mechanik – Energiekette Führung/Abnutzung", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 28, "bezeichnung": "Mechanik – Magnet", "typ": "auswahl", "optionen": ["o.k.", "instandsetzen", "ersetzen"] },
+              { "nr": 29, "bezeichnung": "Messungen – Haltelast Magnet", "typ": "messwert", "einheit": "kg" }
+            ]
+          },
+          {
+            "ModulNr": 13,
+            "ModulName": "Elektroinstallation",
+            "Aktiv": true,
+            "Pflicht": false,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Besichtigung – Schutz gegen direktes Berühren", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 2, "bezeichnung": "Besichtigung – Leiter Strombelastbarkeit", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 3, "bezeichnung": "Besichtigung – Querschnitt Schutz-/Erdungs-/Potentialausgleichsleiter", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 4, "bezeichnung": "Besichtigung – Trenn- und Schalteinrichtungen", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 5, "bezeichnung": "Besichtigung – Auswahl/Einstellung Schutz- und Überwachungseinrichtungen", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 6, "bezeichnung": "Besichtigung – Schaltungsunterlagen/Warnhinweise/Informationen vorhanden", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 7, "bezeichnung": "Besichtigung – Kennzeichnung Stromkreise", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 8, "bezeichnung": "Besichtigung – Kennzeichnung Betriebsmittel", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 9, "bezeichnung": "Besichtigung – Kennzeichnung Klemmen", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 10, "bezeichnung": "Besichtigung – Zugänglichkeit", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 11, "bezeichnung": "Erprobung – Funktionsprüfung der elektr. Anlage", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 12, "bezeichnung": "Erprobung – Funktionsprobe Prüftasten Schutzeinrichtungen", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 13, "bezeichnung": "Erprobung – Spannungspolarität", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 14, "bezeichnung": "Erprobung – Rechtsdrehfeld vor Einspeisung", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 15, "bezeichnung": "Erprobung – Rechtsdrehfeld der Abgänge", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 16, "bezeichnung": "Erprobung – Hochspannungsprüfung", "typ": "auswahl", "optionen": ["i.O.", "n.i.O."] },
+              { "nr": 17, "bezeichnung": "Prüfung nach Norm", "typ": "freitext" },
+              { "nr": 18, "bezeichnung": "Prüfprotokoll – Ergebnis", "typ": "auswahl", "optionen": ["bestanden", "nicht bestanden"] },
+              { "nr": 19, "bezeichnung": "Prüfprotokoll 12.2 – Sichtprüfung", "typ": "auswahl", "optionen": ["durchgeführt"] },
+              { "nr": 20, "bezeichnung": "Prüfprotokoll 12.2 – Schutzleiter/Potenzialausgleich – Messwert", "typ": "messwert", "einheit": "Ω" },
+              { "nr": 21, "bezeichnung": "Prüfprotokoll 12.2 – Isolationswiderstand – Messwert", "typ": "messwert", "einheit": "MΩ" },
+              { "nr": 22, "bezeichnung": "Prüfprotokoll 12.2 – Netzinnenwiderstand – Messwert", "typ": "messwert", "einheit": "Ω" },
+              { "nr": 23, "bezeichnung": "Prüfprotokoll 12.2 – Funktionsprüfung", "typ": "auswahl", "optionen": ["durchgeführt"] },
+              { "nr": 24, "bezeichnung": "Bemerkungen", "typ": "freitext" }
+            ]
+          },
+          {
+            "ModulNr": 14,
+            "ModulName": "Allgemeine Angaben",
+            "Aktiv": true,
+            "Pflicht": true,
+            "Pruefpunkte": [
+              { "nr": 1, "bezeichnung": "Auftraggeber – Firma", "typ": "freitext" },
+              { "nr": 2, "bezeichnung": "Auftraggeber – Strasse", "typ": "freitext" },
+              { "nr": 3, "bezeichnung": "Auftraggeber – PLZ / Ort", "typ": "freitext" },
+              { "nr": 4, "bezeichnung": "Auftraggeber – Telefon", "typ": "freitext" },
+              { "nr": 5, "bezeichnung": "Auftraggeber – Telefax", "typ": "freitext" },
+              { "nr": 6, "bezeichnung": "Interne Angaben – Kommissions-Nr.", "typ": "freitext" },
+              { "nr": 7, "bezeichnung": "Interne Angaben – Bestell-Nr.", "typ": "freitext" },
+              { "nr": 8, "bezeichnung": "Interne Angaben – Projekt", "typ": "freitext" },
+              { "nr": 9, "bezeichnung": "Erstabnahme – Kontaktperson beim Auftraggeber", "typ": "freitext" },
+              { "nr": 10, "bezeichnung": "Erstabnahme – Ansprechpartner in Fa. Dodek", "typ": "freitext" },
+              { "nr": 11, "bezeichnung": "Folgeprüfung 1 – Kontaktperson beim Auftraggeber", "typ": "freitext" },
+              { "nr": 12, "bezeichnung": "Folgeprüfung 1 – Sachkundiger Fa. Dodek", "typ": "freitext" },
+              { "nr": 13, "bezeichnung": "Folgeprüfung 1 – Datum", "typ": "freitext" },
+              { "nr": 14, "bezeichnung": "Folgeprüfung 2 – Kontaktperson beim Auftraggeber", "typ": "freitext" },
+              { "nr": 15, "bezeichnung": "Folgeprüfung 2 – Sachkundiger Fa. Dodek", "typ": "freitext" },
+              { "nr": 16, "bezeichnung": "Folgeprüfung 2 – Datum", "typ": "freitext" },
+              { "nr": 17, "bezeichnung": "Folgeprüfung 3 – Kontaktperson beim Auftraggeber", "typ": "freitext" },
+              { "nr": 18, "bezeichnung": "Folgeprüfung 3 – Sachkundiger Fa. Dodek", "typ": "freitext" },
+              { "nr": 19, "bezeichnung": "Folgeprüfung 3 – Datum", "typ": "freitext" }
+            ]
+          }
+        ]
+;
 
         // ========== UVV-PRÜFUNGEN (Phase 2) ==========
         // Annahme (nicht gegen die Listen geprüft): DodekUVVModule hat die Spalten Title (= ModulNr als Text), ModulNr (Zahl), ModulName, Aktiv (Ja/Nein), Pflicht (Ja/Nein), Pruefpunkte (Mehrzeilentext, JSON-Array);
@@ -5038,27 +5139,28 @@ function applyPermissions() {
             renderUVVModuleSettings();
         }
 
-        // Admin-Aktion: DodekUVVModule mit den Standardmodulen befüllen (vorhandene Module werden anhand der ModulNr aktualisiert, keine Duplikate)
+        // Admin-Aktion: DodekUVVModule mit den Standardmodulen befüllen. Fehlende Module werden angelegt; bei vorhandenen Modulen
+        // (Zuordnung über ModulNr) werden nur die Prüfpunkte aktualisiert — ModulName, Aktiv und Pflicht bleiben unverändert.
         async function initUVVModule() {
             if (window.currentUserRole !== 'admin') { showMessage('Keine Berechtigung', 'error'); return; }
             const btn = document.getElementById('uvvInitBtn');
             try {
                 const existing = await getUVVModule(true);
                 const msg = existing.length > 0
-                    ? `DodekUVVModule enthält bereits ${existing.length} Module. Fortfahren überschreibt sie mit den Standardwerten (Prüfpunkte, Aktiv-Status). Fortfahren?`
+                    ? `DodekUVVModule enthält bereits ${existing.length} Module. Bei vorhandenen Modulen werden nur die Prüfpunkte mit den Standardwerten überschrieben (Name, Aktiv, Pflicht bleiben), fehlende Module werden angelegt. Fortfahren?`
                     : `DodekUVVModule ist leer. ${UVV_MODULE_DEFAULTS.length} Module jetzt anlegen?`;
                 if (!confirm(msg)) return;
                 if (btn) btn.disabled = true;
                 let created = 0, updated = 0;
                 for (const def of UVV_MODULE_DEFAULTS) {
-                    const obj = buildUvvModulObject(def);
-                    const payload = {
-                        Title: String(def.nr), ModulNr: obj.ModulNr, ModulName: obj.ModulName,
-                        Aktiv: obj.Aktiv, Pflicht: obj.Pflicht, Pruefpunkte: JSON.stringify(obj.Pruefpunkte)
-                    };
-                    const ex = existing.find(m => m.ModulNr === def.nr);
-                    if (ex) { await uvvPatch(SP_CONFIG.guidUVVModule, ex._spId, payload); updated++; }
-                    else { await spFetch(uvvListUrl(SP_CONFIG.guidUVVModule), { method: 'POST', body: JSON.stringify(payload) }); created++; }
+                    const punkte = JSON.stringify(def.Pruefpunkte);
+                    const ex = existing.find(m => m.ModulNr === def.ModulNr);
+                    if (ex) { await uvvPatch(SP_CONFIG.guidUVVModule, ex._spId, { Pruefpunkte: punkte }); updated++; }
+                    else {
+                        const payload = { Title: String(def.ModulNr), ModulNr: def.ModulNr, ModulName: def.ModulName, Aktiv: def.Aktiv, Pflicht: def.Pflicht, Pruefpunkte: punkte };
+                        await spFetch(uvvListUrl(SP_CONFIG.guidUVVModule), { method: 'POST', body: JSON.stringify(payload) });
+                        created++;
+                    }
                 }
                 await getUVVModule(true);
                 showMessage(`UVV-Module initialisiert: ${created} angelegt, ${updated} aktualisiert`, 'success');
@@ -5173,7 +5275,7 @@ function applyPermissions() {
             let obj = null;
             try { obj = p.ergebnisRaw ? JSON.parse(p.ergebnisRaw) : null; } catch (e) { obj = null; }
             const ergebnisse = {};
-            ((obj && obj.ergebnisse) || []).forEach(e => { ergebnisse[`${e.modulNr}_${e.pruefpunktId}`] = { modulNr: e.modulNr, pruefpunktId: e.pruefpunktId, bewertung: e.bewertung || null, bemerkung: e.bemerkung || '' }; });
+            ((obj && obj.ergebnisse) || []).forEach(e => { ergebnisse[`${e.modulNr}_${e.pruefpunktId}`] = { modulNr: e.modulNr, pruefpunktId: e.pruefpunktId, bewertung: e.bewertung ? (PF_LEGACY_WERTE[e.bewertung] || e.bewertung) : null, bemerkung: e.bemerkung || '' }; });
             window._pf = {
                 id: p.id, anlageId: p.anlagenId, datum: p.datum, pruefer: (obj && obj.pruefer) || p.pruefer, status: p.status,
                 readonly: p.status === 'Abgeschlossen' || !canEditUvv(),
@@ -5237,12 +5339,28 @@ function applyPermissions() {
         const pfModuleDef = nr => (uvvModuleCache || []).find(m => m.ModulNr === nr);
         const pfEntry = (nr, pid) => window._pf.ergebnisse[`${nr}_${pid}`];
 
+        // Prüfpunkt-Schema: { nr, bezeichnung, typ, optionen, einheit }. Ältere Daten ({ id, text, intervall, position }) bleiben lesbar.
+        const pfPunktId   = pp => pp.nr != null ? pp.nr : pp.id;
+        const pfPunktText = pp => pp.bezeichnung != null ? pp.bezeichnung : (pp.text || '');
+        const pfPunktTyp  = pp => pp.typ || 'auswahl';
+        // Auswahl-Optionen: ja_nein ohne Optionen → JA/NEIN; ohne typ (Altdaten) → i.O./n.i.O.; bei auswahl/ja_nein kommt "entfällt" dazu
+        function pfPunktOptionen(pp) {
+            const typ = pfPunktTyp(pp);
+            if (typ !== 'auswahl' && typ !== 'ja_nein') return [];
+            let opts = Array.isArray(pp.optionen) ? pp.optionen.slice() : [];
+            if (opts.length === 0) opts = !pp.typ ? ['i.O.', 'n.i.O.'] : (typ === 'ja_nein' ? ['JA', 'NEIN'] : []);
+            return [...opts, 'entfällt'];
+        }
+        const pfSortedPunkte = m => m.Pruefpunkte.slice().sort((x, y) => (x.position != null && y.position != null) ? x.position - y.position : pfPunktId(x) - pfPunktId(y));
+        // Ältere Prüfungen speicherten die Bewertung als Code
+        const PF_LEGACY_WERTE = { io: 'i.O.', nio: 'n.i.O.', entfaellt: 'entfällt' };
+
         function pfProgressText(nr) {
             const m = pfModuleDef(nr);
             if (!m) return '';
             const total = m.Pruefpunkte.length;
-            const done = m.Pruefpunkte.filter(p => { const e = pfEntry(nr, p.id); return e && e.bewertung; }).length;
-            return `${done}/${total} bewertet`;
+            const done = m.Pruefpunkte.filter(p => { const e = pfEntry(nr, pfPunktId(p)); return e && e.bewertung; }).length;
+            return `${done}/${total} ausgefüllt`;
         }
 
         function renderPruefungForm() {
@@ -5256,19 +5374,29 @@ function applyPermissions() {
             const modulesHtml = pf.module.map((nr, idx) => {
                 const m = pfModuleDef(nr);
                 if (!m) return `<div style="background:white;padding:14px;margin-bottom:12px;border-radius:4px;color:#c62828;">Modul ${nr} ist nicht mehr in DodekUVVModule vorhanden.</div>`;
-                const rows = m.Pruefpunkte.slice().sort((x, y) => x.position - y.position).map(pp => {
-                    const e = pfEntry(nr, pp.id) || {};
-                    const sel = e.bewertung;
-                    const showNote = !!(e.bemerkung || sel === 'nio');
-                    const btn = (val, cls, label) => `<button class="pf-btn ${cls} ${sel === val ? 'sel' : ''}" ${ro ? 'disabled' : ''} onclick="pfSet(${nr},${pp.id},'${val}')">${label}</button>`;
-                    return `<div class="pf-row" id="pfr_${nr}_${pp.id}">
-                        <div class="pf-text">${pp.position}. ${escapeHtml(pp.text)}${pp.intervall && pp.intervall !== 'jährlich' ? `<span class="pf-int">${escapeHtml(pp.intervall)}</span>` : ''}</div>
-                        <div class="pf-btns">
-                            ${btn('io', 'io', 'i.O.')}${btn('nio', 'nio', 'n.i.O.')}${btn('entfaellt', 'entf', 'entfällt')}
-                            <button class="pf-note-btn" ${ro ? 'disabled' : ''} onclick="pfToggleNote(${nr},${pp.id})" title="Bemerkung">✏️</button>
-                        </div>
-                        <textarea class="pf-note" id="pfn_${nr}_${pp.id}" placeholder="Bemerkung…" ${ro ? 'readonly' : ''} style="${showNote ? '' : 'display:none;'}" oninput="pfSetNote(${nr},${pp.id},this.value)">${escapeHtml(e.bemerkung || '')}</textarea>
-                    </div>`;
+                const rows = pfSortedPunkte(m).map(pp => {
+                    const pid = pfPunktId(pp);
+                    const typ = pfPunktTyp(pp);
+                    const text = pfPunktText(pp);
+                    const e = pfEntry(nr, pid) || {};
+                    const val = e.bewertung || '';
+                    const titel = `<div class="pf-text">${pid}. ${escapeHtml(text)}${typ === 'messwert' && pp.einheit ? ` <span class="pf-int">${escapeHtml(pp.einheit)}</span>` : ''}${pp.intervall && pp.intervall !== 'jährlich' ? `<span class="pf-int">${escapeHtml(pp.intervall)}</span>` : ''}</div>`;
+                    if (typ === 'freitext') {
+                        const input = /^Bemerkung/.test(text)
+                            ? `<textarea class="pf-note" style="display:block;" ${ro ? 'readonly' : ''} oninput="pfSetValue(${nr},${pid},this.value)">${escapeHtml(val)}</textarea>`
+                            : `<input type="text" class="pf-input" value="${escapeHtml(val)}" ${ro ? 'readonly' : ''} oninput="pfSetValue(${nr},${pid},this.value)">`;
+                        return `<div class="pf-row" id="pfr_${nr}_${pid}">${titel}${input}</div>`;
+                    }
+                    const noteBtn = `<button class="pf-note-btn" ${ro ? 'disabled' : ''} onclick="pfToggleNote(${nr},${pid})" title="Bemerkung">✏️</button>`;
+                    const showNote = !!(e.bemerkung || val === 'n.i.O.');
+                    const note = `<textarea class="pf-note" id="pfn_${nr}_${pid}" placeholder="Bemerkung…" ${ro ? 'readonly' : ''} style="${showNote ? '' : 'display:none;'}" oninput="pfSetNote(${nr},${pid},this.value)">${escapeHtml(e.bemerkung || '')}</textarea>`;
+                    if (typ === 'messwert') {
+                        return `<div class="pf-row" id="pfr_${nr}_${pid}">${titel}
+                            <div class="pf-btns"><input type="number" step="any" class="pf-input" style="flex:1 1 140px;" value="${escapeHtml(val)}" ${ro ? 'readonly' : ''} oninput="pfSetValue(${nr},${pid},this.value)">
+                            ${pp.einheit ? `<span class="pf-einheit">${escapeHtml(pp.einheit)}</span>` : ''}${noteBtn}</div>${note}</div>`;
+                    }
+                    const btns = pfPunktOptionen(pp).map(opt => `<button class="pf-btn ${opt === 'entfällt' ? 'entf' : ''} ${val === opt ? 'sel' : ''}" data-nr="${nr}" data-pid="${pid}" data-val="${escapeHtml(opt)}" ${ro ? 'disabled' : ''} onclick="pfPick(this)">${escapeHtml(opt)}</button>`).join('');
+                    return `<div class="pf-row" id="pfr_${nr}_${pid}">${titel}<div class="pf-btns">${btns}${noteBtn}</div>${note}</div>`;
                 }).join('');
                 return `<details class="pf-module" ${idx === 0 || ro ? 'open' : ''}>
                     <summary>${nr} – ${escapeHtml(m.ModulName)} <span class="pf-prog" id="pfp_${nr}">${pfProgressText(nr)}</span></summary>
@@ -5284,21 +5412,39 @@ function applyPermissions() {
                 `<div style="margin:12px 0 30px;display:flex;gap:8px;flex-wrap:wrap;">${buttons}</div>`;
         }
 
+        function pfEnsureEntry(nr, pid) {
+            const key = `${nr}_${pid}`;
+            return window._pf.ergebnisse[key] || (window._pf.ergebnisse[key] = { modulNr: nr, pruefpunktId: pid, bewertung: null, bemerkung: '' });
+        }
+
+        function pfRefreshProgress(nr) {
+            const prog = document.getElementById(`pfp_${nr}`);
+            if (prog) prog.textContent = pfProgressText(nr);
+        }
+
+        // Auswahl-Prüfpunkt: val ist der Optionstext (z. B. "o.k.", "ja – instandsetzen"); erneuter Klick hebt die Auswahl auf
         function pfSet(nr, pid, val) {
             const pf = window._pf;
             if (!pf || pf.readonly) return;
-            const key = `${nr}_${pid}`;
-            const e = pf.ergebnisse[key] || (pf.ergebnisse[key] = { modulNr: nr, pruefpunktId: pid, bewertung: null, bemerkung: '' });
-            e.bewertung = e.bewertung === val ? null : val; // erneuter Klick hebt die Auswahl auf
+            const e = pfEnsureEntry(nr, pid);
+            e.bewertung = e.bewertung === val ? null : val;
             const row = document.getElementById(`pfr_${nr}_${pid}`);
             if (row) {
-                row.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('sel'));
-                const map = { io: 'io', nio: 'nio', entfaellt: 'entf' };
-                if (e.bewertung) row.querySelector(`.pf-btn.${map[e.bewertung]}`).classList.add('sel');
-                if (e.bewertung === 'nio') document.getElementById(`pfn_${nr}_${pid}`).style.display = '';
+                row.querySelectorAll('.pf-btn').forEach(b => b.classList.toggle('sel', !!e.bewertung && b.dataset.val === e.bewertung));
+                if (e.bewertung === 'n.i.O.') document.getElementById(`pfn_${nr}_${pid}`).style.display = '';
             }
-            const prog = document.getElementById(`pfp_${nr}`);
-            if (prog) prog.textContent = pfProgressText(nr);
+            pfRefreshProgress(nr);
+        }
+
+        function pfPick(btn) { pfSet(parseInt(btn.dataset.nr, 10), parseInt(btn.dataset.pid, 10), btn.dataset.val); }
+
+        // Freitext- und Messwert-Prüfpunkte
+        function pfSetValue(nr, pid, text) {
+            const pf = window._pf;
+            if (!pf || pf.readonly) return;
+            const e = pfEnsureEntry(nr, pid);
+            e.bewertung = String(text).trim() === '' ? null : String(text);
+            pfRefreshProgress(nr);
         }
 
         function pfToggleNote(nr, pid) {
@@ -5400,6 +5546,8 @@ function applyPermissions() {
         window.closePruefung = closePruefung;
         window.pfStart = pfStart;
         window.pfSet = pfSet;
+        window.pfPick = pfPick;
+        window.pfSetValue = pfSetValue;
         window.pfToggleNote = pfToggleNote;
         window.pfSetNote = pfSetNote;
         window.pfSetModulNote = pfSetModulNote;
@@ -5894,7 +6042,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.69';
+        const APP_VERSION = 'v1.6.70';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
