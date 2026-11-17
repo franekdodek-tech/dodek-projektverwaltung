@@ -10,7 +10,7 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.66 |
+| `Projektuebersicht_APP.html` | v1.6.67 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -56,8 +56,9 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 - Bestand, Mindestmenge, kritische Artikel in Aufgabenliste
 
 ### 🏭 Anlagen
-- Anlagenliste mit Filter nach Inbetriebnahmejahr, Neuanlage (auch aus dem Projekt heraus) und Bearbeiten, Anlagentyp mit Nummernvorschlag (DT-Projekt-Typ-lfd. Nr.), Detailansicht mit verknüpften Projekten; Prüfungen folgen in Phase 2
+- Anlagenliste mit Filter nach Inbetriebnahmejahr, Neuanlage (auch aus dem Projekt heraus) und Bearbeiten, Anlagentyp mit Nummernvorschlag (DT-Projekt-Typ-lfd. Nr.), Detailansicht mit verknüpften Projekten und Prüfungen
 - Anlagentypen sind in den Einstellungen pflegbar
+- UVV-Prüfformular: Modulauswahl, Bewertung je Prüfpunkt (i.O. / n.i.O. / entfällt), Zwischenspeichern, Abschluss, Read-only-Ansicht; UVV-Module in den Einstellungen verwaltbar
 
 ### 🗂️ Artikelstamm
 - ID, Bezeichnung, EK/VK-Preis, Marge, Gewerk, Typ

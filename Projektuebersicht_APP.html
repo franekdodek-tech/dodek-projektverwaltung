@@ -393,6 +393,23 @@
         .qv-del:hover { color: #c62828; }
         .qv-add { margin-left: auto; margin-bottom: 4px; }
 
+        /* UVV-Prüfformular (touch-tauglich) */
+        .pf-module { background: white; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 12px; }
+        .pf-module > summary { cursor: pointer; padding: 12px 14px; min-height: 44px; background: #e8f0f8; font-weight: 700; color: #1a3a5c; border-radius: 4px; display: flex; align-items: center; gap: 10px; }
+        .pf-prog { margin-left: auto; font-size: 12px; font-weight: 400; color: #666; }
+        .pf-row { padding: 10px 0; border-bottom: 1px solid #eee; }
+        .pf-text { margin-bottom: 8px; font-size: 14px; }
+        .pf-int { font-size: 11px; color: #888; margin-left: 8px; background: #f0f0f0; border-radius: 3px; padding: 1px 6px; }
+        .pf-btns { display: flex; gap: 6px; flex-wrap: wrap; align-items: stretch; }
+        .pf-btn { flex: 1 1 80px; min-height: 44px; border: 2px solid #ccc; background: #fff; color: #444; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; }
+        .pf-btn.io.sel   { background: #2e7d32; border-color: #2e7d32; color: #fff; }
+        .pf-btn.nio.sel  { background: #c62828; border-color: #c62828; color: #fff; }
+        .pf-btn.entf.sel { background: #757575; border-color: #757575; color: #fff; }
+        .pf-btn:disabled, .pf-note-btn:disabled { cursor: default; }
+        .pf-btn:disabled:not(.sel) { opacity: 0.5; }
+        .pf-note-btn { min-width: 44px; min-height: 44px; border: 2px solid #ccc; background: #fff; border-radius: 6px; font-size: 16px; cursor: pointer; }
+        .pf-note { width: 100%; margin-top: 6px; min-height: 60px; font-size: 14px; box-sizing: border-box; }
+
         /* Nicht einbezogene Positionen (Alternativpositionen): heller Gelbton */
         .quote-pos-header.quote-pos-excluded td,
         .quote-bom-child.quote-pos-excluded td,
@@ -2369,6 +2386,16 @@
                 </div>
             </div>
 
+            <!-- UVV-Module -->
+            <div class="positions-section" style="margin-bottom: 20px;">
+                <div class="section-header"><h3>📝 UVV-Module</h3></div>
+                <div style="padding: 20px;">
+                    <button id="uvvInitBtn" onclick="initUVVModule()" class="btn-secondary" style="margin-bottom: 15px;">DodekUVVModule initialisieren</button>
+                    <div id="settingsUVVModuleList"></div>
+                    <p style="font-size:12px;color:#888;margin-top:8px;">Pflichtmodule (0 und 14) sind immer aktiv. Prüfpunkte werden direkt in der SharePoint-Liste bearbeitet.</p>
+                </div>
+            </div>
+
             <!-- Anlagentypen -->
             <div class="positions-section" style="margin-bottom: 20px;">
                 <div class="section-header"><h3>🏭 Anlagentypen</h3></div>
@@ -2551,6 +2578,28 @@
             </div>
             <!-- Detail -->
             <div id="anlagenDetailPane" style="display:none;"></div>
+            <!-- UVV-Prüfung (Modulauswahl / Formular) -->
+            <div id="anlagenPruefPane" style="display:none;"></div>
+        </div>
+
+        <!-- UVV: Neue Prüfung (Kopfdaten) -->
+        <div id="pruefungNeuModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto;">
+            <div style="background:white; max-width:420px; margin:80px auto; border-radius:6px; padding:30px; position:relative;">
+                <button onclick="closeNeuePruefung()" style="position:absolute; top:15px; right:15px; background:none; border:none; font-size:22px; cursor:pointer; color:#666;">✕</button>
+                <h3 style="margin-bottom:20px; color:#366092;">Neue Prüfung</h3>
+                <div class="form-group">
+                    <label>Datum *</label>
+                    <input type="date" id="np_datum">
+                </div>
+                <div class="form-group">
+                    <label>Prüfer *</label>
+                    <input type="text" id="np_pruefer">
+                </div>
+                <div style="display:flex; gap:10px; margin-top:20px; justify-content:flex-end;">
+                    <button onclick="closeNeuePruefung()" class="btn-secondary">Abbrechen</button>
+                    <button id="np_saveBtn" onclick="saveNeuePruefung()">Anlegen</button>
+                </div>
+            </div>
         </div>
 
         <!-- ANLAGE MODAL (Neuanlage) -->
@@ -4187,8 +4236,10 @@ function applyPermissions() {
         // ----- Liste -----
         function showAnlagenList() {
             window._anlagenDetailId = null;
+            window._pf = null;
             document.getElementById('anlagenListPane').style.display = '';
             document.getElementById('anlagenDetailPane').style.display = 'none';
+            document.getElementById('anlagenPruefPane').style.display = 'none';
             renderAnlagen();
         }
 
@@ -4214,7 +4265,7 @@ function applyPermissions() {
                     <td>${escapeHtml(a.standort)}</td>
                     <td>${escapeHtml(a.ursprungsprojekt)}</td>
                     <td>${fmtAnlageDate(a.inbetriebnahme)}</td>
-                    <td>—</td>
+                    <td>${uvvPruefungenFor(a.id).length}</td>
                 </tr>`).join('');
             container.innerHTML = `<div class="contact-table-wrapper">
                 <table class="contact-table">
@@ -4361,7 +4412,9 @@ function applyPermissions() {
         function openAnlageDetail(id) {
             if (!window.anlagenDatabase[id]) return;
             window._anlagenDetailId = id;
+            window._pf = null;
             document.getElementById('anlagenListPane').style.display = 'none';
+            document.getElementById('anlagenPruefPane').style.display = 'none';
             document.getElementById('anlagenDetailPane').style.display = '';
             renderAnlageDetail();
             window.scrollTo({ top: 0, behavior: 'instant' });
@@ -4407,10 +4460,7 @@ function applyPermissions() {
                     </div>
                     ${links ? `<div class="contact-table-wrapper"><table class="contact-table"><thead><tr><th>Projektnummer</th><th>Typ</th><th></th></tr></thead><tbody>${links}</tbody></table></div>` : '<div style="color:#888;">Keine Projekte verknüpft.</div>'}
                 </div>
-                <div style="background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-                    <h3 style="margin:0 0 10px 0;color:#366092;">Prüfungen</h3>
-                    <div style="color:#888;">Prüfungen folgen in Phase 2</div>
-                </div>`;
+                ${renderPruefungenSection(a)}`;
         }
 
         function openAnlageProject(pn) {
@@ -4543,6 +4593,809 @@ function applyPermissions() {
             list.splice(index, 1);
             await saveAnlagenTypen(list);
         }
+
+        // Initialbefüllung DodekUVVModule (Admin-Aktion in den Einstellungen). Prüfpunkt: Text oder [Text, Intervall]; Standard-Intervall "jährlich", id = position = laufende Nummer.
+        const UVV_MODULE_DEFAULTS = [
+            { nr: 0, name: "Deckblatt / Prüfzertifikat", pflicht: true, punkte: [
+                "Auftraggeber: Firma, Adresse, Telefon, Telefax",
+                "Angaben zur Anlage: Kommissions-Nr., Bestell-Nr., Projekt",
+                "Datum der Prüfung eintragen",
+                "Firmenstempel und Unterschrift des Prüfers",
+                "Nächsten empfohlenen Prüftermin festlegen"
+            ] },
+            { nr: 1, name: "Filter mit Komponenten", pflicht: false, punkte: [
+                "Filtertyp erfassen (Fabrikat, Typ, Serien-Nr.)",
+                "Zustand des Filters prüfen (gut / zufriedenstellend / instandsetzen)",
+                "Wirkungsweise prüfen (gut / zufriedenstellend)",
+                "Dichtungen Inspektionstüren prüfen (gut / zufriedenstellend / ersetzen)",
+                "Dichtungen Austragssysteme prüfen (gut / zufriedenstellend)",
+                "Dichtungen Rohrleitungen prüfen (gut / zufriedenstellend)",
+                "Filterelemente prüfen (ok / instandsetzen)",
+                "Steuerplatine prüfen (ok / instandsetzen)",
+                "Schaltschrank prüfen (ok / instandsetzen)",
+                "Magnetventile prüfen (ok / instandsetzen)",
+                "Membranventile prüfen (ok / instandsetzen)",
+                "Ölabscheider prüfen (ok / instandsetzen)",
+                "Wasserabscheider prüfen (ok / instandsetzen)",
+                "Luftleitungen prüfen (ok / instandsetzen)",
+                "Elektrische Verkabelung prüfen (ok / instandsetzen)",
+                "Ventilator prüfen (ok / instandsetzen)",
+                "Staubaustrag prüfen (ok / instandsetzen)",
+                "Ex-Schutz-Teile prüfen (ok / instandsetzen)",
+                "Schallschutz prüfen (ok / instandsetzen)",
+                "Abmessungen und Ablesewerte: Volumenstrom Q erfassen (Ist / Soll)",
+                "Magnehelic Differenzdruck Δp erfassen (Ist / Soll)",
+                "Δp Abreinigung: P min, P max, P alarm erfassen (Ist / Soll)",
+                "Zeitintervall t erfassen (Ist / Soll)",
+                "Pulstärke t erfassen (Ist / Soll)",
+                "Pressluft p erfassen (Ist / Soll)",
+                "Absperrklappen A erfassen (Ist / Soll)",
+                "Benötigte Aktivitäten dokumentieren (JA / NEIN)"
+            ] },
+            { nr: 2, name: "Ventilator", pflicht: false, punkte: [
+                "Ventilatortyp erfassen (Fabrikat, Typ, Serien-Nr., Spannung/Frequenz, kW)",
+                "Zustand des Ventilators prüfen (gut)",
+                "Änderungen im Vergleich mit letzter Inspektion (JA / NEIN)",
+                "Drehrichtung prüfen (links / rechts)",
+                "Schwingmetallpuffer prüfen (ok / instandsetzen)",
+                "Flex. Manschette Saugseite prüfen (ok / instandsetzen)",
+                "Flex. Manschette Auslass prüfen (ok / instandsetzen)",
+                "Schalldämpfer prüfen (ok / instandsetzen)",
+                "Luftregulierschieber prüfen (ok / instandsetzen)",
+                "Elektrische Verkabelung prüfen (ok / instandsetzen)",
+                "Antrieb prüfen (direkt / Keilriemen)",
+                "Sicherheitsschutz prüfen (ok / instandsetzen)",
+                "Lärmpegel messen (dB(A))",
+                "Lager prüfen (ok / instandsetzen)",
+                "Ex-Schutz-Teile prüfen (ok / instandsetzen)",
+                "Öl/Fett prüfen (JA / NEIN, Termin eintragen)",
+                "Benötigte Aktivitäten dokumentieren (JA / NEIN)"
+            ] },
+            { nr: 3, name: "Staubaustrag", pflicht: false, punkte: [
+                "Zellenradschleuse Typ erfassen (Fabrikat, Typ, Serien-Nr., kW, Spannung/Frequenz)",
+                "Zellenradschleuse Zustand prüfen (gut)",
+                "Zellenradschleuse: Änderungen zur letzten Inspektion (nein / ja)",
+                "Zellenradschleuse Lager prüfen – erhöhter Lärmpegel/Abnutzung",
+                "Zellenradschleuse Wellendichtung prüfen – Staubaustritt",
+                "Zellenradschleuse Motor prüfen – Leckage, Lärm (Öl nachfüllen / Öl wechseln)",
+                "Zellenradschleuse Flügel prüfen – Luftleckage",
+                "Staubschnecke Typ erfassen (Fabrikat, Typ, Serien-Nr., kW, Spannung/Frequenz)",
+                "Staubschnecke Zustand prüfen (gut)",
+                "Staubschnecke: Änderungen zur letzten Inspektion (nein / ja)",
+                "Staubschnecke Lager prüfen – erhöhter Lärmpegel/Abnutzung",
+                "Staubschnecke Wellendichtung prüfen – Staubaustritt",
+                "Staubschnecke Motor prüfen – Leckage, Lärm (Öl nachfüllen / Öl wechseln)",
+                "Staubschnecke (Beschädigung/Abnutzung) prüfen – kein Staubaustrag",
+                "Doppelpendelklappe Typ erfassen (Fabrikat, Typ, Serien-Nr., kW, Spannung/Frequenz)",
+                "Doppelpendelklappe Zustand prüfen (gut)",
+                "Doppelpendelklappe: Änderungen zur letzten Inspektion (nein / ja)",
+                "Doppelpendelklappe Lager prüfen – erhöhter Lärmpegel/Abnutzung",
+                "Doppelpendelklappe Wellendichtung prüfen – Staubaustritt",
+                "Doppelpendelklappe Motor prüfen – Leckage, Lärm (Öl nachfüllen / Öl wechseln)",
+                "Doppelpendelklappe (Beschädigung/Abnutzung) prüfen – Luftleckage",
+                "Pneumatische Klappe: Pneumatischer Zylinder prüfen (ok)",
+                "Pneumatische Klappe: Pneumatische Regelung prüfen (ok)",
+                "Pneumatische Klappe: Pneumatischer Druck prüfen (ok)",
+                "Pneumatische Klappe: Steuerung prüfen (ok)"
+            ] },
+            { nr: 4, name: "Brenntisch", pflicht: false, punkte: [
+                "Mechanik: Tisch mit Fundament verdübelt prüfen (ok)",
+                "Mechanik: Tisch Ebenheit messen (mm, ok)",
+                "Mechanik: Parallelität zur Laufbahn messen (mm, ok)",
+                "Pneumatik: Funktion der Pneumatikklappen prüfen (ok)",
+                "Pneumatik: Dämpfer eingestellt (im Betrieb) prüfen (ok)",
+                "Pneumatik: Druckluftversorgung messen (bar, Sollwert 3,5–6,0 bar, ok)",
+                "Pneumatik: Steuerung – Rollenhebelventile und Schaltleiste prüfen (ok)",
+                "Pneumatik: Steuerung – Näherungsschalter und Schaltleiste prüfen (ok)",
+                "Pneumatik: Steuerung über Steuerung der Maschine prüfen (ok)",
+                "Messungen: Erfassungsgeschwindigkeit erstes Segment messen (m/s)",
+                "Messungen: Erfassungsgeschwindigkeit mittleres Segment messen (m/s)",
+                "Messungen: Erfassungsgeschwindigkeit letztes Segment messen (m/s)",
+                "Messungen: Erdpotential-Prüfung durchführen (ok)",
+                "Benötigte Aktivität dokumentieren (JA / NEIN)"
+            ] },
+            { nr: 5, name: "Kratzereinheit", pflicht: false, punkte: [
+                "Mechanik: Führungsschienen – Befestigung prüfen (ok / instandsetzen)",
+                "Mechanik: Kratzerschienen prüfen (ok / instandsetzen)",
+                "Mechanik: Führungs-Stahlgliederketten prüfen (ok / instandsetzen)",
+                "Mechanik: Antriebswelle mit Kettenräder prüfen (ok / instandsetzen)",
+                "Mechanik: Umlenkrolle prüfen (ok / instandsetzen)",
+                "Mechanik: Kettenspanneinheit prüfen (ok / instandsetzen)",
+                "Mechanik: Kratzerplatte Ebenheit messen (mm, ok)",
+                "Antrieb Typ erfassen (Fabrikat, Typ, Serien-Nr., kW, Spannung/Frequenz)",
+                "Antrieb Zustand prüfen (gut)",
+                "Antrieb: Änderungen zur letzten Inspektion (nein / ja)",
+                "Elektronische Anbauteile: Näherungsschalter – Funktion prüfen (ok / instandsetzen)",
+                "Messungen: Erdpotential-Prüfung durchführen (ok / instandsetzen)"
+            ] },
+            { nr: 6, name: "Wechseltisch", pflicht: false, punkte: [
+                "Mechanik: Führungswagen prüfen (ok / instandsetzen)",
+                "Mechanik: Linear-Führungsschienen prüfen (ok / instandsetzen)",
+                "Mechanik: Transportschienen prüfen (ok / instandsetzen)",
+                "Mechanik: Lauf- und Kombirollen prüfen (ok / instandsetzen)",
+                "Mechanik: Kettenräder mit Antrieb prüfen (ok / instandsetzen)",
+                "Mechanik: Führungs-Stahlgliederketten prüfen (ok / instandsetzen)",
+                "Mechanik: Abschott-Pendelbleche prüfen (ok / instandsetzen)",
+                "Antrieb Typ erfassen (Fabrikat, Typ, Serien-Nr., kW, Spannung/Frequenz)",
+                "Antrieb Zustand prüfen (gut)",
+                "Antrieb: Änderungen zur letzten Inspektion (nein / ja)",
+                "Elektronische Anbauteile: Näherungsschalter – Funktion prüfen (ok / instandsetzen)",
+                "Elektronische Anbauteile: Lichttaster – Funktion prüfen (ok / instandsetzen)",
+                "Messungen: Erdpotential-Prüfung durchführen (ok / instandsetzen)"
+            ] },
+            { nr: 7, name: "Hydraulikanlage", pflicht: false, punkte: [
+                "Hydraulikaggregat Typ erfassen",
+                "Hydraulikaggregat Zustand prüfen (gut / zufriedenstellend)",
+                "Hydraulikaggregat Wirkungsweise prüfen (gut / zufriedenstellend)",
+                "Ölvorrat: Leckstellen prüfen (nein / ja – instandsetzen)",
+                "Ölvorrat: Dichtheitsprüfung (ok / instandsetzen)",
+                "Ölvorrat: Kontrolle der Ölmenge (ok / instandsetzen)",
+                "Leitungen und Leitungsverbindungen: Befestigung prüfen (ok / instandsetzen)",
+                "Leitungen und Leitungsverbindungen: Beschädigung prüfen (nein / ja – instandsetzen)",
+                "Leitungen und Leitungsverbindungen: Verformung prüfen (ok / instandsetzen)",
+                "Leitungen und Leitungsverbindungen: Korrosion prüfen (nein / ja – instandsetzen)",
+                "Schläuche: Befestigung prüfen (ok / instandsetzen)",
+                "Schläuche: Brüchigkeit prüfen (nein / ja – instandsetzen)",
+                "Schläuche: Beschädigung prüfen (nein / ja – instandsetzen)",
+                "Schläuche: Alter erfassen (Jahre, spätestens nach 6 Jahren austauschen)",
+                "Drücke: Systemdruck nach Hydraulikplan prüfen (ok / instandsetzen)",
+                "Drücke: Sekundärdrücke prüfen (ok / instandsetzen)",
+                "Lasthalteventile: Zylinder ohne Nachlauf halten (ja / nein – instandsetzen)",
+                "Zylinder: Befestigung prüfen (ok / instandsetzen)",
+                "Zylinder: Risse prüfen (nein / ja – instandsetzen)",
+                "Zylinder: Anschlüsse prüfen (ok / instandsetzen)",
+                "Zylinder: Dichtigkeit der Manschetten prüfen (ok / instandsetzen)",
+                "Zylinder: Oberfläche der Kolbenstange prüfen (ok / instandsetzen)",
+                "Benötigte Aktivität dokumentieren (JA / NEIN)"
+            ] },
+            { nr: 8, name: "Querförderer", pflicht: false, punkte: [
+                "Mechanik: Scharnierband prüfen (ok / instandsetzen)",
+                "Mechanik: Linear-Führungsschienen prüfen (ok / instandsetzen)",
+                "Mechanik: Antriebswelle mit Kettenräder prüfen (ok / instandsetzen)",
+                "Mechanik: Umlenkrolle prüfen (ok / instandsetzen)",
+                "Mechanik: Sonstiges prüfen (ok / instandsetzen)",
+                "Antrieb Typ erfassen (Fabrikat, Typ, Serien-Nr., kW, Spannung/Frequenz)",
+                "Antrieb Zustand prüfen (gut)",
+                "Antrieb: Änderungen zur letzten Inspektion (nein / ja)",
+                "Elektronische Anbauteile: Näherungsschalter – Funktion prüfen (ok / instandsetzen)",
+                "Elektronische Anbauteile: Lichttaster – Funktion prüfen (ok / instandsetzen)",
+                "Messungen: Erdpotential-Prüfung durchführen (ok / instandsetzen)"
+            ] },
+            { nr: 9, name: "WRG (Wärmerückgewinnung)", pflicht: false, punkte: [
+                ["Hygieninspektion nach DIN VDI 6022 Blatt 2 durchführen (alle 2 Jahre mit / alle 3 Jahre ohne zentrale Luftbefeuchtung)", "2–3 Jahre"],
+                "Zu-/Abluftgerät Typ erfassen",
+                "Zu-/Abluftgerät Zustand prüfen (gut / zufriedenstellend / instandsetzen)",
+                "Zu-/Abluftgerät Wirkungsweise prüfen (gut / zufriedenstellend)",
+                "Dichtungen Gerätegehäuse: Inspektionstüren prüfen (gut / zufriedenstellend / ersetzen)",
+                "Dichtungen Gerätegehäuse: Anschlussteile prüfen (gut / zufriedenstellend / ersetzen)",
+                "Dichtungen Gerätegehäuse: Rohrleitungen prüfen (gut / zufriedenstellend)",
+                "Entkopplungsstutzen Zustand prüfen (ok / instandsetzen)",
+                "Entkopplungsstutzen Dichtigkeit prüfen (ok / instandsetzen)",
+                "Jalousienklappe Zustand prüfen (Korrosion, Verschmutzung, Beschädigung, ok / instandsetzen)",
+                "Jalousienklappe mechanische Funktion prüfen (ok / instandsetzen)",
+                "Jalousienklappe Stellantrieb prüfen (ok / instandsetzen)",
+                "Luftfilter: Filterelemente prüfen (ok / instandsetzen)",
+                "Luftfilter: Differenzdruck prüfen (ok / instandsetzen)",
+                "Luftfilter: Hygienezustand prüfen (ok / instandsetzen)",
+                "Rotationswärmetauscher: Luftseitiger Zustand prüfen (Verschmutzung, Korrosion, ok / instandsetzen)",
+                "Rotationswärmetauscher: Rotor auf Unwucht prüfen (ok / instandsetzen)",
+                "Rotationswärmetauscher: Lager prüfen (ok / instandsetzen)",
+                "Rotationswärmetauscher: Bürstendichtung prüfen (ok / instandsetzen)",
+                "Rotationswärmetauscher: Dichtungsfilze prüfen (ok / instandsetzen)",
+                "Rotationswärmetauscher: Hygienezustand prüfen (ok / instandsetzen)",
+                "Rotationswärmetauscher: Drehrichtung prüfen (ok / instandsetzen)",
+                "Antrieb: Keilriemen prüfen (ok / instandsetzen)",
+                "Antrieb: Keilriemenscheibe prüfen (ok / instandsetzen)",
+                "Antrieb: Motor prüfen (ok / instandsetzen)",
+                "Antrieb: Feder-Motorwippe prüfen (ok / instandsetzen)",
+                "Antrieb: Lager prüfen (ok / instandsetzen)",
+                "Schalldämpfer Zustand prüfen (gut / zufriedenstellend)",
+                "Schalldämpfer innere Luftleitflächen prüfen (gut / zufriedenstellend)",
+                "WRG-Ventilator Typ erfassen (Fabrikat, Typ, Serien-Nr., kW, Spannung/Frequenz)",
+                "WRG-Ventilator Drehrichtung prüfen (links / rechts)",
+                "WRG-Ventilator: Schwingmetallpuffer prüfen (ok)",
+                "WRG-Ventilator: Flex. Manschette Saugseite prüfen (ok)",
+                "WRG-Ventilator: Lärmpegel messen (dB(A))",
+                "WRG-Ventilator: Öl/Fett prüfen (nein / ja – beim nächsten Besuch)"
+            ] },
+            { nr: 10, name: "Portalanlage", pflicht: false, punkte: [
+                "Sicherheitsprüfung nach DIN EN 10204 durchführen (jährlich)",
+                "Portalanlagen-Typ erfassen, Nutzungsdauer (Betriebsstunden)",
+                "Zustand und Wirkungsweise prüfen (gut / zufriedenstellend / instandsetzen)",
+                "Mechanik: Funktion der Bremsen prüfen (ok / instandsetzen)",
+                "Mechanik: Transportschienen prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Hub- und Antriebskette prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Bremsverschleiß prüfen (ok / instandsetzen)",
+                "Mechanik: Funktion Endschalter Heben und Senken prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Antriebsmotor prüfen (ok / instandsetzen)",
+                "Mechanik: Kabelschleppkanal prüfen (ok / instandsetzen)",
+                "Mechanik: Längsfahrwerk – Spur Parallelität prüfen (ok / instandsetzen)",
+                "Mechanik: Querfahrwerk – Spur Parallelität prüfen (ok / instandsetzen)",
+                "Mechanik: Vakuumpumpe prüfen (ok / instandsetzen)",
+                "Vakuumtraverse: Druckluftversorgung prüfen (3,5–6,0 bar, ok / instandsetzen)",
+                "Vakuumtraverse: Saugteller prüfen – Verschleiß, Verschmutzung (ok / instandsetzen)",
+                "Vakuumtraverse: Verschraubungen – Dichtheit prüfen (ok / instandsetzen)",
+                "Vakuumtraverse: Vakuumpumpe und Vakuumgreifer prüfen (ok / instandsetzen)",
+                "Benötigte Aktivität dokumentieren (JA / NEIN)"
+            ] },
+            { nr: 11, name: "Kran", pflicht: false, punkte: [
+                "Sicherheitsprüfung nach DIN EN 10204 durchführen (jährlich)",
+                "Kran-Typ erfassen, Nutzungsdauer (Betriebsstunden)",
+                "Zustand und Wirkungsweise prüfen (gut / zufriedenstellend / instandsetzen)",
+                "Mechanik: Not-Halt – Prüfung (ok / instandsetzen)",
+                "Mechanik: Kettenstrang – Prüfung (ok / instandsetzen / ersetzen)",
+                "Mechanik: Kettenschmierung prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Funktion Endschalter Heben und Senken prüfen (ok / instandsetzen)",
+                "Mechanik: Steuerschalter – Leitung und Gehäuse prüfen (ok / instandsetzen)",
+                "Mechanik: Funktion der Bremse prüfen (ok / instandsetzen)",
+                "Mechanik: Haken und Hakenmaulsicherung prüfen (ok / instandsetzen)",
+                "Mechanik: Elektrische Schaltgeräte prüfen (ok / instandsetzen)",
+                "Mechanik: Elektrische Installation prüfen (ok / instandsetzen)",
+                "Mechanik: Rutschkupplung prüfen (ok / instandsetzen)",
+                ["Mechanik: Bremsverschleiß prüfen (ok / instandsetzen) – alle 5 Jahre notwendig", "5 Jahre"],
+                "Mechanik: Aufhängung, Aufhängbügel und Befestigungselemente prüfen (ok / instandsetzen)",
+                "Mechanik: Befestigungsschrauben am Hakengeschirr prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Haken auf Anrisse, Verformung, Abnutzung prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Hakenmaulsicherung auf Verformung prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Hakenlager auf Abnutzung prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Kettenrad und Kettenführung prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Befestigung der Kette und des Kettenspeichers prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Kette auf Verformung, Beschädigung, Anrisse, Verschleiß prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Befestigungselemente – fester Sitz, Korrosion prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Kontrolle und Ausbesserung Ergänzung (ok / instandsetzen)",
+                "Mechanik: Dichtigkeit Elektroraum und Getriebe prüfen (ok / instandsetzen)",
+                "Mechanik: Fahrwerk, Traverse und Zustand der Puffer prüfen (ok / instandsetzen / ersetzen)",
+                "Messungen: Haupthub Geschwindigkeit messen (m/min, ok / instandsetzen)",
+                "Messungen: Feinhub Geschwindigkeit messen (m/min, ok / instandsetzen)",
+                "Messungen: Haltelast 0,25 t ohne Nachlauf prüfen (ok / instandsetzen)"
+            ] },
+            { nr: 12, name: "Manipulator", pflicht: false, punkte: [
+                "Sicherheitsprüfung nach DIN EN 10204 durchführen (jährlich)",
+                "Manipulator-Typ erfassen, Nutzungsdauer (Betriebsstunden)",
+                "Zustand und Wirkungsweise prüfen (gut / zufriedenstellend / instandsetzen)",
+                "Mechanik: Not-Halt – Prüfung (ok / instandsetzen)",
+                "Mechanik: Kettenstrang – Prüfung (ok / instandsetzen / ersetzen)",
+                "Mechanik: Kettenschmierung prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Funktion Endschalter Heben und Senken prüfen (ok / instandsetzen)",
+                "Mechanik: Steuerschalter – Leitung und Gehäuse prüfen (ok / instandsetzen)",
+                "Mechanik: Funktion der Bremse prüfen (ok / instandsetzen)",
+                "Mechanik: Haken und Hakenmaulsicherung prüfen (ok / instandsetzen)",
+                "Mechanik: Elektrische Schaltgeräte prüfen (ok / instandsetzen)",
+                "Mechanik: Elektrische Installation prüfen (ok / instandsetzen)",
+                "Mechanik: Rutschkupplung prüfen (ok / instandsetzen)",
+                ["Mechanik: Bremsverschleiß prüfen (ok / instandsetzen) – alle 5 Jahre notwendig", "5 Jahre"],
+                "Mechanik: Aufhängung, Aufhängbügel und Befestigungselemente prüfen (ok / instandsetzen)",
+                "Mechanik: Befestigungsschrauben am Hakengeschirr prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Haken auf Anrisse, Verformung, Abnutzung prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Hakenmaulsicherung auf Verformung prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Hakenlager auf Abnutzung prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Kettenrad und Kettenführung prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Befestigung der Kette und des Kettenspeichers prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Kette auf Verformung, Beschädigung, Anrisse, Verschleiß prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Befestigungselemente – fester Sitz, Korrosion prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Kontrolle und Ausbesserung Ergänzung (ok / instandsetzen)",
+                "Mechanik: Dichtigkeit Elektroraum und Getriebe prüfen (ok / instandsetzen)",
+                "Mechanik: Fahrwerk, Traverse und Zustand der Puffer prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Energiekette – Führung und Abnutzung prüfen (ok / instandsetzen / ersetzen)",
+                "Mechanik: Magnet prüfen (ok / instandsetzen / ersetzen)",
+                "Messungen: Haltelast-Magnet messen (kg, ok / instandsetzen / ersetzen)"
+            ] },
+            { nr: 13, name: "Elektroinstallation", pflicht: false, punkte: [
+                "Besichtigung: Schutz gegen direktes Berühren prüfen",
+                "Besichtigung: Leite (Strombelastbarkeit) prüfen",
+                "Besichtigung: Querschnitt der Schutz-, Erdungs- und Potentialausgleichsleiter prüfen",
+                "Besichtigung: Trenn- und Schalteinrichtungen prüfen",
+                "Besichtigung: Auswahl/Einstellung von Schutz- und Überwachungseinrichtungen prüfen",
+                "Besichtigung: Schaltungsunterlagen, Warnhinweise, sonstige Informationen vorhanden prüfen",
+                "Besichtigung: Kennzeichnung Stromkreise prüfen",
+                "Besichtigung: Kennzeichnung Betriebsmittel prüfen",
+                "Besichtigung: Kennzeichnung Klemmen prüfen",
+                "Besichtigung: Zugänglichkeit prüfen",
+                "Erprobung: Funktionsprüfung der elektrischen Anlage",
+                "Erprobung: Funktionsprobe der Prüftasten der Schutzeinrichtungen",
+                "Erprobung: Spannungspolarität prüfen",
+                "Erprobung: Rechtsdrehfeld vor Einspeisung prüfen",
+                "Erprobung: Rechtsdrehfeld der Abgänge prüfen",
+                "Erprobung: Hochspannungsprüfung durchführen",
+                ["Prüfung nach DIN VDE 0100 T610 / VDE 0113 / VDE 0660 T500 / BGV A3 durchführen", "4 Jahre"],
+                "Messtabelle: Sichtprüfung – Durchgeführt, Messwert, Bemerkung erfassen",
+                "Messtabelle: Schutzleiter / Potenzialausgleich – Durchgeführt, Messwert, Bemerkung erfassen",
+                "Messtabelle: Isolationswiderstand – Durchgeführt, Messwert, Bemerkung erfassen",
+                "Messtabelle: Spannungsprüfung – Durchgeführt, Messwert, Bemerkung erfassen",
+                "Messtabelle: Netzinnenwiderstand – Durchgeführt, Messwert, Bemerkung erfassen",
+                "Messtabelle: Schutz gegen Restspannungen – Durchgeführt, Messwert, Bemerkung erfassen",
+                "Messtabelle: Funktionsprüfung – Durchgeführt, Messwert, Bemerkung erfassen"
+            ] },
+            { nr: 14, name: "Allgemeine Angaben", pflicht: true, punkte: [
+                "Auftraggeber: Firma, Straße, PLZ/Ort, Telefon, Telefax erfassen",
+                "Interne Angaben: Kommissions-Nr., Bestell-Nr., Projekt erfassen",
+                ["Verantwortlich bei ersten Abnahme: Kontaktperson Auftraggeber und Ansprechpartner Dodek erfassen", "einmalig"],
+                "Verantwortlich bei nachfolgenden Prüfungen: Kontaktperson, Sachkundiger Dodek, Datum eintragen"
+            ] },
+            { nr: 15, name: "Sonstiges", pflicht: false, punkte: [
+                "Technische Dokumentation: vorhanden (JA / NEIN)",
+                "Technische Dokumentation: zugänglich (JA / NEIN)",
+                "Ersatzlieferung gegen Aufpreis: Ersatz nötig (JA / NEIN)",
+                "Ersatzlieferung gegen Aufpreis: Ersatz anfordern (JA / NEIN)",
+                "Bestell-Liste: benötigte Ersatzteile auflisten",
+                "Bestätigung der Bestellung durch den Kunden einholen",
+                "Mängelbericht: Bemerkungen zu allen festgestellten Mängeln dokumentieren",
+                "Angebotsabgabe: Wird ein Angebot benötigt (NEIN / JA, innerhalb von __ Wochen)"
+            ] }
+        ];
+
+        // Datensatz-Objekt im Format { ModulNr, ModulName, Aktiv, Pflicht, Pruefpunkte:[{id,text,intervall,position}] }
+        function buildUvvModulObject(def) {
+            return {
+                ModulNr: def.nr,
+                ModulName: def.name,
+                Aktiv: true,
+                Pflicht: def.pflicht,
+                Pruefpunkte: def.punkte.map((p, i) => ({
+                    id: i + 1,
+                    text: Array.isArray(p) ? p[0] : p,
+                    intervall: Array.isArray(p) ? p[1] : 'jährlich',
+                    position: i + 1
+                }))
+            };
+        }
+
+        // ========== UVV-PRÜFUNGEN (Phase 2) ==========
+        // Annahme (nicht gegen die Listen geprüft): DodekUVVModule hat die Spalten Title (= ModulNr) und ModulData (JSON);
+        // DodekUVVPruefungen hat Title, AnlagenID, Datum, Pruefer, Status (Choice: Offen / In Bearbeitung / Abgeschlossen), ErgebnisJSON.
+        // AnlagenID enthält die SharePoint-Id der Anlage (Text oder Zahl; Lookup-Spalten werden nicht unterstützt).
+
+        window.uvvPruefungen = {};
+        let uvvModuleCache = null;          // Module werden einmal pro Sitzung geladen
+        const uvvFieldTypesCache = {};      // guid → { interner Spaltenname: Typ }
+
+        async function getUvvFieldTypes(guid) {
+            if (uvvFieldTypesCache[guid]) return uvvFieldTypesCache[guid];
+            const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${guid}')/fields?$select=InternalName,TypeAsString&$filter=Hidden eq false`;
+            const data = await spFetch(url);
+            const map = {};
+            (data.value || []).forEach(f => { map[f.InternalName] = f.TypeAsString; });
+            uvvFieldTypesCache[guid] = map;
+            return map;
+        }
+
+        async function buildUvvPayload(guid, listName, values) {
+            const fields = await getUvvFieldTypes(guid);
+            const payload = {};
+            Object.keys(values).forEach(name => {
+                if (!fields[name]) throw new Error(`Spalte "${name}" fehlt in der SharePoint-Liste ${listName}`);
+                let v = values[name];
+                if (name === 'Datum' && v) v = fields[name] === 'DateTime' ? `${v}T00:00:00Z` : v;
+                if (name === 'AnlagenID') v = fields[name] === 'Number' ? Number(v) : String(v);
+                payload[name] = v;
+            });
+            return payload;
+        }
+
+        const uvvListUrl = (guid, itemId) => `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${guid}')/items${itemId ? `(${itemId})` : ''}`;
+        const uvvPatch = (guid, itemId, payload) => spFetch(uvvListUrl(guid, itemId), {
+            method: 'PATCH', headers: { 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' }, body: JSON.stringify(payload)
+        });
+
+        // ----- Module (DodekUVVModule) -----
+        async function getUVVModule(force) {
+            if (uvvModuleCache && !force) return uvvModuleCache;
+            const data = await spFetch(`${uvvListUrl(SP_CONFIG.guidUVVModule)}?$select=Id,Title,ModulData&$top=100`);
+            uvvModuleCache = (data.value || []).map(item => {
+                try { const d = JSON.parse(item.ModulData); d._spId = item.Id; return d; } catch (e) { return null; }
+            }).filter(Boolean).sort((a, b) => a.ModulNr - b.ModulNr);
+            return uvvModuleCache;
+        }
+
+        // ----- Einstellungen: Module verwalten -----
+        async function renderUVVModuleSettings() {
+            const el = document.getElementById('settingsUVVModuleList');
+            if (!el) return;
+            el.innerHTML = '<p style="color:#888;font-size:13px;">Lade Module…</p>';
+            try {
+                const mods = await getUVVModule();
+                if (mods.length === 0) { el.innerHTML = '<p style="color:#999;font-size:13px;">Keine Module vorhanden — „DodekUVVModule initialisieren“ ausführen.</p>'; return; }
+                el.innerHTML = `<table style="width:100%;font-size:13px;border-collapse:collapse;">
+                    <thead><tr>
+                        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee;">ModulNr</th>
+                        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee;">ModulName</th>
+                        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee;">Aktiv</th>
+                        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee;"></th>
+                    </tr></thead><tbody>${mods.map(m => `<tr style="${m.Pflicht ? 'color:#999;' : ''}">
+                        <td style="padding:6px 8px;">${m.ModulNr}</td>
+                        <td style="padding:6px 8px;">${escapeHtml(m.ModulName)}</td>
+                        <td style="padding:6px 8px;">
+                            <label style="display:inline-flex;align-items:center;gap:6px;${m.Pflicht ? '' : 'cursor:pointer;'}">
+                                <input type="checkbox" ${m.Aktiv || m.Pflicht ? 'checked' : ''} ${m.Pflicht ? 'disabled' : ''} onchange="toggleUVVModulAktiv(${m.ModulNr}, this.checked)">
+                                ${m.Aktiv || m.Pflicht ? '✓' : '✗'}
+                            </label>
+                        </td>
+                        <td style="padding:6px 8px;">${m.Pflicht ? '<span class="contact-badge badge-both">Pflicht</span>' : ''}</td>
+                    </tr>`).join('')}</tbody></table>`;
+            } catch (e) {
+                console.error('UVV-Module laden fehlgeschlagen:', e);
+                el.innerHTML = `<p style="color:#c62828;font-size:13px;">Module konnten nicht geladen werden: ${escapeHtml(e.message)}</p>`;
+            }
+        }
+
+        async function toggleUVVModulAktiv(nr, aktiv) {
+            const m = (uvvModuleCache || []).find(x => x.ModulNr === nr);
+            if (!m || m.Pflicht) return;
+            const data = { ...m }; delete data._spId; data.Aktiv = !!aktiv;
+            try {
+                await uvvPatch(SP_CONFIG.guidUVVModule, m._spId, { ModulData: JSON.stringify(data) });
+                m.Aktiv = !!aktiv;
+                showMessage(`Modul ${nr} ${aktiv ? 'aktiviert' : 'deaktiviert'}`, 'success');
+            } catch (e) {
+                console.error('Modul-Status speichern fehlgeschlagen:', e);
+                showMessage('Modul konnte nicht gespeichert werden: ' + e.message, 'error');
+            }
+            renderUVVModuleSettings();
+        }
+
+        // Admin-Aktion: DodekUVVModule mit den Standardmodulen befüllen (vorhandene Module werden anhand der ModulNr aktualisiert, keine Duplikate)
+        async function initUVVModule() {
+            if (window.currentUserRole !== 'admin') { showMessage('Keine Berechtigung', 'error'); return; }
+            const btn = document.getElementById('uvvInitBtn');
+            try {
+                const existing = await getUVVModule(true);
+                const msg = existing.length > 0
+                    ? `DodekUVVModule enthält bereits ${existing.length} Module. Fortfahren überschreibt sie mit den Standardwerten (Prüfpunkte, Aktiv-Status). Fortfahren?`
+                    : `DodekUVVModule ist leer. ${UVV_MODULE_DEFAULTS.length} Module jetzt anlegen?`;
+                if (!confirm(msg)) return;
+                if (btn) btn.disabled = true;
+                let created = 0, updated = 0;
+                for (const def of UVV_MODULE_DEFAULTS) {
+                    const payload = { Title: String(def.nr), ModulData: JSON.stringify(buildUvvModulObject(def)) };
+                    const ex = existing.find(m => m.ModulNr === def.nr);
+                    if (ex) { await uvvPatch(SP_CONFIG.guidUVVModule, ex._spId, payload); updated++; }
+                    else { await spFetch(uvvListUrl(SP_CONFIG.guidUVVModule), { method: 'POST', body: JSON.stringify(payload) }); created++; }
+                }
+                await getUVVModule(true);
+                showMessage(`UVV-Module initialisiert: ${created} angelegt, ${updated} aktualisiert`, 'success');
+            } catch (e) {
+                console.error('UVV-Module initialisieren fehlgeschlagen:', e);
+                showMessage('Initialisierung fehlgeschlagen: ' + e.message, 'error');
+            } finally {
+                if (btn) btn.disabled = false;
+                renderUVVModuleSettings();
+            }
+        }
+
+        // ----- Prüfungen (DodekUVVPruefungen) -----
+        function pruefungFromItem(item) {
+            return {
+                _spId: item.Id, id: item.Id,
+                anlagenId: String(item.AnlagenID == null ? '' : item.AnlagenID),
+                datum: String(item.Datum || '').substring(0, 10),
+                pruefer: item.Pruefer || '',
+                status: item.Status || 'Offen',
+                ergebnisRaw: item.ErgebnisJSON || ''
+            };
+        }
+
+        async function loadUVVPruefungenFromSharePoint() {
+            try {
+                const data = await spFetch(`${uvvListUrl(SP_CONFIG.guidUVVPruefungen)}?$top=2000`);
+                window.uvvPruefungen = {};
+                (data.value || []).forEach(item => { const p = pruefungFromItem(item); window.uvvPruefungen[p.id] = p; });
+                console.log('UVV-Prüfungen geladen:', Object.keys(window.uvvPruefungen).length);
+                if (document.getElementById('anlagenView')?.classList.contains('active') && !window._pf) {
+                    if (window._anlagenDetailId && window.anlagenDatabase[window._anlagenDetailId]) renderAnlageDetail(); else showAnlagenList();
+                }
+            } catch (e) {
+                console.error('Fehler beim Laden der UVV-Prüfungen:', e);
+                showMessage('UVV-Prüfungen konnten nicht geladen werden: ' + e.message, 'error');
+            }
+        }
+
+        function uvvPruefungenFor(anlageId) {
+            return Object.values(window.uvvPruefungen || {})
+                .filter(p => p.anlagenId === String(anlageId))
+                .sort((a, b) => (b.datum || '').localeCompare(a.datum || '') || b.id - a.id);
+        }
+
+        const uvvStatusBadge = s => {
+            const c = s === 'Abgeschlossen' ? ['#e8f5e9', '#2e7d32'] : s === 'In Bearbeitung' ? ['#fff3e0', '#e65100'] : ['#eceff1', '#546e7a'];
+            return `<span style="background:${c[0]};color:${c[1]};border-radius:3px;padding:2px 8px;font-size:12px;font-weight:600;">${escapeHtml(s)}</span>`;
+        };
+
+        function canEditUvv() { return window.currentUserRole === 'admin' || window.currentUserRole === 'editor'; }
+
+        // Abschnitt "Prüfungen" in der Anlagendetailansicht
+        function renderPruefungenSection(a) {
+            const list = uvvPruefungenFor(a.id);
+            const canEdit = canEditUvv();
+            const rows = list.map(p => `<tr onclick="openPruefung(${p.id})" style="cursor:pointer;">
+                    <td>${fmtAnlageDate(p.datum)}</td><td>${escapeHtml(p.pruefer)}</td><td>${uvvStatusBadge(p.status)}</td>
+                </tr>`).join('');
+            return `<div style="background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:10px;">
+                        <h3 style="margin:0;color:#366092;">Prüfungen</h3>
+                        <button onclick="openNeuePruefung()" class="btn-secondary" ${canEdit ? '' : 'disabled title="Keine Berechtigung" style="opacity:0.4;cursor:not-allowed;"'}>＋ Neue Prüfung</button>
+                    </div>
+                    ${rows ? `<div class="contact-table-wrapper"><table class="contact-table"><thead><tr><th>Datum</th><th>Prüfer</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div style="color:#888;">Noch keine Prüfungen.</div>'}
+                </div>`;
+        }
+
+        // ----- Neue Prüfung (Kopfdaten) -----
+        function openNeuePruefung() {
+            if (!window.anlagenDatabase[window._anlagenDetailId]) return;
+            const acc = msalInstance.getAllAccounts()[0];
+            document.getElementById('np_datum').value = new Date().toISOString().slice(0, 10);
+            document.getElementById('np_pruefer').value = acc ? (acc.name || acc.username || '') : '';
+            document.getElementById('np_saveBtn').disabled = false;
+            document.getElementById('pruefungNeuModal').style.display = 'block';
+        }
+
+        function closeNeuePruefung() { document.getElementById('pruefungNeuModal').style.display = 'none'; }
+
+        async function saveNeuePruefung() {
+            const a = window.anlagenDatabase[window._anlagenDetailId];
+            if (!a) return;
+            const datum = document.getElementById('np_datum').value;
+            const pruefer = document.getElementById('np_pruefer').value.trim();
+            if (!datum) { showMessage('Datum erforderlich', 'error'); return; }
+            if (!pruefer) { showMessage('Prüfer erforderlich', 'error'); return; }
+            const btn = document.getElementById('np_saveBtn');
+            btn.disabled = true;
+            try {
+                const payload = await buildUvvPayload(SP_CONFIG.guidUVVPruefungen, 'DodekUVVPruefungen', {
+                    Title: `${a.anlagenNr} – ${datum}`, AnlagenID: a.id, Datum: datum, Pruefer: pruefer, Status: 'Offen', ErgebnisJSON: ''
+                });
+                const result = await spFetch(uvvListUrl(SP_CONFIG.guidUVVPruefungen), { method: 'POST', body: JSON.stringify(payload) });
+                const newId = result && (result.id || result.Id);
+                window.uvvPruefungen[newId] = { _spId: newId, id: newId, anlagenId: String(a.id), datum, pruefer, status: 'Offen', ergebnisRaw: '' };
+                closeNeuePruefung();
+                await openPruefung(newId);
+            } catch (e) {
+                console.error('Prüfung anlegen fehlgeschlagen:', e);
+                showMessage('Prüfung konnte nicht angelegt werden: ' + e.message, 'error');
+                btn.disabled = false;
+            }
+        }
+
+        // ----- Prüfung öffnen: Modulauswahl → Formular → Abschluss / Read-only -----
+        function pfPane() { return document.getElementById('anlagenPruefPane'); }
+
+        async function openPruefung(id) {
+            const p = window.uvvPruefungen[id];
+            if (!p) return;
+            let obj = null;
+            try { obj = p.ergebnisRaw ? JSON.parse(p.ergebnisRaw) : null; } catch (e) { obj = null; }
+            const ergebnisse = {};
+            ((obj && obj.ergebnisse) || []).forEach(e => { ergebnisse[`${e.modulNr}_${e.pruefpunktId}`] = { modulNr: e.modulNr, pruefpunktId: e.pruefpunktId, bewertung: e.bewertung || null, bemerkung: e.bemerkung || '' }; });
+            window._pf = {
+                id: p.id, anlageId: p.anlagenId, datum: p.datum, pruefer: (obj && obj.pruefer) || p.pruefer, status: p.status,
+                readonly: p.status === 'Abgeschlossen' || !canEditUvv(),
+                module: obj && Array.isArray(obj.module) ? obj.module : null,
+                ergebnisse, modulBemerkungen: (obj && obj.modulBemerkungen) || {}
+            };
+            try { await getUVVModule(); }
+            catch (e) { showMessage('UVV-Module konnten nicht geladen werden: ' + e.message, 'error'); window._pf = null; return; }
+            document.getElementById('anlagenListPane').style.display = 'none';
+            document.getElementById('anlagenDetailPane').style.display = 'none';
+            pfPane().style.display = '';
+            if (window._pf.module) renderPruefungForm(); else renderPruefungSelection();
+            window.scrollTo({ top: 0, behavior: 'instant' });
+        }
+
+        function closePruefung() {
+            const anlageId = window._pf ? window._pf.anlageId : null;
+            window._pf = null;
+            pfPane().style.display = 'none';
+            if (anlageId && window.anlagenDatabase[anlageId]) openAnlageDetail(anlageId); else showAnlagenList();
+        }
+
+        function pfHeader(a) {
+            const pf = window._pf;
+            return `<div style="background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                    <h2 style="margin:0;">📝 Prüfung ${a ? escapeHtml(a.anlagenNr) : ''}</h2>
+                    <button onclick="closePruefung()" class="btn-secondary">⬅️ Zurück zur Anlage</button>
+                </div>
+                <div style="margin-top:10px;color:#555;">${a ? escapeHtml(a.bezeichnung) + ' · ' : ''}${fmtAnlageDate(pf.datum)} · Prüfer: ${escapeHtml(pf.pruefer)} · ${uvvStatusBadge(pf.status)}</div>
+            </div>`;
+        }
+
+        function renderPruefungSelection() {
+            const pf = window._pf;
+            const a = window.anlagenDatabase[pf.anlageId];
+            const mods = (uvvModuleCache || []).filter(m => m.Aktiv || m.Pflicht);
+            const pre = new Set([0, 14, ...((a && a.aktiveModule) || [])]);
+            const body = pf.readonly
+                ? '<p style="color:#888;">Diese Prüfung wurde noch nicht gestartet.</p>'
+                : `<p style="color:#555;margin-bottom:12px;">Module für diese Prüfung auswählen (Vorauswahl: aktive Module der Anlage). Pflichtmodule sind immer enthalten.</p>
+                   ${mods.length === 0 ? '<p style="color:#c62828;">Keine aktiven Module vorhanden — in den Einstellungen „DodekUVVModule initialisieren“ ausführen.</p>' : ''}
+                   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:4px 16px;">
+                   ${mods.map(m => `<label style="display:flex;align-items:center;gap:10px;min-height:44px;${m.Pflicht ? 'color:#999;' : 'cursor:pointer;'}">
+                        <input type="checkbox" class="pf-mod-cb" value="${m.ModulNr}" style="width:22px;height:22px;" ${m.Pflicht || pre.has(m.ModulNr) ? 'checked' : ''} ${m.Pflicht ? 'disabled' : ''}>
+                        ${m.ModulNr} – ${escapeHtml(m.ModulName)} ${m.Pflicht ? '<em style="font-size:11px;">(Pflicht)</em>' : ''}
+                    </label>`).join('')}
+                   </div>
+                   <button onclick="pfStart()" style="margin-top:16px;min-height:44px;" ${mods.length === 0 ? 'disabled' : ''}>▶️ Prüfung starten</button>`;
+            pfPane().innerHTML = pfHeader(a) + `<div style="background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${body}</div>`;
+        }
+
+        function pfStart() {
+            const nrs = new Set(Array.from(document.querySelectorAll('.pf-mod-cb:checked')).map(cb => parseInt(cb.value, 10)));
+            (uvvModuleCache || []).filter(m => m.Pflicht).forEach(m => nrs.add(m.ModulNr));
+            window._pf.module = Array.from(nrs).sort((x, y) => x - y);
+            renderPruefungForm();
+            window.scrollTo({ top: 0, behavior: 'instant' });
+        }
+
+        const pfModuleDef = nr => (uvvModuleCache || []).find(m => m.ModulNr === nr);
+        const pfEntry = (nr, pid) => window._pf.ergebnisse[`${nr}_${pid}`];
+
+        function pfProgressText(nr) {
+            const m = pfModuleDef(nr);
+            if (!m) return '';
+            const total = m.Pruefpunkte.length;
+            const done = m.Pruefpunkte.filter(p => { const e = pfEntry(nr, p.id); return e && e.bewertung; }).length;
+            return `${done}/${total} bewertet`;
+        }
+
+        function renderPruefungForm() {
+            const pf = window._pf;
+            const a = window.anlagenDatabase[pf.anlageId];
+            const ro = pf.readonly;
+            const isAdmin = window.currentUserRole === 'admin';
+            const buttons = (ro
+                ? (pf.status === 'Abgeschlossen' && isAdmin ? '<button onclick="pfReopen()" class="btn-secondary" style="min-height:44px;">🔓 Prüfung wieder öffnen</button>' : '')
+                : '<button onclick="pfSave(false)" class="btn-secondary" style="min-height:44px;">💾 Zwischenspeichern</button> <button onclick="pfSave(true)" class="btn-success" style="min-height:44px;">✅ Prüfung abschließen</button>');
+            const modulesHtml = pf.module.map((nr, idx) => {
+                const m = pfModuleDef(nr);
+                if (!m) return `<div style="background:white;padding:14px;margin-bottom:12px;border-radius:4px;color:#c62828;">Modul ${nr} ist nicht mehr in DodekUVVModule vorhanden.</div>`;
+                const rows = m.Pruefpunkte.slice().sort((x, y) => x.position - y.position).map(pp => {
+                    const e = pfEntry(nr, pp.id) || {};
+                    const sel = e.bewertung;
+                    const showNote = !!(e.bemerkung || sel === 'nio');
+                    const btn = (val, cls, label) => `<button class="pf-btn ${cls} ${sel === val ? 'sel' : ''}" ${ro ? 'disabled' : ''} onclick="pfSet(${nr},${pp.id},'${val}')">${label}</button>`;
+                    return `<div class="pf-row" id="pfr_${nr}_${pp.id}">
+                        <div class="pf-text">${pp.position}. ${escapeHtml(pp.text)}${pp.intervall && pp.intervall !== 'jährlich' ? `<span class="pf-int">${escapeHtml(pp.intervall)}</span>` : ''}</div>
+                        <div class="pf-btns">
+                            ${btn('io', 'io', 'i.O.')}${btn('nio', 'nio', 'n.i.O.')}${btn('entfaellt', 'entf', 'entfällt')}
+                            <button class="pf-note-btn" ${ro ? 'disabled' : ''} onclick="pfToggleNote(${nr},${pp.id})" title="Bemerkung">✏️</button>
+                        </div>
+                        <textarea class="pf-note" id="pfn_${nr}_${pp.id}" placeholder="Bemerkung…" ${ro ? 'readonly' : ''} style="${showNote ? '' : 'display:none;'}" oninput="pfSetNote(${nr},${pp.id},this.value)">${escapeHtml(e.bemerkung || '')}</textarea>
+                    </div>`;
+                }).join('');
+                return `<details class="pf-module" ${idx === 0 || ro ? 'open' : ''}>
+                    <summary>${nr} – ${escapeHtml(m.ModulName)} <span class="pf-prog" id="pfp_${nr}">${pfProgressText(nr)}</span></summary>
+                    <div style="padding:6px 14px 14px;">${rows}
+                        <div style="margin-top:12px;"><label style="font-size:12px;color:#666;">Bemerkung zum Modul</label>
+                        <textarea class="pf-note" ${ro ? 'readonly' : ''} style="display:block;" oninput="pfSetModulNote(${nr}, this.value)">${escapeHtml(pf.modulBemerkungen[nr] || '')}</textarea></div>
+                    </div>
+                </details>`;
+            }).join('');
+            pfPane().innerHTML = pfHeader(a) +
+                `<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;">${buttons}</div>` +
+                modulesHtml +
+                `<div style="margin:12px 0 30px;display:flex;gap:8px;flex-wrap:wrap;">${buttons}</div>`;
+        }
+
+        function pfSet(nr, pid, val) {
+            const pf = window._pf;
+            if (!pf || pf.readonly) return;
+            const key = `${nr}_${pid}`;
+            const e = pf.ergebnisse[key] || (pf.ergebnisse[key] = { modulNr: nr, pruefpunktId: pid, bewertung: null, bemerkung: '' });
+            e.bewertung = e.bewertung === val ? null : val; // erneuter Klick hebt die Auswahl auf
+            const row = document.getElementById(`pfr_${nr}_${pid}`);
+            if (row) {
+                row.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('sel'));
+                const map = { io: 'io', nio: 'nio', entfaellt: 'entf' };
+                if (e.bewertung) row.querySelector(`.pf-btn.${map[e.bewertung]}`).classList.add('sel');
+                if (e.bewertung === 'nio') document.getElementById(`pfn_${nr}_${pid}`).style.display = '';
+            }
+            const prog = document.getElementById(`pfp_${nr}`);
+            if (prog) prog.textContent = pfProgressText(nr);
+        }
+
+        function pfToggleNote(nr, pid) {
+            const ta = document.getElementById(`pfn_${nr}_${pid}`);
+            if (!ta) return;
+            ta.style.display = ta.style.display === 'none' ? '' : 'none';
+            if (ta.style.display === '') ta.focus();
+        }
+
+        function pfSetNote(nr, pid, text) {
+            const pf = window._pf;
+            if (!pf || pf.readonly) return;
+            const key = `${nr}_${pid}`;
+            const e = pf.ergebnisse[key] || (pf.ergebnisse[key] = { modulNr: nr, pruefpunktId: pid, bewertung: null, bemerkung: '' });
+            e.bemerkung = text;
+        }
+
+        function pfSetModulNote(nr, text) {
+            const pf = window._pf;
+            if (!pf || pf.readonly) return;
+            pf.modulBemerkungen[nr] = text;
+        }
+
+        function pfBuildJson(abgeschlossenAm) {
+            const pf = window._pf;
+            const ergebnisse = Object.values(pf.ergebnisse)
+                .filter(e => e.bewertung || e.bemerkung)
+                .map(e => ({ modulNr: e.modulNr, pruefpunktId: e.pruefpunktId, bewertung: e.bewertung || null, bemerkung: e.bemerkung || '' }))
+                .sort((x, y) => x.modulNr - y.modulNr || x.pruefpunktId - y.pruefpunktId);
+            const modulBemerkungen = {};
+            Object.keys(pf.modulBemerkungen).forEach(k => { if (pf.modulBemerkungen[k]) modulBemerkungen[k] = pf.modulBemerkungen[k]; });
+            return { module: pf.module, ergebnisse, modulBemerkungen, abgeschlossenAm: abgeschlossenAm || null, pruefer: pf.pruefer };
+        }
+
+        async function pfPersist(status, abgeschlossenAm) {
+            const pf = window._pf;
+            const json = pfBuildJson(abgeschlossenAm);
+            const payload = await buildUvvPayload(SP_CONFIG.guidUVVPruefungen, 'DodekUVVPruefungen', { Status: status, ErgebnisJSON: JSON.stringify(json) });
+            await uvvPatch(SP_CONFIG.guidUVVPruefungen, pf.id, payload);
+            const p = window.uvvPruefungen[pf.id];
+            p.status = status; p.ergebnisRaw = JSON.stringify(json);
+            pf.status = status;
+        }
+
+        async function pfSave(finish) {
+            const pf = window._pf;
+            if (!pf || pf.readonly) return;
+            if (finish) {
+                // Pflichtmodule: mindestens eine Bewertung je Modul
+                const missing = pf.module.filter(nr => {
+                    const m = pfModuleDef(nr);
+                    return m && m.Pflicht && !Object.values(pf.ergebnisse).some(e => e.modulNr === nr && e.bewertung);
+                });
+                if (missing.length > 0) {
+                    showMessage(`Pflichtmodul ohne Bewertung: ${missing.map(nr => `${nr} – ${pfModuleDef(nr).ModulName}`).join(', ')}`, 'error');
+                    return;
+                }
+                if (!confirm('Prüfung abschließen? Danach ist sie schreibgeschützt und kann nur von einem Admin wieder geöffnet werden.')) return;
+            }
+            try {
+                const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 19);
+                await pfPersist(finish ? 'Abgeschlossen' : 'In Bearbeitung', finish ? now : null);
+                if (finish) { pf.readonly = true; renderPruefungForm(); window.scrollTo({ top: 0, behavior: 'instant' }); }
+                else {
+                    // Neu rendern (Statusanzeige), geöffnete Module bleiben geöffnet
+                    const open = Array.from(document.querySelectorAll('.pf-module')).map(d => d.open);
+                    renderPruefungForm();
+                    document.querySelectorAll('.pf-module').forEach((d, i) => { d.open = open[i]; });
+                }
+                showMessage(finish ? 'Prüfung abgeschlossen' : 'Prüfung zwischengespeichert', 'success');
+            } catch (e) {
+                console.error('Prüfung speichern fehlgeschlagen:', e);
+                showMessage('Prüfung konnte nicht gespeichert werden: ' + e.message, 'error');
+            }
+        }
+
+        async function pfReopen() {
+            const pf = window._pf;
+            if (!pf || window.currentUserRole !== 'admin' || pf.status !== 'Abgeschlossen') return;
+            if (!confirm('Prüfung wieder öffnen? Der Status wird auf „In Bearbeitung“ zurückgesetzt.')) return;
+            try {
+                await pfPersist('In Bearbeitung', null);
+                pf.readonly = !canEditUvv();
+                renderPruefungForm();
+                showMessage('Prüfung wieder geöffnet', 'success');
+            } catch (e) {
+                console.error('Prüfung wieder öffnen fehlgeschlagen:', e);
+                showMessage('Prüfung konnte nicht wieder geöffnet werden: ' + e.message, 'error');
+            }
+        }
+
+        window.loadUVVPruefungenFromSharePoint = loadUVVPruefungenFromSharePoint;
+        window.initUVVModule = initUVVModule;
+        window.toggleUVVModulAktiv = toggleUVVModulAktiv;
+        window.openNeuePruefung = openNeuePruefung;
+        window.closeNeuePruefung = closeNeuePruefung;
+        window.saveNeuePruefung = saveNeuePruefung;
+        window.openPruefung = openPruefung;
+        window.closePruefung = closePruefung;
+        window.pfStart = pfStart;
+        window.pfSet = pfSet;
+        window.pfToggleNote = pfToggleNote;
+        window.pfSetNote = pfSetNote;
+        window.pfSetModulNote = pfSetModulNote;
+        window.pfSave = pfSave;
+        window.pfReopen = pfReopen;
 
         window.loadAnlagenFromSharePoint = loadAnlagenFromSharePoint;
         window.showAnlagenList        = showAnlagenList;
@@ -5017,6 +5870,7 @@ function applyPermissions() {
             await loadSettingsFromSharePoint();
             await loadContactsFromSharePoint();
             await loadAnlagenFromSharePoint();
+            await loadUVVPruefungenFromSharePoint();
             await loadArticleGroupsFromSharePoint();
 
             applyPermissions();
@@ -5031,7 +5885,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.66';
+        const APP_VERSION = 'v1.6.67';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -10357,6 +11211,7 @@ function applyPermissions() {
 
         function renderSettingsView() {
             renderAnlagenTypenSettings();
+            renderUVVModuleSettings();
             renderArticleGroupsSettings();
             renderRolePermissionsTable();
             // Rechteverwaltung rendern
