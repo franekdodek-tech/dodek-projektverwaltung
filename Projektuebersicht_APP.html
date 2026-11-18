@@ -408,6 +408,11 @@
         .pf-einheit { align-self: center; color: #555; font-weight: 600; min-width: 40px; }
         .pf-vj { margin-top: 6px; font-size: 12px; color: #888; }
         .pf-vj-badge { background: #f0f0f0; border-radius: 3px; padding: 2px 8px; }
+        .pf-sigs { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 16px; }
+        .pf-sig { flex: 1 1 320px; }
+        .pf-sig label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
+        .pf-sig canvas { width: 100%; aspect-ratio: 3 / 1; border: 1px solid #999; border-radius: 4px; background: #fff; touch-action: none; display: block; }
+        .pf-sig.ro canvas, .pf-sig img { border: 1px solid #ccc; background: #fafafa; width: 100%; aspect-ratio: 3 / 1; object-fit: contain; display: block; border-radius: 4px; }
         .pf-uebern-tag { display: none; margin-left: 8px; color: #2e7d32; font-weight: 600; }
         .pf-row.pf-uebern { border-left: 4px solid #2e7d32; padding-left: 8px; }
         .pf-row.pf-uebern .pf-uebern-tag { display: inline; }
@@ -5186,7 +5191,9 @@ function applyPermissions() {
                 datum: String(item.PruefDatum || '').substring(0, 10),
                 pruefer: item.Pruefer || '',
                 status: item.Status || 'Offen',
-                ergebnisRaw: item.Ergebnisse || ''
+                ergebnisRaw: item.Ergebnisse || '',
+                sigKunde: item.Unterschrift_Kunde || '',
+                sigPruefer: item.Unterschrift_Pruefer || ''
             };
         }
 
@@ -5304,7 +5311,8 @@ function applyPermissions() {
                 id: p.id, anlageId: p.anlagenId, datum: p.datum, pruefer: (obj && obj.pruefer) || p.pruefer, status: p.status,
                 readonly: p.status === 'Abgeschlossen' || !canEditUvv(),
                 module: obj && Array.isArray(obj.module) ? obj.module : null,
-                ergebnisse, modulBemerkungen: (obj && obj.modulBemerkungen) || {}
+                ergebnisse, modulBemerkungen: (obj && obj.modulBemerkungen) || {},
+                sigKunde: p.sigKunde || '', sigPruefer: p.sigPruefer || ''
             };
             try { await getUVVModule(); }
             catch (e) { showMessage('UVV-Module konnten nicht geladen werden: ' + e.message, 'error'); window._pf = null; return; }
@@ -5457,7 +5465,7 @@ function applyPermissions() {
             const ro = pf.readonly;
             const isAdmin = window.currentUserRole === 'admin';
             const buttons = (ro
-                ? (pf.status === 'Abgeschlossen' && isAdmin ? '<button onclick="pfReopen()" class="btn-secondary" style="min-height:44px;">🔓 Prüfung wieder öffnen</button>' : '')
+                ? ((pf.status === 'Abgeschlossen' ? '<button onclick="pfExportPdf(this)" style="min-height:44px;">📄 PDF exportieren</button> ' : '') + (pf.status === 'Abgeschlossen' && isAdmin ? '<button onclick="pfReopen()" class="btn-secondary" style="min-height:44px;">🔓 Prüfung wieder öffnen</button>' : ''))
                 : '<button onclick="pfSave(false)" class="btn-secondary" style="min-height:44px;">💾 Zwischenspeichern</button> <button onclick="pfSave(true)" class="btn-success" style="min-height:44px;">✅ Prüfung abschließen</button>');
             const modulesHtml = pf.module.map((nr, idx) => {
                 const m = pfModuleDef(nr);
@@ -5496,6 +5504,7 @@ function applyPermissions() {
                         </div>` : ''}${rows}
                         <div style="margin-top:12px;"><label style="font-size:12px;color:#666;">Bemerkung zum Modul</label>
                         <textarea class="pf-note" ${ro ? 'readonly' : ''} style="display:block;" oninput="pfSetModulNote(${nr}, this.value)">${escapeHtml(pf.modulBemerkungen[nr] || '')}</textarea></div>
+                        ${nr === 0 ? pfSignaturesHtml(ro) : ''}
                     </div>
                 </details>`;
             }).join('');
@@ -5503,6 +5512,52 @@ function applyPermissions() {
                 `<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;">${buttons}</div>` +
                 modulesHtml +
                 `<div style="margin:12px 0 30px;display:flex;gap:8px;flex-wrap:wrap;">${buttons}</div>`;
+            pfInitSignatures();
+        }
+
+        // ----- Unterschriften (Modul 0): Canvas, gespeichert als Base64-PNG in Unterschrift_Kunde / Unterschrift_Pruefer -----
+        const PF_SIGS = [
+            { key: 'sigKunde',   id: 'kunde',   label: 'Firmenstempel / Unterschrift Auftraggeber' },
+            { key: 'sigPruefer', id: 'pruefer', label: 'Datum und Unterschrift Prüfer (Dodek)' }
+        ];
+
+        function pfSignaturesHtml(ro) {
+            const pf = window._pf;
+            return `<div class="pf-sigs">${PF_SIGS.map(s => ro
+                ? `<div class="pf-sig ro"><label>${s.label}</label>${pf[s.key] ? `<img src="${pf[s.key]}" alt="${s.label}">` : '<canvas></canvas>'}</div>`
+                : `<div class="pf-sig"><label>${s.label}</label><canvas id="pfsig_${s.id}" width="600" height="200"></canvas>
+                    <button class="btn-secondary" style="min-height:44px;margin-top:6px;" onclick="pfClearSig('${s.id}')">Löschen</button></div>`).join('')}</div>`;
+        }
+
+        function pfInitSignatures() {
+            const pf = window._pf;
+            if (!pf || pf.readonly) return;
+            PF_SIGS.forEach(s => {
+                const cv = document.getElementById(`pfsig_${s.id}`);
+                if (!cv) return;
+                const ctx = cv.getContext('2d');
+                ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111';
+                if (pf[s.key]) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, cv.width, cv.height); img.src = pf[s.key]; }
+                let drawing = false;
+                const pos = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) * cv.width / r.width, (ev.clientY - r.top) * cv.height / r.height]; };
+                cv.addEventListener('pointerdown', ev => {
+                    ev.preventDefault(); drawing = true; cv.setPointerCapture(ev.pointerId);
+                    const [x, y] = pos(ev); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 0.01, y); ctx.stroke();
+                });
+                cv.addEventListener('pointermove', ev => { if (!drawing) return; ev.preventDefault(); const [x, y] = pos(ev); ctx.lineTo(x, y); ctx.stroke(); });
+                const end = () => { if (!drawing) return; drawing = false; pf[s.key] = cv.toDataURL('image/png'); };
+                cv.addEventListener('pointerup', end);
+                cv.addEventListener('pointercancel', end);
+            });
+        }
+
+        function pfClearSig(id) {
+            const pf = window._pf;
+            const s = PF_SIGS.find(x => x.id === id);
+            const cv = document.getElementById(`pfsig_${id}`);
+            if (!pf || pf.readonly || !s || !cv) return;
+            cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+            pf[s.key] = '';
         }
 
         function pfEnsureEntry(nr, pid) {
@@ -5577,10 +5632,15 @@ function applyPermissions() {
         async function pfPersist(status, abgeschlossenAm) {
             const pf = window._pf;
             const json = pfBuildJson(abgeschlossenAm);
-            const payload = await buildUvvPayload(SP_CONFIG.guidUVVPruefungen, 'DodekUVVPruefungen', { Status: status, Ergebnisse: JSON.stringify(json) });
-            await uvvPatch(SP_CONFIG.guidUVVPruefungen, pf.id, payload);
             const p = window.uvvPruefungen[pf.id];
+            const values = { Status: status, Ergebnisse: JSON.stringify(json) };
+            // Unterschriften nur schreiben, wenn vorhanden oder zuvor gespeichert (Löschen); sonst keine Abhängigkeit von den Spalten
+            if (pf.sigKunde || p.sigKunde) values.Unterschrift_Kunde = pf.sigKunde || '';
+            if (pf.sigPruefer || p.sigPruefer) values.Unterschrift_Pruefer = pf.sigPruefer || '';
+            const payload = await buildUvvPayload(SP_CONFIG.guidUVVPruefungen, 'DodekUVVPruefungen', values);
+            await uvvPatch(SP_CONFIG.guidUVVPruefungen, pf.id, payload);
             p.status = status; p.ergebnisRaw = JSON.stringify(json);
+            p.sigKunde = pf.sigKunde || ''; p.sigPruefer = pf.sigPruefer || '';
             pf.status = status;
         }
 
@@ -5595,6 +5655,10 @@ function applyPermissions() {
                 });
                 if (missing.length > 0) {
                     showMessage(`Pflichtmodul ohne Bewertung: ${missing.map(nr => `${nr} – ${pfModuleDef(nr).ModulName}`).join(', ')}`, 'error');
+                    return;
+                }
+                if (!pf.sigKunde || !pf.sigPruefer) {
+                    showMessage(`Prüfung kann nur mit beiden Unterschriften abgeschlossen werden (fehlt: ${[!pf.sigKunde ? 'Auftraggeber' : '', !pf.sigPruefer ? 'Prüfer' : ''].filter(Boolean).join(', ')}) — siehe Modul 0`, 'error');
                     return;
                 }
                 if (!confirm('Prüfung abschließen? Danach ist sie schreibgeschützt und kann nur von einem Admin wieder geöffnet werden.')) return;
@@ -5631,6 +5695,173 @@ function applyPermissions() {
             }
         }
 
+        // ----- PDF-Export (jsPDF + jsPDF-AutoTable, werden erst beim Export von cdnjs geladen) -----
+        const PF_PDF_LIBS = [
+            { src: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', integrity: 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk' },
+            { src: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js', integrity: 'sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3' }
+        ];
+        let pfLogoCache = null;
+
+        function pfLoadScript(lib) {
+            return new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = lib.src; s.integrity = lib.integrity; s.crossOrigin = 'anonymous';
+                s.onload = resolve;
+                s.onerror = () => reject(new Error('PDF-Bibliothek konnte nicht geladen werden (Netzwerk?)'));
+                document.head.appendChild(s);
+            });
+        }
+
+        async function pfLoadPdfLibs() {
+            if (!(window.jspdf && window.jspdf.jsPDF)) await pfLoadScript(PF_PDF_LIBS[0]);
+            if (!window.jspdf.jsPDF.API.autoTable) await pfLoadScript(PF_PDF_LIBS[1]);
+        }
+
+        async function pfLoadLogo() {
+            if (pfLogoCache) return pfLogoCache;
+            const resp = await fetch('DT-Logo.png');
+            if (!resp.ok) throw new Error('DT-Logo.png konnte nicht geladen werden');
+            const blob = await resp.blob();
+            const src = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
+            const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+            // Verkleinern (Original ~1800 px): hält die PDF-Datei klein, 800 px reichen für 24 mm Druckhöhe
+            const w = Math.min(800, img.naturalWidth), h = Math.round(img.naturalHeight * w / img.naturalWidth);
+            const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+            const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+            return (pfLogoCache = { data: cv.toDataURL('image/png'), ratio: img.naturalWidth / img.naturalHeight });
+        }
+
+        async function pfExportPdf(btn) {
+            const pf = window._pf;
+            if (!pf || pf.status !== 'Abgeschlossen') return;
+            if (btn) btn.disabled = true;
+            try {
+                await pfLoadPdfLibs();
+                const logo = await pfLoadLogo();
+                const doc = buildPruefbuchPdf(logo);
+                const a = window.anlagenDatabase[pf.anlageId];
+                const safe = s => String(s || '').replace(/[^A-Za-z0-9._-]+/g, '_');
+                doc.save(`Pruefbuch_${safe(a ? a.anlagenNr : pf.anlageId)}_${pf.datum}.pdf`);
+            } catch (e) {
+                console.error('PDF-Export fehlgeschlagen:', e);
+                showMessage('PDF konnte nicht erstellt werden: ' + e.message, 'error');
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        // Erzeugt das PDF (A4 hoch): Seite 1 Prüfzertifikat, danach je Modul eine Seite (bei vielen Prüfpunkten mehrere)
+        function buildPruefbuchPdf(logo) {
+            const pf = window._pf;
+            const a = window.anlagenDatabase[pf.anlageId] || {};
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+            const W = 210, H = 297, M = 15;
+            // Standard-Schrift kann nur Latin-1/WinAnsi: übrige Zeichen ersetzen
+            const t = s => String(s == null ? '' : s).replace(/[^\u0000-ÿ–—‘-„•€]/g, '?');
+            const val = (nr, pid) => { const e = pf.ergebnisse[`${nr}_${pid}`]; return e && e.bewertung ? String(e.bewertung) : ''; };
+
+            const drawHeader = (title, sub) => {
+                const lh = 18;
+                doc.addImage(logo.data, 'PNG', M, 10, lh * logo.ratio, lh, 'dtlogo');
+                const x = M + lh * logo.ratio + 8;
+                doc.setTextColor(0); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+                doc.text('LUFT- UND SYSTEMTECHNIK', x, 15);
+                doc.setFontSize(16); doc.text(t(title), x, 24, { maxWidth: W - M - x });
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+                doc.text(t(sub), W - M, 15, { align: 'right' });
+                doc.setDrawColor(0); doc.setLineWidth(0.8); doc.line(M, 36, W - M, 36);
+            };
+
+            // ----- Seite 1: Prüfzertifikat -----
+            const m0 = pfModuleDef(0);
+            const p0 = m0 ? pfSortedPunkte(m0) : [];
+            const label = pp => { const s = pfPunktText(pp); const i = s.indexOf(' – '); return i >= 0 ? s.slice(i + 3) : s; };
+            const rowsOf = re => p0.filter(pp => re.test(pfPunktText(pp))).map(pp => [t(label(pp)), t(val(0, pfPunktId(pp)))]);
+            const findVal = re => { const pp = p0.find(x => re.test(pfPunktText(x))); return pp ? val(0, pfPunktId(pp)) : ''; };
+            const firma = findVal(/^Auftraggeber – Firma/), strasse = findVal(/^Auftraggeber – Str/), ort = findVal(/^Auftraggeber – PLZ/);
+            const termin = findVal(/^Nächster/);
+            const datumDe = fmtAnlageDate(pf.datum);
+            const jahr = (pf.datum || '').slice(0, 4);
+
+            drawHeader('Prüfbuch', 'Prüfzertifikat');
+            const tblOpts = { theme: 'grid', styles: { fontSize: 10, cellPadding: 2.2, textColor: 0, lineColor: 0, lineWidth: 0.2 }, headStyles: { fillColor: [0, 0, 0], textColor: 255 }, columnStyles: { 0: { cellWidth: 50, fontStyle: 'bold' } }, margin: { left: M, right: M } };
+            const auftrag = rowsOf(/^Auftraggeber/);
+            const anlageRows = [...rowsOf(/^(Angaben zur Anlage|Interne Angaben)/), ['Anlagen-Nr.', t(a.anlagenNr)], ['Bezeichnung', t(a.bezeichnung)]];
+            doc.autoTable({ ...tblOpts, startY: 46, head: [['Auftraggeber', '']], body: auftrag });
+            doc.autoTable({ ...tblOpts, startY: doc.lastAutoTable.finalY + 6, head: [['Angaben zur Anlage', '']], body: anlageRows });
+            let y = doc.lastAutoTable.finalY + 10;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+            doc.text(`Datum der Prüfung: ${datumDe}`, M, y);
+            y += 7;
+            doc.text(`Nächster empfohlener Prüftermin: ${t(termin)}`, M, y);
+            y += 10;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+            const fliess = `Hiermit bestätigen wir, ${firma}, ${strasse}, ${ort}, der Firma Dodek, dass Sie in unserem Auftrag am ${datumDe} eine eingehende Prüfung der folgenden Anlage vorgenommen hat.`;
+            doc.text(doc.splitTextToSize(t(fliess), W - 2 * M), M, y);
+
+            // Unterschrift Kunde (links)
+            const sy = 205, sw = 80, sh = 27;
+            if (pf.sigKunde) doc.addImage(pf.sigKunde, 'PNG', M, sy, sw, sh);
+            doc.setDrawColor(0); doc.setLineWidth(0.4); doc.line(M, sy + sh + 2, M + sw + 5, sy + sh + 2);
+            doc.setFontSize(9); doc.text('Firmenstempel / Unterschrift Auftraggeber', M, sy + sh + 7);
+            // Prüfer im Siegelrahmen (rechts)
+            const cx = W - M - 30, cy = 232, r = 28;
+            doc.setLineWidth(0.8); doc.circle(cx, cy, r); doc.setLineWidth(0.3); doc.circle(cx, cy, r - 2.5);
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
+            doc.text('DODEK TECHNIK', cx, cy - 17, { align: 'center' });
+            if (pf.sigPruefer) doc.addImage(pf.sigPruefer, 'PNG', cx - 20, cy - 13, 40, 13.3);
+            doc.text('PRÜFSIEGEL', cx, cy + 8, { align: 'center' });
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+            doc.text(datumDe, cx, cy + 14, { align: 'center' });
+            doc.setFontSize(9);
+            doc.text('Datum und Unterschrift Prüfer', cx, cy + r + 6, { align: 'center' });
+            // Prüfjahr / Prüftermin
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+            doc.text(`Prüfjahr ${jahr}`, M, H - 22);
+            doc.text(`nächster empfohlener PRÜFTERMIN ${t(termin)}`, M, H - 14);
+
+            // ----- Folgeseiten: je Modul -----
+            const footers = {};
+            pf.module.filter(nr => nr !== 0).forEach(nr => {
+                const m = pfModuleDef(nr);
+                if (!m) return;
+                const kuerzel = t(m.ModulName.split(/[\s(]/)[0].toUpperCase());
+                doc.addPage();
+                const first = doc.getNumberOfPages();
+                const body = pfSortedPunkte(m).map(pp => {
+                    const pid = pfPunktId(pp);
+                    const e = pf.ergebnisse[`${nr}_${pid}`] || {};
+                    const v = e.bewertung ? String(e.bewertung) + (pfPunktTyp(pp) === 'messwert' && pp.einheit ? ' ' + pp.einheit : '') : '';
+                    return [pid, t(pfPunktText(pp)), t(v), t(e.bemerkung || '')];
+                });
+                const modBem = pf.modulBemerkungen[nr];
+                if (modBem) body.push([{ content: t('Bemerkung zum Modul: ' + modBem), colSpan: 4, styles: { fontStyle: 'italic' } }]);
+                doc.autoTable({
+                    startY: 44, margin: { top: 44, left: M, right: M, bottom: 18 }, theme: 'grid',
+                    head: [['Nr.', 'Bezeichnung', 'Ergebnis / Wert', 'Bemerkung']], body,
+                    styles: { fontSize: 9, cellPadding: 2, minCellHeight: 7, textColor: 0, lineColor: 0, lineWidth: 0.2, valign: 'middle' },
+                    headStyles: { fillColor: [0, 0, 0], textColor: 255 },
+                    columnStyles: { 0: { cellWidth: 10, halign: 'center' }, 1: { cellWidth: 82 }, 2: { cellWidth: 40 } },
+                    didDrawPage: () => drawHeader(m.ModulName, 'Service- und Inspektionsliste')
+                });
+                for (let p = first; p <= doc.getNumberOfPages(); p++) footers[p] = kuerzel;
+            });
+
+            // Fußzeilen: Modulkürzel + Seitenzahl
+            const total = doc.getNumberOfPages();
+            for (let p = 1; p <= total; p++) {
+                doc.setPage(p);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(0);
+                if (footers[p]) { doc.setFont('helvetica', 'bold'); doc.text(footers[p], M, H - 8); }
+                doc.setFont('helvetica', 'normal');
+                doc.text(`Seite ${p} / ${total}`, W - M, H - 8, { align: 'right' });
+            }
+            return doc;
+        }
+
+        window.pfExportPdf = pfExportPdf;
+        window.pfClearSig = pfClearSig;
         window.loadUVVPruefungenFromSharePoint = loadUVVPruefungenFromSharePoint;
         window.initUVVModule = initUVVModule;
         window.toggleUVVModulAktiv = toggleUVVModulAktiv;
@@ -6140,7 +6371,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.72';
+        const APP_VERSION = 'v1.6.73';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
