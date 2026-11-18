@@ -5767,8 +5767,8 @@ function applyPermissions() {
 
             // ----- Kopf- und Fußzeile (alle Seiten) -----
             const drawPageHeader = () => {
-                fill(RED); doc.rect(14, 10, 120, 18, 'F');
-                ink(WHITE); font('bold', 11); doc.text('LUFT- UND SYSTEMTECHNIK', 18, 22);
+                fill(RED); doc.rect(X0, 12, CW, 11, 'F');
+                ink(WHITE); font('bold', 11); doc.text('LUFT- UND SYSTEMTECHNIK', 18, 19.2);
                 const lh = 18, lw = lh * logo.ratio;
                 doc.addImage(logo.data, 'PNG', X1 - lw, 8, lw, lh, 'dtlogo');
                 draw(RED); doc.setLineWidth(1.5); doc.line(X0, 28, X1, 28);
@@ -5796,6 +5796,45 @@ function applyPermissions() {
                 doc.line(x, y + 6.2, x + w, y + 6.2);
                 if (dashed) doc.setLineDashPattern([], 0);
                 if (value) { font('normal', 9); ink(TXT); doc.text(doc.splitTextToSize(t(value), w)[0], x, y + 5.2); }
+            };
+
+            // Prüferkürzel: "Frank Müller" → "F.M." (ein Wort → "F.")
+            const pruefKuerzel = name => {
+                const w = String(name || '').trim().split(/\s+/).filter(Boolean);
+                if (!w.length) return '';
+                const ini = s => s.charAt(0).toUpperCase() + '.';
+                return w.length === 1 ? ini(w[0]) : ini(w[0]) + ini(w[w.length - 1]);
+            };
+            // Text auf dem Kreisbogen (jsPDF kennt keinen gebogenen Text): Buchstaben einzeln gesetzt und gedreht.
+            // oben=true: Mitte bei 12 Uhr, Buchstaben stehen außen auf dem Radius; sonst Mitte bei 6 Uhr, von links nach rechts lesbar
+            const drawArcText = (text, cx, cy, radius, size, oben) => {
+                font('bold', size); ink(RED);
+                const chars = t(text).split('');
+                const gap = 0.35;                                   // Zusatzabstand je Buchstabe in mm
+                const ws = chars.map(c => doc.getTextWidth(c) + gap);
+                const total = ws.reduce((s, w) => s + w, 0) / radius; // Gesamtwinkel in rad
+                let ang = oben ? -Math.PI / 2 - total / 2 : Math.PI / 2 + total / 2;
+                chars.forEach((c, i) => {
+                    const step = ws[i] / radius;
+                    const mid = oben ? ang + step / 2 : ang - step / 2;
+                    const phi = oben ? mid + Math.PI / 2 : mid - Math.PI / 2;   // Uhrzeigersinn-Drehung auf dem Bildschirm
+                    const w = ws[i] - gap;
+                    const px = cx + radius * Math.cos(mid) - (w / 2) * Math.cos(phi);
+                    const py = cy + radius * Math.sin(mid) - (w / 2) * Math.sin(phi);
+                    if (c !== ' ') doc.text(c, px, py, { angle: -phi * 180 / Math.PI });
+                    ang = oben ? ang + step : ang - step;
+                });
+            };
+            // Stempelkreis: Kreis, gebogener Text oben/unten, zwei Linien mit Datum dazwischen, Unterschrift darunter
+            const drawPruefsiegel = (cx, cy, r, kuerzel, datum, sig) => {
+                draw(RED); doc.setLineWidth(1.5); doc.circle(cx, cy, r);
+                const chord = dy => 2 * Math.sqrt(r * r - dy * dy) * 0.85;
+                doc.setLineWidth(0.5);
+                [-4, 4].forEach(dy => doc.line(cx - chord(dy) / 2, cy + dy, cx + chord(dy) / 2, cy + dy));
+                drawArcText(('DODEK TECHNIK ' + (kuerzel || '')).trim(), cx, cy, r - 6.5, 7, true);
+                drawArcText('PRÜFSIEGEL', cx, cy, r - 3.5, 7, false);
+                font('normal', 8); ink(TXT); doc.text(t(datum), cx, cy + 1.4, { align: 'center' });
+                if (sig) doc.addImage(sig, 'PNG', cx - 12, cy + 4.8, 24, 8);
             };
 
             // ===== Seite 1: Prüfzertifikat =====
@@ -5835,12 +5874,8 @@ function applyPermissions() {
             if (pf.sigKunde) doc.addImage(pf.sigKunde, 'PNG', X0, 220, 80, 26.7);
             draw(LN); doc.setLineWidth(0.3); doc.line(X0, 255, X0 + 80, 255);
             // Prüfer im Siegelrahmen (rechts)
-            draw(RED); doc.setLineWidth(1.5); doc.ellipse(154, 237, 40, 22);
-            font('bold', 7); ink(RED); doc.text('DODEK TECHNIK', 154, 221, { align: 'center' });
-            if (pf.sigPruefer) doc.addImage(pf.sigPruefer, 'PNG', 129, 226, 50, 16.7);
-            font('normal', 6); ink(MG); doc.text('PRÜFSIEGEL', 154, 250, { align: 'center' });
-            font('normal', 7); doc.text(datumDe, 154, 263.5, { align: 'center' });
-            doc.text('Datum und Unterschrift Prüfer', 154, 267.5, { align: 'center' });
+            drawPruefsiegel(154, 237, 22, pruefKuerzel(pf.pruefer), datumDe, pf.sigPruefer);
+            font('normal', 7); ink(MG); doc.text('Datum und Unterschrift Prüfer', 154, 267.5, { align: 'center' });
 
             // ===== Folgeseiten: je Modul =====
             const footers = {};
@@ -6515,7 +6550,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.74';
+        const APP_VERSION = 'v1.6.75';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
