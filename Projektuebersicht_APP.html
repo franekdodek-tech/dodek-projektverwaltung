@@ -5767,13 +5767,13 @@ function applyPermissions() {
 
             // ----- Kopf- und Fußzeile (alle Seiten) -----
             const drawPageHeader = () => {
-                // Balken fluchtet mit dem "D" des Logos: das D reicht im Bild von Oberkante bis 690/1328 der Höhe (aus DT-Logo.png ausgemessen)
+                // Balken fluchtet mit dem senkrechten Strich des "D" (ohne die Bögen oben/unten): in DT-Logo.png (1785 × 1328 px)
+                // von Zeile 173 bis 513 (aus dem Bild ausgemessen: D-Innenfläche/Kerbe links, Bogenaußenkante dort nahezu senkrecht)
                 const lh = 18, lw = lh * logo.ratio, ly = 8;
-                const bh = lh * 690 / 1328;
-                fill(RED); doc.rect(0, ly, 210, bh, 'F');
-                ink(WHITE); font('bold', 11); doc.text('LUFT- UND SYSTEMTECHNIK', 18, ly + bh / 2 + 1.4);
+                const by = ly + lh * 173 / 1328, bh = lh * (513 - 173 + 1) / 1328;
+                fill(RED); doc.rect(0, by, 210, bh, 'F');
+                ink(WHITE); font('bold', 11); doc.text('LUFT- UND SYSTEMTECHNIK', 18, by + bh / 2 + 1.4);
                 doc.addImage(logo.data, 'PNG', 210 - lw - 5, ly, lw, lh, 'dtlogo');
-                draw(RED); doc.setLineWidth(1.5); doc.line(X0, 28, X1, 28);
             };
             const drawPageFooter = (p, total) => {
                 fill(RED); doc.rect(X0, 277, CW, 10, 'F');
@@ -6560,7 +6560,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.76';
+        const APP_VERSION = 'v1.6.77';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
