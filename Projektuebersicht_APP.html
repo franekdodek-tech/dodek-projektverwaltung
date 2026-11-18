@@ -5695,10 +5695,9 @@ function applyPermissions() {
             }
         }
 
-        // ----- PDF-Export (jsPDF + jsPDF-AutoTable, werden erst beim Export von cdnjs geladen) -----
+        // ----- PDF-Export (jsPDF, wird erst beim Export von cdnjs geladen) -----
         const PF_PDF_LIBS = [
             { src: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', integrity: 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk' },
-            { src: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js', integrity: 'sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3' }
         ];
         let pfLogoCache = null;
 
@@ -5714,7 +5713,6 @@ function applyPermissions() {
 
         async function pfLoadPdfLibs() {
             if (!(window.jspdf && window.jspdf.jsPDF)) await pfLoadScript(PF_PDF_LIBS[0]);
-            if (!window.jspdf.jsPDF.API.autoTable) await pfLoadScript(PF_PDF_LIBS[1]);
         }
 
         async function pfLoadLogo() {
@@ -5750,112 +5748,258 @@ function applyPermissions() {
             }
         }
 
-        // Erzeugt das PDF (A4 hoch): Seite 1 Prüfzertifikat, danach je Modul eine Seite (bei vielen Prüfpunkten mehrere)
+        // Erzeugt das PDF (A4 hoch, Dodek Corporate Design): Seite 1 Prüfzertifikat, danach je Modul eine Seite (bei vielen Prüfpunkten mehrere)
         function buildPruefbuchPdf(logo) {
             const pf = window._pf;
             const a = window.anlagenDatabase[pf.anlageId] || {};
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
-            const W = 210, H = 297, M = 15;
+            const X0 = 14, CW = 183, X1 = X0 + CW;             // Nutzbreite 183 mm
+            const BOTTOM = 268;                                 // darunter: Fußzeile
+            const RED = [204, 0, 0], DG = [74, 74, 74], MG = [136, 136, 136], LG = [242, 242, 242], TXT = [51, 51, 51], LN = [187, 187, 187], WHITE = [255, 255, 255];
+            const fill = c => doc.setFillColor(c[0], c[1], c[2]);
+            const draw = c => doc.setDrawColor(c[0], c[1], c[2]);
+            const ink = c => doc.setTextColor(c[0], c[1], c[2]);
+            const font = (style, size) => { doc.setFont('helvetica', style); doc.setFontSize(size); };
             // Standard-Schrift kann nur Latin-1/WinAnsi: übrige Zeichen ersetzen
-            const t = s => String(s == null ? '' : s).replace(/[^\u0000-ÿ–—‘-„•€]/g, '?');
+            const t = s => String(s == null ? '' : s).replace(/Δ/g, 'Delta ').replace(/[^\u0000-ÿ–—‘-„•€]/g, '?');
             const val = (nr, pid) => { const e = pf.ergebnisse[`${nr}_${pid}`]; return e && e.bewertung ? String(e.bewertung) : ''; };
 
-            const drawHeader = (title, sub) => {
-                const lh = 18;
-                doc.addImage(logo.data, 'PNG', M, 10, lh * logo.ratio, lh, 'dtlogo');
-                const x = M + lh * logo.ratio + 8;
-                doc.setTextColor(0); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-                doc.text('LUFT- UND SYSTEMTECHNIK', x, 15);
-                doc.setFontSize(16); doc.text(t(title), x, 24, { maxWidth: W - M - x });
-                doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-                doc.text(t(sub), W - M, 15, { align: 'right' });
-                doc.setDrawColor(0); doc.setLineWidth(0.8); doc.line(M, 36, W - M, 36);
+            // ----- Kopf- und Fußzeile (alle Seiten) -----
+            const drawPageHeader = () => {
+                fill(RED); doc.rect(14, 10, 120, 18, 'F');
+                ink(WHITE); font('bold', 11); doc.text('LUFT- UND SYSTEMTECHNIK', 18, 22);
+                const lh = 18, lw = lh * logo.ratio;
+                doc.addImage(logo.data, 'PNG', X1 - lw, 8, lw, lh, 'dtlogo');
+                draw(RED); doc.setLineWidth(1.5); doc.line(X0, 28, X1, 28);
+            };
+            const drawPageFooter = (p, total) => {
+                fill(RED); doc.rect(X0, 277, CW, 10, 'F');
+                ink(WHITE); font('bold', 7);
+                doc.text('ABSAUG- UND FILTERANLAGEN — SCHALLSCHUTZ — WÄRMERÜCKGEWINNUNG', 18, 283.2);
+                doc.text(`Seite ${p} / ${total}`, X1 - 4, 283.2, { align: 'right' });
+            };
+            const drawCheckbox = (x, y, size, checked, label) => {
+                doc.setLineWidth(0.3); draw(DG); doc.rect(x, y, size, size);
+                if (checked) {
+                    doc.setLineWidth(0.5); draw(RED);
+                    doc.line(x + 0.8, y + size / 2, x + size / 2, y + size - 0.8);
+                    doc.line(x + size / 2, y + size - 0.8, x + size + 1.5, y - 1);
+                }
+                font('normal', 8); ink(DG); doc.text(t(label), x + size + 1.5, y + size - 0.4);
+            };
+            // Feld mit Label, Wert über der Schreiblinie
+            const drawField = (x, y, w, label, value, dashed) => {
+                font('normal', 7); ink(MG); doc.text(t(label), x, y);
+                doc.setLineWidth(0.3); draw(LN);
+                if (dashed) doc.setLineDashPattern([1.2, 1.2], 0);
+                doc.line(x, y + 6.2, x + w, y + 6.2);
+                if (dashed) doc.setLineDashPattern([], 0);
+                if (value) { font('normal', 9); ink(TXT); doc.text(doc.splitTextToSize(t(value), w)[0], x, y + 5.2); }
             };
 
-            // ----- Seite 1: Prüfzertifikat -----
+            // ===== Seite 1: Prüfzertifikat =====
             const m0 = pfModuleDef(0);
             const p0 = m0 ? pfSortedPunkte(m0) : [];
             const label = pp => { const s = pfPunktText(pp); const i = s.indexOf(' – '); return i >= 0 ? s.slice(i + 3) : s; };
-            const rowsOf = re => p0.filter(pp => re.test(pfPunktText(pp))).map(pp => [t(label(pp)), t(val(0, pfPunktId(pp)))]);
+            const fieldsOf = re => p0.filter(pp => re.test(pfPunktText(pp))).map(pp => [label(pp), val(0, pfPunktId(pp))]);
             const findVal = re => { const pp = p0.find(x => re.test(pfPunktText(x))); return pp ? val(0, pfPunktId(pp)) : ''; };
             const firma = findVal(/^Auftraggeber – Firma/), strasse = findVal(/^Auftraggeber – Str/), ort = findVal(/^Auftraggeber – PLZ/);
             const termin = findVal(/^Nächster/);
             const datumDe = fmtAnlageDate(pf.datum);
             const jahr = (pf.datum || '').slice(0, 4);
 
-            drawHeader('Prüfbuch', 'Prüfzertifikat');
-            const tblOpts = { theme: 'grid', styles: { fontSize: 10, cellPadding: 2.2, textColor: 0, lineColor: 0, lineWidth: 0.2 }, headStyles: { fillColor: [0, 0, 0], textColor: 255 }, columnStyles: { 0: { cellWidth: 50, fontStyle: 'bold' } }, margin: { left: M, right: M } };
-            const auftrag = rowsOf(/^Auftraggeber/);
-            const anlageRows = [...rowsOf(/^(Angaben zur Anlage|Interne Angaben)/), ['Anlagen-Nr.', t(a.anlagenNr)], ['Bezeichnung', t(a.bezeichnung)]];
-            doc.autoTable({ ...tblOpts, startY: 46, head: [['Auftraggeber', '']], body: auftrag });
-            doc.autoTable({ ...tblOpts, startY: doc.lastAutoTable.finalY + 6, head: [['Angaben zur Anlage', '']], body: anlageRows });
-            let y = doc.lastAutoTable.finalY + 10;
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
-            doc.text(`Datum der Prüfung: ${datumDe}`, M, y);
-            y += 7;
-            doc.text(`Nächster empfohlener Prüftermin: ${t(termin)}`, M, y);
-            y += 10;
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+            drawPageHeader();
+            fill(LG); draw([204, 204, 204]); doc.setLineWidth(0.3); doc.rect(X0, 35, CW, 10, 'FD');
+            ink(DG); font('bold', 14); doc.text('Prüfzertifikat', 105.5, 42.2, { align: 'center' });
+            font('normal', 10); ink(DG);
             const fliess = `Hiermit bestätigen wir, ${firma}, ${strasse}, ${ort}, der Firma Dodek, dass Sie in unserem Auftrag am ${datumDe} eine eingehende Prüfung der folgenden Anlage vorgenommen hat.`;
-            doc.text(doc.splitTextToSize(t(fliess), W - 2 * M), M, y);
+            doc.text(doc.splitTextToSize(t(fliess), CW), X0, 53, { lineHeightFactor: 1.4 });
 
-            // Unterschrift Kunde (links)
-            const sy = 205, sw = 80, sh = 27;
-            if (pf.sigKunde) doc.addImage(pf.sigKunde, 'PNG', M, sy, sw, sh);
-            doc.setDrawColor(0); doc.setLineWidth(0.4); doc.line(M, sy + sh + 2, M + sw + 5, sy + sh + 2);
-            doc.setFontSize(9); doc.text('Firmenstempel / Unterschrift Auftraggeber', M, sy + sh + 7);
+            const colW = 84, colR = X1 - colW;
+            font('bold', 8); ink(RED);
+            doc.text('Auftraggeber', X0, 76); doc.text('Angaben zur Anlage', colR, 76);
+            const left = fieldsOf(/^Auftraggeber/);
+            left.push(['Datum der Prüfung', datumDe]);
+            const right = [...fieldsOf(/^(Angaben zur Anlage|Interne Angaben)/), ['Anlagen-Nr.', a.anlagenNr || ''], ['Bezeichnung', a.bezeichnung || '']];
+            left.forEach((f, i) => drawField(X0, 84 + i * 12, colW, f[0], f[1]));
+            right.forEach((f, i) => drawField(colR, 84 + i * 12, colW, f[0], f[1]));
+
+            fill(RED); doc.rect(X0, 195, CW, 8, 'F');
+            ink(WHITE); font('bold', 8);
+            doc.text(`Prüfjahr ${jahr}`, 18, 200.3);
+            doc.text(`Nächster empfohlener PRÜFTERMIN: ${t(termin)}`, X1 - 4, 200.3, { align: 'right' });
+
+            // Unterschrift Auftraggeber (links)
+            font('normal', 7); ink(MG); doc.text('Firmenstempel / Unterschrift Auftraggeber', X0, 213);
+            if (pf.sigKunde) doc.addImage(pf.sigKunde, 'PNG', X0, 220, 80, 26.7);
+            draw(LN); doc.setLineWidth(0.3); doc.line(X0, 255, X0 + 80, 255);
             // Prüfer im Siegelrahmen (rechts)
-            const cx = W - M - 30, cy = 232, r = 28;
-            doc.setLineWidth(0.8); doc.circle(cx, cy, r); doc.setLineWidth(0.3); doc.circle(cx, cy, r - 2.5);
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
-            doc.text('DODEK TECHNIK', cx, cy - 17, { align: 'center' });
-            if (pf.sigPruefer) doc.addImage(pf.sigPruefer, 'PNG', cx - 20, cy - 13, 40, 13.3);
-            doc.text('PRÜFSIEGEL', cx, cy + 8, { align: 'center' });
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-            doc.text(datumDe, cx, cy + 14, { align: 'center' });
-            doc.setFontSize(9);
-            doc.text('Datum und Unterschrift Prüfer', cx, cy + r + 6, { align: 'center' });
-            // Prüfjahr / Prüftermin
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
-            doc.text(`Prüfjahr ${jahr}`, M, H - 22);
-            doc.text(`nächster empfohlener PRÜFTERMIN ${t(termin)}`, M, H - 14);
+            draw(RED); doc.setLineWidth(1.5); doc.ellipse(154, 237, 40, 22);
+            font('bold', 7); ink(RED); doc.text('DODEK TECHNIK', 154, 221, { align: 'center' });
+            if (pf.sigPruefer) doc.addImage(pf.sigPruefer, 'PNG', 129, 226, 50, 16.7);
+            font('normal', 6); ink(MG); doc.text('PRÜFSIEGEL', 154, 250, { align: 'center' });
+            font('normal', 7); doc.text(datumDe, 154, 263.5, { align: 'center' });
+            doc.text('Datum und Unterschrift Prüfer', 154, 267.5, { align: 'center' });
 
-            // ----- Folgeseiten: je Modul -----
+            // ===== Folgeseiten: je Modul =====
             const footers = {};
+            let cur = null;                                     // aktuelles Modul { m, kuerzel }
+            const newModulePage = () => {
+                doc.addPage();
+                footers[doc.getNumberOfPages()] = cur.kuerzel;
+                drawPageHeader();
+                fill(RED); doc.rect(X0, 35, CW, 10, 'F');
+                ink(WHITE); font('bold', 12);
+                let fs = 12; const name = t(cur.m.ModulName);
+                while (fs > 8 && doc.getTextWidth(name) > 90) { fs -= 0.5; doc.setFontSize(fs); }
+                doc.text(name, 105.5, 41.8, { align: 'center' });
+                font('normal', 8); doc.text('Service- und Inspektionsliste', X1 - 4, 41.5, { align: 'right' });
+                return 52;
+            };
+            const COLS = { nr: [14, 10], bez: [24, 85], erg: [109, 55], bem: [164, 33] };
+            const drawTableHead = y => {
+                fill(DG); doc.rect(X0, y, CW, 7, 'F');
+                ink(WHITE); font('bold', 8);
+                doc.text('Nr.', COLS.nr[0] + 5, y + 4.8, { align: 'center' });
+                doc.text('Bezeichnung', COLS.bez[0] + 2, y + 4.8);
+                doc.text('Ergebnis / Wert', COLS.erg[0] + 2, y + 4.8);
+                doc.text('Bemerkung', COLS.bem[0] + 2, y + 4.8);
+                return y + 7;
+            };
+            // Checkbox-Optionen nebeneinander, Umbruch innerhalb der Spalte
+            const layoutChecks = (pp, v) => {
+                let opts = pfPunktOptionen(pp).filter(o => o !== 'entfällt');
+                if (v === 'entfällt' || (v && !opts.includes(v))) opts = [...opts, v];
+                font('normal', 8);
+                let x = 0, line = 0; const items = [];
+                opts.forEach(o => {
+                    const w = 3 + 1.5 + doc.getTextWidth(t(o)) + 3.5;
+                    if (x > 0 && x + w > COLS.erg[1] - 2) { x = 0; line++; }
+                    items.push({ o, x, line, checked: v === o }); x += w;
+                });
+                return { items, lines: line + 1 };
+            };
+
             pf.module.filter(nr => nr !== 0).forEach(nr => {
                 const m = pfModuleDef(nr);
                 if (!m) return;
-                const kuerzel = t(m.ModulName.split(/[\s(]/)[0].toUpperCase());
-                doc.addPage();
-                const first = doc.getNumberOfPages();
-                const body = pfSortedPunkte(m).map(pp => {
-                    const pid = pfPunktId(pp);
-                    const e = pf.ergebnisse[`${nr}_${pid}`] || {};
-                    const v = e.bewertung ? String(e.bewertung) + (pfPunktTyp(pp) === 'messwert' && pp.einheit ? ' ' + pp.einheit : '') : '';
-                    return [pid, t(pfPunktText(pp)), t(v), t(e.bemerkung || '')];
-                });
+                cur = { m, kuerzel: t(m.ModulName.split(/[\s(]/)[0].toUpperCase()) };
+                let y = newModulePage();
+                const ensure = (h, withHead) => {
+                    if (y + h <= BOTTOM) return;
+                    y = newModulePage();
+                    if (withHead) y = drawTableHead(y);
+                };
+
+                const punkte = pfSortedPunkte(m);
+                // Zeilen-Rendering je Prüfpunkt-Typ: auswahl/ja_nein → Checkboxen, freitext/messwert → Schreiblinie
+                const renderRows = list => {
+                    y = drawTableHead(y);
+                    list.forEach((pp, idx) => {
+                        const pid = pfPunktId(pp), typ = pfPunktTyp(pp);
+                        const e = pf.ergebnisse[`${nr}_${pid}`] || {};
+                        const v = e.bewertung ? String(e.bewertung) : '';
+                        font('normal', 9);
+                        const bezLines = doc.splitTextToSize(t(pfPunktText(pp)), COLS.bez[1] - 4);
+                        font('normal', 7.5);
+                        const bemLines = e.bemerkung ? doc.splitTextToSize(t(e.bemerkung), COLS.bem[1] - 3) : [];
+                        const isCheck = typ === 'auswahl' || typ === 'ja_nein';
+                        const unit = typ === 'messwert' && pp.einheit ? t(pp.einheit) : '';
+                        let chk = null, valLines = [], lineW = COLS.erg[1] - 4;
+                        if (isCheck) chk = layoutChecks(pp, v);
+                        else {
+                            font('normal', 7); const uw = unit ? doc.getTextWidth(unit) + 2 : 0;
+                            lineW = COLS.erg[1] - 4 - uw;
+                            font('normal', 9); valLines = v ? doc.splitTextToSize(t(v), lineW) : [];
+                        }
+                        const ergH = isCheck ? chk.lines * 5 + 3 : Math.max(1, valLines.length) * 4.8 + 3.5;
+                        const h = Math.max(8, bezLines.length * 4 + 4, bemLines.length * 3.4 + 3.5, ergH);
+                        ensure(h, true);
+                        if (idx % 2 === 0) { fill([247, 247, 247]); doc.rect(X0, y, CW, h, 'F'); }
+                        font('normal', 9); ink(TXT);
+                        doc.text(String(pid), COLS.nr[0] + 5, y + 5.2, { align: 'center' });
+                        doc.text(bezLines, COLS.bez[0] + 2, y + 5.2, { lineHeightFactor: 1.15 });
+                        const ex = COLS.erg[0] + 2;
+                        if (isCheck) {
+                            chk.items.forEach(it => drawCheckbox(ex + it.x, y + 2.4 + it.line * 5, 3, it.checked, it.o));
+                        } else {
+                            font('normal', 9); ink(TXT);
+                            valLines.forEach((ln, i) => doc.text(ln, ex, y + 5.2 + i * 4.8));
+                            const ly = y + 6.4 + (Math.max(1, valLines.length) - 1) * 4.8;
+                            draw(LN); doc.setLineWidth(0.3); doc.line(ex, ly, ex + lineW, ly);
+                            if (unit) { font('normal', 7); ink(MG); doc.text(unit, ex + lineW + 1.5, ly - 0.8); }
+                        }
+                        if (bemLines.length) { font('normal', 7.5); ink(DG); doc.text(bemLines, COLS.bem[0] + 2, y + 4.6, { lineHeightFactor: 1.2 }); }
+                        draw([224, 224, 224]); doc.setLineWidth(0.2); doc.line(X0, y + h, X1, y + h);
+                        y += h;
+                    });
+                };
+
+                if (nr !== 14) renderRows(punkte);
+                else {
+                    // Formular-Layout (Allgemeine Angaben): Gruppen nach Präfix vor " – "
+                    const groups = [], byName = {}, rest = [];
+                    punkte.forEach(pp => {
+                        if (pfPunktTyp(pp) !== 'freitext') { rest.push(pp); return; }
+                        const s = pfPunktText(pp), i = s.indexOf(' – ');
+                        const g = i >= 0 ? s.slice(0, i) : '';
+                        if (!byName[g]) { byName[g] = { name: g, items: [] }; groups.push(byName[g]); }
+                        byName[g].items.push({ label: i >= 0 ? s.slice(i + 3) : s, value: val(nr, pfPunktId(pp)) });
+                    });
+                    const sections = groups.filter(g => g.name && !/^Folgepr/.test(g.name));
+                    const folge = groups.filter(g => /^Folgepr/.test(g.name));
+                    const plain = groups.filter(g => !g.name);
+                    const FH = 11;
+                    const drawGroup = (g, x, w, top) => {
+                        font('bold', 8); ink(RED); doc.text(t(g.name), x, top);
+                        g.items.forEach((f, i) => drawField(x, top + 8 + i * FH, w, f.label, f.value));
+                    };
+                    for (let i = 0; i < sections.length; i += 2) {
+                        const pair = sections.slice(i, i + 2);
+                        const h = Math.max(...pair.map(g => 8 + g.items.length * FH)) + 6;
+                        ensure(h); y += 4;
+                        pair.forEach((g, k) => drawGroup(g, k === 0 ? X0 : colR, colW, y));
+                        y += h - 4;
+                    }
+                    for (let i = 0; i < folge.length; i += 3) {
+                        const row = folge.slice(i, i + 3);
+                        const h = Math.max(...row.map(g => 8 + g.items.length * FH)) + 8;
+                        ensure(h); y += 4;
+                        fill(LG); doc.rect(X0, y - 5, CW, h - 2, 'F');
+                        row.forEach((g, k) => drawGroup(g, X0 + 3 + k * 60, 54, y));
+                        y += h - 4;
+                    }
+                    plain.forEach(g => g.items.forEach(f => {
+                        // großzügiges Schreibfeld: Label oben, zwei gestrichelte Linien
+                        ensure(26); y += 4;
+                        drawField(X0, y, CW, f.label, f.value, true);
+                        doc.setLineWidth(0.3); draw(LN); doc.setLineDashPattern([1.2, 1.2], 0); doc.line(X0, y + 15, X1, y + 15); doc.setLineDashPattern([], 0);
+                        y += 22;
+                    }));
+                    if (rest.length) { y += 6; ensure(20); renderRows(rest); }
+                }
+
+                // Modulbemerkung: leicht rot hinterlegt, roter Strich links
                 const modBem = pf.modulBemerkungen[nr];
-                if (modBem) body.push([{ content: t('Bemerkung zum Modul: ' + modBem), colSpan: 4, styles: { fontStyle: 'italic' } }]);
-                doc.autoTable({
-                    startY: 44, margin: { top: 44, left: M, right: M, bottom: 18 }, theme: 'grid',
-                    head: [['Nr.', 'Bezeichnung', 'Ergebnis / Wert', 'Bemerkung']], body,
-                    styles: { fontSize: 9, cellPadding: 2, minCellHeight: 7, textColor: 0, lineColor: 0, lineWidth: 0.2, valign: 'middle' },
-                    headStyles: { fillColor: [0, 0, 0], textColor: 255 },
-                    columnStyles: { 0: { cellWidth: 10, halign: 'center' }, 1: { cellWidth: 82 }, 2: { cellWidth: 40 } },
-                    didDrawPage: () => drawHeader(m.ModulName, 'Service- und Inspektionsliste')
-                });
-                for (let p = first; p <= doc.getNumberOfPages(); p++) footers[p] = kuerzel;
+                if (modBem) {
+                    font('italic', 8.5);
+                    const lines = doc.splitTextToSize(t(modBem), CW - 10);
+                    const h = 8 + lines.length * 4;
+                    y += 6; ensure(h);
+                    fill([250, 234, 234]); doc.rect(X0, y, CW, h, 'F');
+                    fill(RED); doc.rect(X0, y, 0.8, h, 'F');
+                    font('bold', 7.5); ink(DG); doc.text('Bemerkung zum Modul:', X0 + 4, y + 4.5);
+                    font('italic', 8.5); ink(DG); doc.text(lines, X0 + 4, y + 9);
+                }
             });
 
-            // Fußzeilen: Modulkürzel + Seitenzahl
+            // Fußzeilen: roter Balken, Modulkürzel, Seitenzahl
             const total = doc.getNumberOfPages();
             for (let p = 1; p <= total; p++) {
                 doc.setPage(p);
-                doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(0);
-                if (footers[p]) { doc.setFont('helvetica', 'bold'); doc.text(footers[p], M, H - 8); }
-                doc.setFont('helvetica', 'normal');
-                doc.text(`Seite ${p} / ${total}`, W - M, H - 8, { align: 'right' });
+                drawPageFooter(p, total);
+                if (footers[p]) { font('bold', 7); ink(MG); doc.text(footers[p], X0, 274.5); }
             }
             return doc;
         }
@@ -6371,7 +6515,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.73';
+        const APP_VERSION = 'v1.6.74';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
