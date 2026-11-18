@@ -5474,18 +5474,18 @@ function applyPermissions() {
                         const input = /^Bemerkung/.test(text)
                             ? `<textarea class="pf-note" style="display:block;" ${ro ? 'readonly' : ''} oninput="pfSetValue(${nr},${pid},this.value)">${escapeHtml(val)}</textarea>`
                             : `<input type="text" class="pf-input" value="${escapeHtml(val)}" ${ro ? 'readonly' : ''} oninput="pfSetValue(${nr},${pid},this.value)">`;
-                        return `<div class="pf-row ${e.uebernommen ? 'pf-uebern' : ''}" id="pfr_${nr}_${pid}">${titel}${input}${vj}</div>`;
+                        return `<div class="pf-row ${e.uebernommen && !ro ? 'pf-uebern' : ''}" id="pfr_${nr}_${pid}">${titel}${input}${vj}</div>`;
                     }
                     const noteBtn = `<button class="pf-note-btn" ${ro ? 'disabled' : ''} onclick="pfToggleNote(${nr},${pid})" title="Bemerkung">✏️</button>`;
                     const showNote = !!(e.bemerkung || val === 'n.i.O.');
                     const note = `<textarea class="pf-note" id="pfn_${nr}_${pid}" placeholder="Bemerkung…" ${ro ? 'readonly' : ''} style="${showNote ? '' : 'display:none;'}" oninput="pfSetNote(${nr},${pid},this.value)">${escapeHtml(e.bemerkung || '')}</textarea>`;
                     if (typ === 'messwert') {
-                        return `<div class="pf-row ${e.uebernommen ? 'pf-uebern' : ''}" id="pfr_${nr}_${pid}">${titel}
+                        return `<div class="pf-row ${e.uebernommen && !ro ? 'pf-uebern' : ''}" id="pfr_${nr}_${pid}">${titel}
                             <div class="pf-btns"><input type="number" step="any" class="pf-input" style="flex:1 1 140px;" value="${escapeHtml(val)}" ${ro ? 'readonly' : ''} oninput="pfSetValue(${nr},${pid},this.value)">
                             ${pp.einheit ? `<span class="pf-einheit">${escapeHtml(pp.einheit)}</span>` : ''}${noteBtn}</div>${note}${vj}</div>`;
                     }
                     const btns = pfPunktOptionen(pp).map(opt => `<button class="pf-btn ${opt === 'entfällt' ? 'entf' : ''} ${val === opt ? 'sel' : ''}" data-nr="${nr}" data-pid="${pid}" data-val="${escapeHtml(opt)}" ${ro ? 'disabled' : ''} onclick="pfPick(this)">${escapeHtml(opt)}</button>`).join('');
-                    return `<div class="pf-row ${e.uebernommen ? 'pf-uebern' : ''}" id="pfr_${nr}_${pid}">${titel}<div class="pf-btns">${btns}${noteBtn}</div>${note}${vj}</div>`;
+                    return `<div class="pf-row ${e.uebernommen && !ro ? 'pf-uebern' : ''}" id="pfr_${nr}_${pid}">${titel}<div class="pf-btns">${btns}${noteBtn}</div>${note}${vj}</div>`;
                 }).join('');
                 return `<details class="pf-module" ${idx === 0 || ro ? 'open' : ''}>
                     <summary>${nr} – ${escapeHtml(m.ModulName)} <span class="pf-prog" id="pfp_${nr}">${pfProgressText(nr)}</span></summary>
@@ -6140,7 +6140,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.71';
+        const APP_VERSION = 'v1.6.72';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
