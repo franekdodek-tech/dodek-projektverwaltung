@@ -2403,7 +2403,7 @@
                 <div style="padding: 20px;">
                     <button id="uvvInitBtn" onclick="initUVVModule()" class="btn-secondary" style="margin-bottom: 15px;">DodekUVVModule initialisieren</button>
                     <div id="settingsUVVModuleList"></div>
-                    <p style="font-size:12px;color:#888;margin-top:8px;">Pflichtmodule (0 und 14) sind immer aktiv. Prüfpunkte werden direkt in der SharePoint-Liste bearbeitet.</p>
+                    <p style="font-size:12px;color:#888;margin-top:8px;">Pflichtmodule (Spalte „Pflicht“) sind immer aktiv und nicht abschaltbar. Prüfpunkte werden direkt in der SharePoint-Liste bearbeitet.</p>
                 </div>
             </div>
 
@@ -4343,9 +4343,6 @@ function applyPermissions() {
             }
             const active = a ? (a.aktiveModule || []) : [];
             document.getElementById('am_modules').innerHTML = Object.keys(ANLAGEN_MODULE_NAMES).map(Number).map(n => {
-                if (n === 0 || n === 14) {
-                    return `<label style="display:flex;align-items:center;gap:6px;color:#999;"><input type="checkbox" checked disabled> ${n} – ${escapeHtml(ANLAGEN_MODULE_NAMES[n])} <em style="font-size:11px;">(immer enthalten)</em></label>`;
-                }
                 return `<label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="am-module-cb" value="${n}" ${active.includes(n) ? 'checked' : ''}> ${n} – ${escapeHtml(ANLAGEN_MODULE_NAMES[n])}</label>`;
             }).join('');
             document.getElementById('am_saveBtn').disabled = false;
@@ -4376,7 +4373,7 @@ function applyPermissions() {
                 showMessage(`Anlagen-Nr. ${anlagenNr} existiert bereits`, 'error');
                 return;
             }
-            const modules = [0, ...Array.from(document.querySelectorAll('.am-module-cb:checked')).map(cb => parseInt(cb.value, 10)).sort((a, b) => a - b), 14];
+            const modules = Array.from(document.querySelectorAll('.am-module-cb:checked')).map(cb => parseInt(cb.value, 10)).sort((a, b) => a - b);
             const values = {
                 Bezeichnung:      bezeichnung,
                 AnlagenTyp:       anlagenTyp,
@@ -5427,6 +5424,11 @@ function applyPermissions() {
         function pfStart() {
             const nrs = new Set(Array.from(document.querySelectorAll('.pf-mod-cb:checked')).map(cb => parseInt(cb.value, 10)));
             (uvvModuleCache || []).filter(m => m.Pflicht).forEach(m => nrs.add(m.ModulNr));
+            // Modul 0 (Prüfzertifikat) muss enthalten sein; fehlt es (z. B. Pflicht=false oder Modul nicht in DodekUVVModule), kein Start
+            if (!nrs.has(0)) {
+                showMessage('Prüfung kann nicht gestartet werden: Modul 0 (Prüfzertifikat) ist nicht enthalten. In DodekUVVModule prüfen, ob Modul 0 existiert und Pflicht = Ja gesetzt ist.', 'error');
+                return;
+            }
             window._pf.module = Array.from(nrs).sort((x, y) => x - y);
             renderPruefungForm();
             window.scrollTo({ top: 0, behavior: 'instant' });
@@ -6560,7 +6562,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.78';
+        const APP_VERSION = 'v1.6.79';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
