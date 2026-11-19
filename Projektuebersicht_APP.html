@@ -2690,6 +2690,31 @@
             </div>
         </div>
 
+        <!-- PROJEKT: mit Anlage verknüpfen (Mini-Modal) -->
+        <div id="projektAnlageLinkModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto;">
+            <div style="background:white; max-width:460px; margin:80px auto; border-radius:6px; padding:30px; position:relative;">
+                <button onclick="closeProjektAnlageLinkModal()" style="position:absolute; top:15px; right:15px; background:none; border:none; font-size:22px; cursor:pointer; color:#666;">✕</button>
+                <h3 style="margin-bottom:20px; color:#366092;">Projekt <span id="pal_projekt"></span> mit Anlage verknüpfen</h3>
+                <div class="form-group">
+                    <label>Anlage *</label>
+                    <select id="pal_anlage"></select>
+                </div>
+                <div class="form-group">
+                    <label>Typ *</label>
+                    <select id="pal_typ">
+                        <option value="Erstverkauf">Erstverkauf</option>
+                        <option value="UVV-Prüfung">UVV-Prüfung</option>
+                        <option value="Ersatzteile">Ersatzteile</option>
+                        <option value="Sonstiges">Sonstiges</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:20px; justify-content:flex-end;">
+                    <button onclick="closeProjektAnlageLinkModal()" class="btn-secondary">Abbrechen</button>
+                    <button id="pal_saveBtn" onclick="saveProjektAnlageLink()">💾 Speichern</button>
+                </div>
+            </div>
+        </div>
+
         <!-- CONTACT MODAL -->
         <div id="contactModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto;">
             <div style="background:white; max-width:700px; margin:40px auto; border-radius:6px; padding:30px; position:relative;">
@@ -2863,6 +2888,7 @@
                     <button onclick="showView('dashboard')" class="btn-secondary">⬅️ Zurück zur Übersicht</button>
                     <button onclick="closeProject()" class="btn-secondary" title="Alle EK-Positionen auf Lager/Fakturiert setzen">✅ Projekt abschließen</button>
                     <button id="anlageCaptureBtn" onclick="openAnlageModal(document.getElementById('projectNumber').value.trim())" class="btn-secondary" title="Aus diesem Projekt eine Anlage erfassen">🏭 Anlage erfassen</button>
+                    <button id="anlageLinkBtn" onclick="openProjektAnlageLinkModal()" class="btn-secondary" title="Dieses Projekt mit einer bestehenden Anlage verknüpfen (Erstverkauf, UVV-Prüfung, Ersatzteile, Sonstiges)">🔗 Mit Anlage verknüpfen</button>
                     <button onclick="deleteCurrentProject()" class="btn-danger">🗑️ Projekt löschen</button>
                 </div>
             </div>
@@ -3333,6 +3359,8 @@ function applyPermissions() {
             // "Anlage erfassen" im Projekt: nur Admin und Editor
             const anlageCaptureBtn = document.getElementById('anlageCaptureBtn');
             if (anlageCaptureBtn) anlageCaptureBtn.style.display = isEditor ? '' : 'none';
+            const anlageLinkBtn = document.getElementById('anlageLinkBtn');
+            if (anlageLinkBtn) anlageLinkBtn.style.display = isEditor ? '' : 'none';
 
             // Settings-Tab nur für Admin
             const settingsBtn = document.getElementById('settingsBtn');
@@ -4316,6 +4344,7 @@ function applyPermissions() {
             const a = editId ? window.anlagenDatabase[editId] : null;
             document.getElementById('am_editId').value = a ? a.id : '';
             document.getElementById('am_title').textContent = a ? 'Anlage bearbeiten' : 'Neue Anlage';
+            window._anlageOriginProject = a ? '' : (originProject || '');   // Projekt, aus dem die Neuanlage gestartet wurde (für die Erstverkauf-Verknüpfung)
 
             const typen = getAnlagenTypen();
             if (a && a.anlagenTyp && !typen.includes(a.anlagenTyp)) typen.push(a.anlagenTyp); // Typ, der inzwischen aus den Einstellungen entfernt wurde
@@ -4396,9 +4425,12 @@ function applyPermissions() {
                     await updateAnlageInSharePoint(existing._spId, { AnlagenNr: anlagenNr, ...values }); // PATCH; Verknüpfungen bleiben unberührt
                     Object.assign(existing, local);
                 } else {
-                    const result = await createAnlageInSharePoint({ AnlagenNr: anlagenNr, ...values, VerknuepfteProjekte: '[]' });
+                    // Aus einem Projekt heraus angelegt: Abfrage, ob das Projekt der Erstverkauf ist → dann gleich verknüpfen
+                    const origin = window._anlageOriginProject;
+                    const links = (origin && confirm(`Projekt ${origin} als Erstverkauf mit der neuen Anlage verknüpfen?`)) ? [{ projektnr: origin, typ: 'Erstverkauf' }] : [];
+                    const result = await createAnlageInSharePoint({ AnlagenNr: anlagenNr, ...values, VerknuepfteProjekte: JSON.stringify(links) });
                     const newId = result && (result.id || result.Id);
-                    window.anlagenDatabase[newId] = { _spId: newId, id: newId, ...local, verknuepfteProjekte: [] };
+                    window.anlagenDatabase[newId] = { _spId: newId, id: newId, ...local, verknuepfteProjekte: links };
                 }
                 updateAnlagenSubnav();
                 if (document.getElementById('anlagenView').classList.contains('active')) {
@@ -4513,6 +4545,48 @@ function applyPermissions() {
                 closeAnlageLinkModal();
                 renderAnlageDetail();
                 showMessage('Projekt verknüpft', 'success');
+            } catch (e) {
+                console.error('Verknüpfung speichern fehlgeschlagen:', e);
+                showMessage('Verknüpfung konnte nicht gespeichert werden: ' + e.message, 'error');
+                btn.disabled = false;
+            }
+        }
+
+        // ----- Aus einem Projekt heraus mit einer bestehenden Anlage verknüpfen -----
+        function openProjektAnlageLinkModal() {
+            const pn = document.getElementById('projectNumber').value.trim();
+            if (!pn) { showMessage('Projektnummer erforderlich', 'error'); return; }
+            const anlagen = Object.values(window.anlagenDatabase || {}).sort((x, y) => (x.anlagenNr || '').localeCompare(y.anlagenNr || ''));
+            if (anlagen.length === 0) { showMessage('Keine Anlagen vorhanden', 'error'); return; }
+            document.getElementById('pal_projekt').textContent = pn;
+            document.getElementById('pal_anlage').innerHTML = anlagen.map(a =>
+                `<option value="${escapeHtml(String(a.id))}">${escapeHtml(a.anlagenNr)} – ${escapeHtml(a.bezeichnung || '')}${a.kunde ? ' (' + escapeHtml(a.kunde) + ')' : ''}</option>`).join('');
+            document.getElementById('pal_typ').value = 'Erstverkauf';
+            document.getElementById('pal_saveBtn').disabled = false;
+            document.getElementById('projektAnlageLinkModal').style.display = 'block';
+        }
+
+        function closeProjektAnlageLinkModal() {
+            document.getElementById('projektAnlageLinkModal').style.display = 'none';
+        }
+
+        async function saveProjektAnlageLink() {
+            const pn = document.getElementById('projectNumber').value.trim();
+            const a = window.anlagenDatabase[document.getElementById('pal_anlage').value];
+            const typ = document.getElementById('pal_typ').value;
+            if (!pn || !a) return;
+            if ((a.verknuepfteProjekte || []).some(l => l.projektnr === pn && l.typ === typ)) {
+                showMessage('Diese Verknüpfung existiert bereits', 'error');
+                return;
+            }
+            const newLinks = [...(a.verknuepfteProjekte || []), { projektnr: pn, typ }];
+            const btn = document.getElementById('pal_saveBtn');
+            btn.disabled = true;
+            try {
+                await updateAnlageInSharePoint(a._spId, { VerknuepfteProjekte: JSON.stringify(newLinks) });
+                a.verknuepfteProjekte = newLinks;
+                closeProjektAnlageLinkModal();
+                showMessage(`Projekt ${pn} mit Anlage ${a.anlagenNr} verknüpft (${typ})`, 'success');
             } catch (e) {
                 console.error('Verknüpfung speichern fehlgeschlagen:', e);
                 showMessage('Verknüpfung konnte nicht gespeichert werden: ' + e.message, 'error');
@@ -6090,6 +6164,9 @@ function applyPermissions() {
         window.openAnlageLinkModal    = openAnlageLinkModal;
         window.closeAnlageLinkModal   = closeAnlageLinkModal;
         window.saveAnlageLink         = saveAnlageLink;
+        window.openProjektAnlageLinkModal  = openProjektAnlageLinkModal;
+        window.closeProjektAnlageLinkModal = closeProjektAnlageLinkModal;
+        window.saveProjektAnlageLink       = saveProjektAnlageLink;
 
         // ===== CONTACTS UI =====
 
@@ -6562,7 +6639,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.79';
+        const APP_VERSION = 'v1.6.80';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
