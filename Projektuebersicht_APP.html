@@ -5409,7 +5409,7 @@ function applyPermissions() {
             const pf = window._pf;
             const a = window.anlagenDatabase[pf.anlageId];
             const mods = (uvvModuleCache || []).filter(m => m.Aktiv || m.Pflicht);
-            const pre = new Set([0, 14, ...((a && a.aktiveModule) || [])]);
+            const pre = new Set((a && a.aktiveModule) || []);
             const body = pf.readonly
                 ? '<p style="color:#888;">Diese Prüfung wurde noch nicht gestartet.</p>'
                 : `<p style="color:#555;margin-bottom:12px;">Module für diese Prüfung auswählen (Vorauswahl: aktive Module der Anlage). Pflichtmodule sind immer enthalten.</p>
@@ -6560,7 +6560,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.77';
+        const APP_VERSION = 'v1.6.78';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
