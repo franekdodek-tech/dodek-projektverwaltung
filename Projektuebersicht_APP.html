@@ -7976,8 +7976,17 @@ function applyPermissions() {
             const myTasksEl = document.getElementById('kpiMyTasks');
             const account = msalInstance?.getAllAccounts?.()?.[0];
             const email = (account?.username || '').toLowerCase().trim();
-            const myMemberId = email.split('.')[0]; // "franek.dodek@dodek.de" → "franek"
-            const memberObj = TEAM_MEMBERS.find(m => m.id === myMemberId) || null;
+            // Zuordnung ohne Mapping-Objekt: Kandidaten aus E-Mail ("franek.dodek@…" → "franek", "franek@…") und
+            // Anzeigename ("Franek Dodek" / "Dodek, Franek" → je Wort) gegen id und name der echten Mitglieder
+            const candidates = [email.split('.')[0], email.split('@')[0],
+                ...(account?.name || '').toLowerCase().split(/[\s,.]+/).filter(Boolean)].filter(Boolean);
+            const realMembers = TEAM_MEMBERS.filter(m => m.id !== 'unassigned' && m.id !== 'not_required');
+            let memberObj = null;
+            for (const c of candidates) {
+                memberObj = realMembers.find(m => String(m.id).toLowerCase() === c || String(m.name || '').toLowerCase() === c) || null;
+                if (memberObj) break;
+            }
+            const myMemberId = memberObj ? memberObj.id : email.split('.')[0];
             const sections = []; // Abschnitte für die Startseite (Handlungsbedarf): gleiche Daten und gleiches HTML wie hier
             if (!memberObj) {
                 myTasksEl.innerHTML = '';
