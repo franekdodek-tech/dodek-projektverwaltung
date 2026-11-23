@@ -31,7 +31,7 @@ Lies diese Datei vollständig, bevor du irgendeine Änderung machst.
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.86 |
+| `Projektuebersicht_APP.html` | v1.6.87 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -180,7 +180,7 @@ Claude-Session: https://claude.ai/code/session_0112q721THq4Xa5MtZn82Y5R
 - Listen `DodekStundennachweise` (`SP_CONFIG.stundennachweiseListId`) und `DodekStundenzeilen` (`SP_CONFIG.stundenZeilenListId`); Spalten wie im Datenmodell der Anforderung (**Annahme: nicht gegen die Listen geprüft**, es gibt keine Spaltenprüfung wie bei der UVV-Liste). `AnlageId` = SharePoint-Id der Anlage, Nachweise laden pro Anlage (`slLoadList()`, `$filter=AnlageId eq …&$top=50`, ohne Signatur-Felder, Cache `window.slNachweise`).
 - Abschnitt „Stundenlohn-Nachweise“ im Anlagendetail nach den Prüfungen (`renderStundenSection()`), Detail/Formular rendern in `#anlagenPruefPane` (`window._sl`). Detail `openStundennachweis(id)` (lädt Nachweis + Zeilen, `trackRecentItem('stunden', …)`), Formular `slOpenForm(n)` (neu/bearbeiten, nur admin/editor), `slSave()`: POST/PATCH Nachweis, bei Bearbeiten werden die Zeilen gelöscht und neu angelegt. Status automatisch `Unterschrieben` (mind. eine Unterschrift) sonst `Entwurf`; `Abgerechnet` bleibt beim Bearbeiten erhalten, ist aber sonst nicht setzbar. Kein Löschen von Nachweisen im UI.
 - Unterschrift-Pads `signatureCanvasDodek` / `signatureCanvasAuftraggeber` (Pointer-Events statt Touch/Mouse-Einzelevents, `isCanvasBlank()`), Base64-PNG in `SignaturDodek` / `SignaturAuftraggeber`. Fahrzeit-Summe aus „davon X h Fz“ in den Besonderheiten.
-- PDF: `buildStundenPdf()` (A4 hoch, jsPDF wie beim Prüfbuch). Die Excel-Vorlage lag nicht vor, Layout nach der Beschreibung; Tel./Fax/E-Mail des Auftragnehmers sind in `SL_FIRMA` leer (keine Werte vorgegeben). Zusätzliches Formularfeld „Adresse Auftraggeber“ (`AuftraggeberAdresse`).
+- PDF: `buildStundenPdf()` (A4 hoch, jsPDF wie beim Prüfbuch), ab v1.6.87 nach der Excel-Vorlage `Stundenlohn-Nachweis DT 26-05-29 Schmitz Gotha H64 Kom. 26029.xls` (Überschriften, Std als „10 h“, „Summe Stunden :“, „davon X h Fz“, Fußzeile Ort | Datum | Unterschrift | Unterschrift - Auftraggeber, Leerzeilen in den Tabellen, eine Seite); Firmendaten des Auftragnehmers (Tel., Fax, E-Mail) in `SL_FIRMA` aus der Vorlage. Zusätzliches Formularfeld „Adresse Auftraggeber“ (`AuftraggeberAdresse`).
 ---
 
 ## Bekannte offene Punkte (Stand 2026-11-05)

@@ -6241,7 +6241,7 @@ function applyPermissions() {
         // ========== STUNDENLOHN-NACHWEISE (ab v1.6.86) ==========
         // Listen DodekStundennachweise (SP_CONFIG.stundennachweiseListId) und DodekStundenzeilen (SP_CONFIG.stundenZeilenListId).
         // Annahme (nicht gegen die Listen geprüft): Spalten heißen intern exakt wie im Datenmodell der Anforderung.
-        const SL_FIRMA = { name: 'Dodek GmbH & Co. KG', strasse: 'Lanzstrasse 2', ort: '88410 Bad Wurzach', tel: '', fax: '', email: '' }; // Tel./Fax/E-Mail: Werte nicht vorgegeben, leer
+        const SL_FIRMA = { name: 'Dodek GmbH & Co. KG', strasse: 'Lanzstrasse 2', ort: '88410 Bad Wurzach', tel: '07564 – 94895-0', fax: '07564 – 94895-50', email: 'contact@dodek.de' }; // Firmendaten aus der Excel-Vorlage
         window.slNachweise = {}; // Schlüssel = Anlagen-SP-Id → { items:[…], error? }
 
         const slDate = v => v ? String(v).slice(0, 10) : '';
@@ -6637,7 +6637,7 @@ function applyPermissions() {
             const colW = 88;
             const agLines = [n.auftraggeber, ...String(n.adresse || '').split(/\r?\n/)].filter(Boolean).flatMap(l => wrap(l, colW - 6));
             const anLines = [SL_FIRMA.name, SL_FIRMA.strasse, SL_FIRMA.ort,
-                SL_FIRMA.tel ? 'Tel.: ' + SL_FIRMA.tel : '', SL_FIRMA.fax ? 'Fax: ' + SL_FIRMA.fax : '', SL_FIRMA.email ? 'E-Mail: ' + SL_FIRMA.email : ''].filter(Boolean);
+                SL_FIRMA.tel ? 'Tel.: ' + SL_FIRMA.tel : '', SL_FIRMA.fax ? 'Fax.: ' + SL_FIRMA.fax : '', SL_FIRMA.email ? 'Email: ' + SL_FIRMA.email : ''].filter(Boolean);
             const bh = Math.max(agLines.length, anLines.length, 3) * 4.6 + 9;
             [[X0, 'Auftraggeber', agLines], [X1 - colW, 'Auftragnehmer', anLines]].forEach(([x, title, lines]) => {
                 doc.setLineWidth(0.3); draw(LN); doc.rect(x, y, colW, bh);
@@ -6655,11 +6655,11 @@ function applyPermissions() {
             };
             kv(X0, 92, 'Baustelle', n.baustelle); kv(X0 + 92, 90, 'Dodek Kom.Nr.', n.projektNr);
             y += 12;
-            kv(X0, 92, 'Externe Belegnr.', n.belegnr); kv(X0 + 92, 90, 'Datum', slFmt(n.datum));
+            kv(X0, 92, 'Belegnr.', n.belegnr); kv(X0 + 92, 90, 'Datum', slFmt(n.datum));
             y += 14;
 
             // Beschreibung
-            font('bold', 10); ink(DG); doc.text('Beschreibung der geleisteten Arbeit', X0, y); y += 5;
+            font('bold', 10); ink(DG); doc.text('Beschreibung der geleisteten Arbeit:', X0, y); y += 5;
             font('normal', 10); ink(TXT);
             const desc = wrap(n.beschreibung || '—', CW);
             desc.forEach(l => { need(5); doc.text(l, X0, y); y += 4.8; });
@@ -6673,11 +6673,12 @@ function applyPermissions() {
                 font('bold', 9); ink(DG); cols.forEach(c => doc.text(c[2], c[0] + 1.5, y + 4.5));
                 y += 6.5;
             };
-            font('bold', 10); ink(DG); need(20); doc.text('Personaleinsatz', X0, y); y += 3.5;
+            font('bold', 10); ink(DG); need(20); doc.text('PERSONALEINSATZ', X0, y); y += 3.5;
             tHead(pc);
             font('normal', 9); ink(TXT);
-            n.zeilen.forEach(z => {
-                const cells = [wrap(z.name, 42), [slFmt(z.datum)], wrap(z.leistung, 47), [slFmtNum(z.stunden)], wrap(z.bes, 45)];
+            const padRows = (arr, min, blank) => arr.concat(Array.from({ length: Math.max(0, min - arr.length) }, () => blank));
+            padRows(n.zeilen, 5, { name: '', datum: '', leistung: '', stunden: null, bes: '' }).forEach(z => {
+                const cells = [wrap(z.name, 42), [slFmt(z.datum)], wrap(z.leistung, 47), [z.stunden == null ? '' : slFmtNum(z.stunden) + ' h'], wrap(z.bes, 45)];
                 const rh = Math.max(...cells.map(c => c.length)) * 4.2 + 2.6;
                 if (y + rh > BOTTOM) { need(1e3); tHead(pc); font('normal', 9); ink(TXT); }
                 doc.setLineWidth(0.2); draw(LN); doc.rect(X0, y, CW, rh);
@@ -6688,17 +6689,16 @@ function applyPermissions() {
             need(8);
             fill(LG); draw(LN); doc.rect(X0, y, CW, 6.5, 'FD');
             font('bold', 9); ink(DG);
-            doc.text('Summe', pc[0][0] + 1.5, y + 4.5); doc.text(slFmtNum(n.summe), pc[3][0] + 1.5, y + 4.5);
-            if (n.summeFz) doc.text(`davon Fahrzeit ${slFmtNum(n.summeFz)} h`, pc[4][0] + 1.5, y + 4.5);
+            doc.text('Summe Stunden :', pc[2][0] + 1.5, y + 4.5); doc.text(slFmtNum(n.summe) + ' h', pc[3][0] + 1.5, y + 4.5);
+            if (n.summeFz) doc.text(`davon ${slFmtNum(n.summeFz)} h Fz`, pc[4][0] + 1.5, y + 4.5);
             y += 15;
 
             // Tabelle Materialverbrauch
-            const mc = [[X0, 25, 'Menge'], [X0 + 25, 117, 'Artikel'], [X0 + 142, 40, 'Liefers-Nr.']];
-            font('bold', 10); ink(DG); need(20); doc.text('Materialverbrauch', X0, y); y += 3.5;
+            const mc = [[X0, 25, 'Menge'], [X0 + 25, 117, 'Artikel'], [X0 + 142, 40, 'Liefers-Nr.:']];
+            font('bold', 10); ink(DG); need(20); doc.text('MATERIALVERBRAUCH', X0, y); y += 3.5;
             tHead(mc);
             font('normal', 9); ink(TXT);
-            if (!n.material.length) { doc.setLineWidth(0.2); draw(LN); doc.rect(X0, y, CW, 6.5); doc.text('—', X0 + 1.5, y + 4.5); y += 6.5; }
-            n.material.forEach(m => {
+            padRows(n.material, 2, { menge: '', artikel: '', lieferscheinNr: '' }).forEach(m => {
                 const cells = [wrap(m.menge, 22), wrap(m.artikel, 114), wrap(m.lieferscheinNr, 37)];
                 const rh = Math.max(...cells.map(c => c.length)) * 4.2 + 2.6;
                 if (y + rh > BOTTOM) { need(1e3); tHead(mc); font('normal', 9); ink(TXT); }
@@ -6710,24 +6710,29 @@ function applyPermissions() {
             y += 8;
 
             // Fußbereich: aufgestellt / geprüft, Unterschriften
-            need(62);
+            need(36);
             font('normal', 10); ink(TXT);
-            doc.text(`Aufgestellt von: ${t(n.aufgestelltVon)}   am: ${slFmt(n.aufgestelltAm)}`, X0, y);
-            doc.text(`Geprüft von: ${t(n.geprueftVon)}   am: ${slFmt(n.geprueftAm)}`, X0 + 92, y);
+            doc.text(`Aufgestellt von ${t(n.aufgestelltVon)}   am ${slFmt(n.aufgestelltAm)}   ;Geprüft von ${t(n.geprueftVon)}   am ${slFmt(n.geprueftAm)}`, X0, y);
             y += 9;
-            const sigBlock = (x, label, src, withOrt) => {
-                if (withOrt) { font('normal', 9); ink(TXT); doc.text(`Ort / Datum: ${t(n.ort)}${n.ort ? ', ' : ''}${slFmt(n.aufgestelltAm)}`, x, y); }
-                const sy = y + 3, sh = 19; let sw = 76;
-                if (src) { try { const pr = doc.getImageProperties(src); sw = Math.min(80, sh * pr.width / pr.height); } catch (e) { /* Standardbreite */ } }
-                if (src) { try { doc.addImage(src, 'PNG', x, sy, sw, sh); } catch (e) { console.error('Unterschrift nicht einbettbar:', e); } }
+            // Eine Zeile wie in der Excel-Vorlage: Ort | Datum | Unterschrift | Unterschrift - Auftraggeber
+            const sigCell = (x, w, label, text, src) => {
+                const sy = y, sh = 19;
+                font('normal', 10); ink(TXT);
+                if (text) doc.text(t(text), x, sy + sh - 2);
+                if (src) {
+                    try { const pr = doc.getImageProperties(src); doc.addImage(src, 'PNG', x, sy, Math.min(w, sh * pr.width / pr.height), sh); }
+                    catch (e) { console.error('Unterschrift nicht einbettbar:', e); }
+                }
                 const ly = sy + sh + 1;
                 draw(MG); doc.setLineWidth(0.3);
-                if (src) doc.line(x, ly, x + 80, ly);
-                else { doc.setLineDashPattern([1.5, 1.5], 0); doc.line(x, ly, x + 80, ly); doc.setLineDashPattern([], 0); }
+                if (src || text) doc.line(x, ly, x + w, ly);
+                else { doc.setLineDashPattern([1.5, 1.5], 0); doc.line(x, ly, x + w, ly); doc.setLineDashPattern([], 0); }
                 font('normal', 8); ink(MG); doc.text(label, x, ly + 4);
             };
-            sigBlock(X0, 'Unterschrift Dodek / Monteur', n.sigDodek, true);
-            sigBlock(X0 + 98, 'Unterschrift Auftraggeber', n.sigAg, false);
+            sigCell(X0, 36, 'Ort', n.ort, '');
+            sigCell(X0 + 40, 30, 'Datum', slFmt(n.aufgestelltAm), '');
+            sigCell(X0 + 74, 50, 'Unterschrift', '', n.sigDodek);
+            sigCell(X0 + 128, 54, 'Unterschrift - Auftraggeber', '', n.sigAg);
 
             const total = doc.getNumberOfPages();
             for (let p = 1; p <= total; p++) {
@@ -7242,7 +7247,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.86';
+        const APP_VERSION = 'v1.6.87';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
