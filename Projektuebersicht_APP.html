@@ -381,6 +381,8 @@
         .home-row-text { flex: 1; font-weight: 600; color: #333; }
         .home-row-count { min-width: 28px; padding: 2px 9px; box-sizing: border-box; border-radius: 12px; color: #fff; font-size: 13px; font-weight: 700; text-align: center; }
         .home-row-arrow { color: #999; font-size: 18px; }
+        .home-block { margin-bottom: 8px; }
+        .home-block-body { background: #fff; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px; padding: 6px 16px 12px; }
         .home-recent-time { color: #888; font-size: 12px; white-space: nowrap; }
 
         /* Kalkulationsvarianten (Tab-Leiste im quotesView) */
@@ -3811,7 +3813,7 @@ function applyPermissions() {
                 console.log('Geladen:', Object.keys(window.allProjects).length, '| Parse-Fehler:', parseErrors, '| Kein Data:', noData);
                 renderDashboard();
                 renderDashboardKpi();
-                if (document.getElementById('dashboardKpiView').classList.contains('active')) homeRenderActions(document.getElementById('homeBadgeUvv').textContent);
+                if (document.getElementById('dashboardKpiView').classList.contains('active')) homeRenderActions();
                 updateYearFilter();
                 showMessage(`${Object.keys(window.allProjects).length} Projekt(e) geladen`, 'success');
                 applyPermissions();
@@ -6724,7 +6726,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.81';
+        const APP_VERSION = 'v1.6.82';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -7976,8 +7978,10 @@ function applyPermissions() {
             const email = (account?.username || '').toLowerCase().trim();
             const myMemberId = email.split('.')[0]; // "franek.dodek@dodek.de" → "franek"
             const memberObj = TEAM_MEMBERS.find(m => m.id === myMemberId) || null;
+            const sections = []; // Abschnitte für die Startseite (Handlungsbedarf): gleiche Daten und gleiches HTML wie hier
             if (!memberObj) {
                 myTasksEl.innerHTML = '';
+                sections.push({ icon: '👤', label: 'Meine offenen Aufgaben', count: 0, html: '<div style="color:#666;">Kein Teammitglied zum angemeldeten Nutzer gefunden.</div>' });
             } else {
                 const myTasks = [];
                 projects.forEach(({ pn, p }) => {
@@ -8005,6 +8009,8 @@ function applyPermissions() {
                     <div class="kpi-action-title">Meine offenen Aufgaben — ${esc(memberObj.name)}</div>
                     ${myTasks.length > 0 ? myTasks.map(taskRow).join('') : '<div style="margin-top:6px;color:#2e7d32;">Keine offenen Aufgaben ✅</div>'}
                 </div>`;
+                sections.push({ icon: '👤', label: 'Meine offenen Aufgaben', count: myTasks.length,
+                    html: myTasks.length > 0 ? myTasks.map(taskRow).join('') : '<div style="color:#2e7d32;">Keine offenen Aufgaben ✅</div>' });
             }
 
             // ---- Zone 2: Aktionsliste ----
@@ -8012,13 +8018,14 @@ function applyPermissions() {
                 `<span class="kpi-link" data-pn="${esc(pn)}" onclick="openProject(this.dataset.pn)" title="Projekt öffnen">${esc(pn)}</span>`).join('')}</div>`;
 
             const entries = [];
-            const addProjectEntry = (title, list) => {
+            const addProjectEntry = (title, list, icon) => {
+                sections.push({ icon, label: title, count: list.length, html: list.length > 0 ? numberList(list) : '' });
                 if (list.length > 0) entries.push(`<div class="kpi-action"><div class="kpi-action-title">${title}: ${list.length}</div>${numberList(list)}</div>`);
             };
 
-            addProjectEntry('Projekte ohne Nachkalkulation', projects.filter(({ p }) => !p.hasPostCalc));
-            addProjectEntry('Geliefert, aber nicht abgerechnet', projects.filter(({ p }) => p.hasDelivered && !p.hasInvoice));
-            addProjectEntry('Projekte ohne AB', projects.filter(({ p }) => !p.hasAB && !p.hasInvoice));
+            addProjectEntry('Projekte ohne Nachkalkulation', projects.filter(({ p }) => !p.hasPostCalc), '🧮');
+            addProjectEntry('Geliefert, aber nicht abgerechnet', projects.filter(({ p }) => p.hasDelivered && !p.hasInvoice), '🚚');
+            addProjectEntry('Projekte ohne AB', projects.filter(({ p }) => !p.hasAB && !p.hasInvoice), '📄');
 
             // Offene Aufgaben (project.tasks, Status ≠ done), nach Mitglied
             const members = [['franek', 'Franek'], ['hagen', 'Hagen'], ['harry', 'Harry'], ['nicole', 'Nicole']];
@@ -8054,18 +8061,21 @@ function applyPermissions() {
                 .map(({ pn, p }) => ({ pn, date: p.deliveryDate ? parseLocalDate(p.deliveryDate) : null }))
                 .filter(x => x.date && x.date >= today && x.date <= limit)
                 .sort((a, b) => a.date - b.date);
+            const fmt = d => d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const upcomingLinks = upcoming.map(x =>
+                `<span class="kpi-link" data-pn="${esc(x.pn)}" onclick="openProject(this.dataset.pn)" title="Projekt öffnen">${esc(x.pn)} · ${fmt(x.date)}</span>`).join('');
+            sections.push({ icon: '📅', label: 'Anstehende Liefertermine (14 Tage)', count: upcoming.length,
+                html: upcoming.length > 0 ? `<div class="kpi-action-list">${upcomingLinks}</div>` : '' });
             if (upcoming.length > 0) {
-                const fmt = d => d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                entries.push(`<div class="kpi-action"><div class="kpi-action-title">Anstehende Liefertermine (14 Tage): ${upcoming.length}</div><div class="kpi-action-list">${upcoming.map(x =>
-                    `<span class="kpi-link" data-pn="${esc(x.pn)}" onclick="openProject(this.dataset.pn)" title="Projekt öffnen">${esc(x.pn)} · ${fmt(x.date)}</span>`).join('')}</div></div>`);
+                entries.push(`<div class="kpi-action"><div class="kpi-action-title">Anstehende Liefertermine (14 Tage): ${upcoming.length}</div><div class="kpi-action-list">${upcomingLinks}</div></div>`);
             }
 
             actionsEl.innerHTML = entries.length > 0
                 ? entries.join('')
                 : '<div class="kpi-action kpi-ok">Alles im grünen Bereich ✅</div>';
 
-            // Zähler für die Startseite (Handlungsbedarf)
-            window._kpiSummary = { openTasks, actionCount: entries.length };
+            // Abschnitte für die Startseite (Handlungsbedarf)
+            window._kpiSections = sections;
         }
 
         // ========== STARTSEITE (dashboardKpiView) ==========
@@ -8095,19 +8105,29 @@ function applyPermissions() {
             return `vor ${days} Tagen`;
         }
 
-        function homeRenderActions(uvvCount) {
+        // Handlungsbedarf: ausklappbare Blöcke, Inhalt aus renderDashboardKpi() (window._kpiSections)
+        window._homeOpen = window._homeOpen || {};
+        function homeRenderActions() {
             const el = document.getElementById('homeActions');
             if (!el) return;
-            const s = window._kpiSummary || { openTasks: 0, actionCount: 0 };
-            const row = (icon, color, text, count, onclick) => `<div class="home-row" onclick="${onclick}">
-                <span class="home-row-icon">${icon}</span>
-                <span class="home-row-text">${text}</span>
-                <span class="home-row-count" style="background:${color};">${count}</span>
-                <span class="home-row-arrow">›</span></div>`;
-            el.innerHTML =
-                row('🔴', '#CC0000', 'UVV-Prüfungen offen', uvvCount, "homeGo('uvv')") +
-                row('📋', '#366092', 'Offene Aufgaben', s.openTasks, "homeGo('tasks')") +
-                row('⚡', '#e65100', 'Aktionsliste-Einträge', s.actionCount, "homeGo('actions')");
+            const sections = window._kpiSections || [];
+            el.innerHTML = sections.map((s, i) => {
+                const open = !!window._homeOpen[i];
+                return `<div class="home-block">
+                    <div class="home-row" style="margin-bottom:0;" onclick="homeToggleBlock(${i})">
+                        <span class="home-row-icon">${s.icon}</span>
+                        <span class="home-row-text">${escapeHtml(s.label)}</span>
+                        <span class="home-row-count" style="background:${s.count > 0 ? '#CC0000' : '#2e7d32'};">${s.count}</span>
+                        <span class="home-row-arrow">${open ? '▼' : '▶'}</span>
+                    </div>
+                    <div class="home-block-body" style="display:${open ? 'block' : 'none'};">${s.html || '<div style="color:#2e7d32;">Keine Einträge ✅</div>'}</div>
+                </div>`;
+            }).join('');
+        }
+
+        function homeToggleBlock(i) {
+            window._homeOpen[i] = !window._homeOpen[i];
+            homeRenderActions();
         }
 
         function homeRenderRecent() {
@@ -8134,7 +8154,7 @@ function applyPermissions() {
             document.getElementById('homeUserName').textContent = account?.name || account?.username || '';
             homeUpdateOnline();
             try { renderDashboardKpi(); } catch (e) { console.error('Dashboard-Kennzahlen:', e); }
-            homeRenderActions('…');
+            homeRenderActions();
             homeRenderRecent();
             ['Uvv', 'Projekte', 'Anlagen'].forEach(k => { document.getElementById('homeBadge' + k).textContent = '…'; });
 
@@ -8150,17 +8170,11 @@ function applyPermissions() {
             document.getElementById('homeBadgeUvv').textContent = txt(results[0]);
             document.getElementById('homeBadgeProjekte').textContent = txt(results[1]);
             document.getElementById('homeBadgeAnlagen').textContent = txt(results[2]);
-            homeRenderActions(txt(results[0]));
         }
 
         function homeGo(target) {
             if (target === 'uvv' || target === 'anlagen') navToAnlagenYear('all');
             else if (target === 'projekte') navToDashboardYear('all');
-            else if (target === 'tasks') showView('tasks');
-            else if (target === 'actions') {
-                showView('statistics');
-                setTimeout(() => document.getElementById('kpiActions')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-            }
         }
 
         function homeOpenRecent(type, id) {
@@ -10258,6 +10272,7 @@ function applyPermissions() {
         window.renderDashboardKpi = renderDashboardKpi;
         window.renderHome = renderHome;
         window.homeGo = homeGo;
+        window.homeToggleBlock = homeToggleBlock;
         window.homeOpenRecent = homeOpenRecent;
         window.getYearFromProjectNumber = getYearFromProjectNumber;
         window.performSearch = performSearch;

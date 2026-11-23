@@ -31,7 +31,7 @@ Lies diese Datei vollständig, bevor du irgendeine Änderung machst.
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.81 |
+| `Projektuebersicht_APP.html` | v1.6.82 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -125,12 +125,12 @@ Claude-Session: https://claude.ai/code/session_0112q721THq4Xa5MtZn82Y5R
 - **`renderDashboard()`** baut die Projektliste komplett neu auf und wendet am Ende `applyYearFilter()` (Jahres- und Status-Filter) wieder an. Das muss erhalten bleiben, sonst gehen Filter beim Neuaufbau verloren (z. B. Sidebar → Jahr). Der Suchbegriff wird beim Neuaufbau nicht wiederhergestellt (offen).
 
 ### Startseite — `dashboardKpiView`, `renderHome()` (ab v1.6.81)
-- Kopf (Logo, Nutzername aus MSAL, Online-Status), drei Kacheln (UVV offen, Projekte, Anlagen), „Handlungsbedarf“ (UVV offen, offene Aufgaben, Aktionsliste-Einträge), „Zuletzt geöffnet“. `renderHome()` läuft in `showView('dashboardKpi')`.
+- Kopf (Logo, Nutzername aus MSAL, Online-Status), drei Kacheln (UVV offen, Projekte, Anlagen), „Handlungsbedarf“ (ab v1.6.82 fünf ausklappbare Blöcke, standardmäßig eingeklappt, Zustand in `window._homeOpen`), „Zuletzt geöffnet“. Die Blöcke rendert `homeRenderActions()` aus `window._kpiSections`, das `renderDashboardKpi()` mit demselben HTML wie die Statistik-Ansicht befüllt (keine eigene Abfrage; „Meine offenen Aufgaben“ = Aufgaben und Einkaufspositionen des angemeldeten Nutzers). `renderHome()` läuft in `showView('dashboardKpi')`.
 - **Zähler per eigenem SharePoint-Call** (`$select=Id&$top=500`, parallel, `Promise.allSettled`): UVV mit `$filter=Status eq 'Offen'`, Projekte und Anlagen ohne Filter. Bei mehr als 500 Einträgen ist der Zähler zu niedrig (`$top`-Grenze). „Projekte“ zählt alle Einträge, nicht nur aktive (Annahme: kein Aktiv-Flag in der Liste; „aktiv“ im Dashboard = `!hasInvoice`).
 - `trackRecentItem(type, id, label)` (global, localStorage `dodek_recent_items`, max. 5): aufgerufen in `openProject()` (id = Projektnummer), `openAnlageDetail()` und `openPruefung()` (Label = Anlagen-Nr. — Kunde der Anlage). Die Kacheln UVV und Anlagen öffnen die Anlagenliste, Projekte die Projektübersicht.
 
 ### Dashboard (KPI) — `renderDashboardKpi()`, seit v1.6.81 im `statisticsView`
-- **Seit v1.6.81 liegen `#kpiYearTitle`, `#kpiTiles`, `#kpiMyTasks` und `#kpiActions` im `statisticsView` (zwischen Jahresfilter und „Projekt-Status Übersicht“); die Startseite zeigt sie nicht mehr.** `renderDashboardKpi()` läuft in `showView('statistics')`, in `renderHome()` und in `loadFromSharePoint()` und legt `window._kpiSummary = { openTasks, actionCount }` für die Startseite ab (`actionCount` = Anzahl der Einträge der Aktionsliste, nicht der Projekte). Die folgenden Angaben gelten unverändert für diesen Code.
+- **Seit v1.6.81 liegen `#kpiYearTitle`, `#kpiTiles`, `#kpiMyTasks` und `#kpiActions` im `statisticsView` (zwischen Jahresfilter und „Projekt-Status Übersicht“); die Startseite zeigt sie nicht mehr.** `renderDashboardKpi()` läuft in `showView('statistics')`, in `renderHome()` und in `loadFromSharePoint()` und legt `window._kpiSections` für die Startseite ab. Die folgenden Angaben gelten unverändert für diesen Code.
 - Zeigt immer das laufende Kalenderjahr (`new Date().getFullYear()`), Jahr per `getYearFromProjectNumber()`, Daten aus `window.allProjects`. Aufruf in `showView('dashboardKpi')` und in `loadFromSharePoint()` direkt nach `renderDashboard()`.
 - **Kacheln** (`#kpiTiles`, Flex mit Umbruch): VK Umsatz lfd. Jahr (mit Abgerechnet/Offen über `hasInvoice`), Deckungsbeitrag nur nachkalkulierter Projekte (`hasPostCalc`; grün nur bei DB > 0, sonst rot), Aktive Projekte (`!hasInvoice`).
 - **Meine offenen Aufgaben** (`#kpiMyTasks`): Member-ID = `email.split('.')[0]` aus `msalInstance.getAllAccounts()[0].username`, Abgleich mit `TEAM_MEMBERS`. **Bewusste Entscheidung des Entwicklers: kein Mapping-Objekt einführen, auch nicht bei zukünftigen Änderungen.** Ohne Treffer in `TEAM_MEMBERS` wird die Zone ausgeblendet. Angezeigt werden `project.tasks` und `project.purchasePositions` mit `assignedTo === Member-ID` und Status `open`. Je Zeile steht neben der Projektnummer der Kunde (`project.customer`), bei Einkaufspositionen zusätzlich die Stückzahl (`quantity`, als „5× Beschreibung“); `project.tasks` haben kein Mengenfeld.
