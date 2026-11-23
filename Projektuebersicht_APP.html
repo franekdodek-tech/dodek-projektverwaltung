@@ -3492,7 +3492,9 @@ function applyPermissions() {
             guidContacts: '3D2F7AE7-A6DE-4F84-A1EB-6FC7DDDDB70F',
             guidAnlagen:       'E7192882-A021-4BD4-86C5-F387B053D134',
             guidUVVPruefungen: '201B460E-3768-4401-A2F0-D1CD2A9BEB6E',
-            guidUVVModule:     'DE98FE5E-7A10-4E5E-80A1-9BEC4F88D527'
+            guidUVVModule:     'DE98FE5E-7A10-4E5E-80A1-9BEC4F88D527',
+            stundennachweiseListId: '0D7899B5-DB5F-442A-BC47-DC7BF25B64B2',
+            stundenZeilenListId: '148036A9-C530-47A0-AE30-3A15FE4EC9C9'
         };
 
 
@@ -4585,7 +4587,8 @@ function applyPermissions() {
                     </div>
                     ${links ? `<div class="contact-table-wrapper"><table class="contact-table"><thead><tr><th>Projektnummer</th><th>Typ</th><th></th></tr></thead><tbody>${links}</tbody></table></div>` : '<div style="color:#888;">Keine Projekte verknüpft.</div>'}
                 </div>
-                ${renderPruefungenSection(a)}`;
+                ${renderPruefungenSection(a)}
+                ${renderStundenSection(a)}`;
         }
 
         function openAnlageProject(pn) {
@@ -6235,6 +6238,519 @@ function applyPermissions() {
         window.pfSave = pfSave;
         window.pfReopen = pfReopen;
 
+        // ========== STUNDENLOHN-NACHWEISE (ab v1.6.86) ==========
+        // Listen DodekStundennachweise (SP_CONFIG.stundennachweiseListId) und DodekStundenzeilen (SP_CONFIG.stundenZeilenListId).
+        // Annahme (nicht gegen die Listen geprüft): Spalten heißen intern exakt wie im Datenmodell der Anforderung.
+        const SL_FIRMA = { name: 'Dodek GmbH & Co. KG', strasse: 'Lanzstrasse 2', ort: '88410 Bad Wurzach', tel: '', fax: '', email: '' }; // Tel./Fax/E-Mail: Werte nicht vorgegeben, leer
+        window.slNachweise = {}; // Schlüssel = Anlagen-SP-Id → { items:[…], error? }
+
+        const slDate = v => v ? String(v).slice(0, 10) : '';
+        const slFmt = v => { const d = slDate(v); return d ? d.split('-').reverse().join('.') : ''; };
+        const slNum = v => { const n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isNaN(n) ? 0 : n; };
+        const slFmtNum = n => String(Math.round(n * 100) / 100).replace('.', ',');
+        const slFzFromText = s => { const m = /davon\s*([\d.,]+)\s*h?\s*Fz/i.exec(String(s || '')); return m ? slNum(m[1]) : 0; };
+        const slToday = () => new Date().toISOString().slice(0, 10);
+        const slPane = () => document.getElementById('anlagenPruefPane');
+
+        function slNachweisFromItem(i) {
+            let material = [];
+            try { const m = i.Materialverbrauch ? JSON.parse(i.Materialverbrauch) : []; if (Array.isArray(m)) material = m; } catch (e) { material = []; }
+            return {
+                id: i.Id, anlageId: i.AnlageId, projektId: i.ProjektId, projektNr: i.ProjektNr || '', typ: i.NachweisTyp || 'Regiearbeit',
+                auftraggeber: i.Auftraggeber || '', adresse: i.AuftraggeberAdresse || '', baustelle: i.Baustelle || '', belegnr: i.BelegnrExtern || '',
+                datum: slDate(i.Datum), beschreibung: i.ArbeitsBeschreibung || '', summe: slNum(i.SummeStunden), summeFz: slNum(i.SummeStundenFz),
+                material, aufgestelltVon: i.AufgestelltVon || '', aufgestelltAm: slDate(i.AufgestelltAm), geprueftVon: i.GeprueftVon || '',
+                geprueftAm: slDate(i.GeprueftAm), ort: i.Ort || '', sigDodek: i.SignaturDodek || '', sigAg: i.SignaturAuftraggeber || '', status: i.Status || 'Entwurf'
+            };
+        }
+
+        const slStatusBadge = s => {
+            const c = s === 'Abgerechnet' ? ['#e3f2fd', '#1565c0'] : s === 'Unterschrieben' ? ['#e8f5e9', '#2e7d32'] : ['#eceff1', '#546e7a'];
+            return `<span style="background:${c[0]};color:${c[1]};border-radius:3px;padding:2px 8px;font-size:12px;font-weight:600;">${escapeHtml(s)}</span>`;
+        };
+
+        async function slLoadList(anlageId) {
+            try {
+                const url = `${uvvListUrl(SP_CONFIG.stundennachweiseListId)}?$filter=AnlageId eq ${Number(anlageId)}&$orderby=Datum desc&$top=50&$select=Id,AnlageId,ProjektNr,NachweisTyp,Datum,SummeStunden,Status`;
+                const data = await spFetch(url);
+                window.slNachweise[anlageId] = { items: (data.value || []).map(slNachweisFromItem) };
+            } catch (e) {
+                console.error('Stundenlohn-Nachweise laden fehlgeschlagen:', e);
+                window.slNachweise[anlageId] = { items: [], error: e.message };
+            }
+            const dp = document.getElementById('anlagenDetailPane');
+            if (!window._sl && dp && dp.style.display !== 'none' && String(window._anlagenDetailId) === String(anlageId)) renderAnlageDetail();
+        }
+
+        // Abschnitt "Stundenlohn-Nachweise" in der Anlagendetailansicht (direkt nach den Prüfungen)
+        function renderStundenSection(a) {
+            const cache = window.slNachweise[a.id];
+            if (!cache) slLoadList(a.id);
+            const canEdit = canEditUvv();
+            let body;
+            if (!cache) body = '<div style="color:#888;">Wird geladen…</div>';
+            else if (cache.error) body = `<div style="color:#c62828;">Nachweise konnten nicht geladen werden: ${escapeHtml(cache.error)}</div>`;
+            else if (!cache.items.length) body = '<div style="color:#888;">Noch keine Stundenlohn-Nachweise.</div>';
+            else body = `<div class="contact-table-wrapper"><table class="contact-table"><thead><tr><th>Datum</th><th>Typ</th><th>Stunden gesamt</th><th>Status</th><th></th></tr></thead><tbody>${
+                cache.items.map(n => `<tr onclick="openStundennachweis(${n.id})" style="cursor:pointer;"><td>${slFmt(n.datum)}</td><td>${escapeHtml(n.typ)}</td><td>${slFmtNum(n.summe)} h</td><td>${slStatusBadge(n.status)}</td>
+                    <td style="width:90px;"><button onclick="event.stopPropagation(); openStundennachweis(${n.id})" class="btn-secondary btn-small">Öffnen</button></td></tr>`).join('')}</tbody></table></div>`;
+            return `<div style="background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);margin-top:20px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:10px;">
+                        <h3 style="margin:0;color:#366092;">Stundenlohn-Nachweise</h3>
+                        <button onclick="slOpenForm(null)" class="btn-secondary" ${canEdit ? '' : 'disabled title="Keine Berechtigung" style="opacity:0.4;cursor:not-allowed;"'}>＋ Neu erstellen</button>
+                    </div>${body}</div>`;
+        }
+
+        function slShowPane() {
+            document.getElementById('anlagenListPane').style.display = 'none';
+            document.getElementById('anlagenDetailPane').style.display = 'none';
+            slPane().style.display = '';
+            window.scrollTo({ top: 0, behavior: 'instant' });
+        }
+
+        function slBackToAnlage() {
+            const a = window._sl && window._sl.a;
+            window._sl = null;
+            slPane().style.display = 'none';
+            if (a && window.anlagenDatabase[a.id]) {
+                document.getElementById('anlagenDetailPane').style.display = '';
+                renderAnlageDetail();
+                window.scrollTo({ top: 0, behavior: 'instant' });
+            } else showAnlagenList();
+        }
+
+        // ----- Detailansicht -----
+        async function openStundennachweis(id) {
+            try {
+                const item = await spFetch(uvvListUrl(SP_CONFIG.stundennachweiseListId, id));
+                const n = slNachweisFromItem(item);
+                const zData = await spFetch(`${uvvListUrl(SP_CONFIG.stundenZeilenListId)}?$filter=NachweisId eq ${Number(id)}&$orderby=Id&$top=200`);
+                n.zeilen = (zData.value || []).map(z => ({ name: z.Name || '', datum: slDate(z.Datum), leistung: z.Leistung || '', stunden: slNum(z.Stunden), bes: z.Besonderheiten || '' }));
+                const a = window.anlagenDatabase[n.anlageId];
+                if (!a) { showMessage('Anlage zum Nachweis nicht gefunden', 'error'); return; }
+                window._anlagenDetailId = a.id;
+                window._pf = null;
+                window._sl = { a, n };
+                slShowPane();
+                trackRecentItem('stunden', id, (a.anlagenNr || '') + ' — ' + slFmt(n.datum));
+                renderStundenDetail();
+            } catch (e) {
+                console.error('Stundenlohn-Nachweis öffnen fehlgeschlagen:', e);
+                showMessage('Nachweis konnte nicht geladen werden: ' + e.message, 'error');
+            }
+        }
+
+        function renderStundenDetail() {
+            const { a, n } = window._sl;
+            const canEdit = canEditUvv();
+            const f = (label, v) => `<div><div style="font-size:11px;color:#888;">${label}</div><div style="white-space:pre-wrap;">${v ? escapeHtml(v) : '—'}</div></div>`;
+            const zeilen = n.zeilen.map(z => `<tr><td>${escapeHtml(z.name)}</td><td>${slFmt(z.datum)}</td><td>${escapeHtml(z.leistung)}</td><td>${slFmtNum(z.stunden)}</td><td>${escapeHtml(z.bes)}</td></tr>`).join('');
+            const mat = n.material.map(m => `<tr><td>${escapeHtml(String(m.menge == null ? '' : m.menge))}</td><td>${escapeHtml(m.artikel || '')}</td><td>${escapeHtml(m.lieferscheinNr || '')}</td></tr>`).join('');
+            const sig = (label, src) => `<div class="pf-sig ro"><label>${label}</label>${src ? `<img src="${escapeHtml(src)}" alt="${label}">` : '<div style="color:#888;font-size:13px;padding:8px 0;">Noch keine Unterschrift</div>'}</div>`;
+            const box = 'background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);margin-bottom:20px;';
+            slPane().innerHTML = `
+                <div style="${box}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+                        <h2 style="margin:0;">🕐 Stundenlohn-Nachweis ${slFmt(n.datum)} — ${escapeHtml(a.anlagenNr)} ${slStatusBadge(n.status)}</h2>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button onclick="slOpenForm(window._sl.n)" class="btn-secondary" ${canEdit ? '' : 'disabled title="Keine Berechtigung" style="opacity:0.4;cursor:not-allowed;"'}>✏️ Bearbeiten</button>
+                            <button onclick="slExportPdf(this)" class="btn-secondary">📄 PDF erstellen</button>
+                            <button onclick="slBackToAnlage()" class="btn-secondary">⬅️ Zurück</button>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">
+                        ${f('Typ', n.typ)}${f('Auftraggeber', n.auftraggeber)}${f('Adresse Auftraggeber', n.adresse)}${f('Baustelle', n.baustelle)}
+                        ${f('Dodek Kom.Nr.', n.projektNr)}${f('Externe Belegnr.', n.belegnr)}${f('Datum', slFmt(n.datum))}
+                    </div>
+                    <div style="margin-top:14px;">${f('Beschreibung der geleisteten Arbeit', n.beschreibung)}</div>
+                </div>
+                <div style="${box}">
+                    <h3 style="margin:0 0 10px;color:#366092;">Personaleinsatz</h3>
+                    ${zeilen ? `<div class="contact-table-wrapper"><table class="contact-table"><thead><tr><th>Name</th><th>Datum</th><th>Leistung</th><th>Std</th><th>Besonderheiten</th></tr></thead><tbody>${zeilen}</tbody></table></div>` : '<div style="color:#888;">Keine Einträge.</div>'}
+                    <div style="margin-top:8px;font-weight:600;">Summe: ${slFmtNum(n.summe)} h${n.summeFz ? ` (davon Fahrzeit ${slFmtNum(n.summeFz)} h)` : ''}</div>
+                    <h3 style="margin:18px 0 10px;color:#366092;">Materialverbrauch</h3>
+                    ${mat ? `<div class="contact-table-wrapper"><table class="contact-table"><thead><tr><th>Menge</th><th>Artikel</th><th>Lieferschein-Nr.</th></tr></thead><tbody>${mat}</tbody></table></div>` : '<div style="color:#888;">Keine Einträge.</div>'}
+                </div>
+                <div style="${box}">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">
+                        ${f('Aufgestellt von', n.aufgestelltVon)}${f('Aufgestellt am', slFmt(n.aufgestelltAm))}${f('Geprüft von', n.geprueftVon)}${f('Geprüft am', slFmt(n.geprueftAm))}${f('Ort', n.ort)}
+                    </div>
+                    <div class="pf-sigs">${sig('Unterschrift Dodek / Monteur', n.sigDodek)}${sig('Unterschrift Auftraggeber', n.sigAg)}</div>
+                </div>`;
+        }
+
+        // ----- Erfassungsformular (neu / bearbeiten) -----
+        function slPersRow(z) {
+            const inp = (cls, v, extra) => `<input class="${cls}" value="${escapeHtml(v == null ? '' : String(v))}" ${extra || ''} style="width:100%;box-sizing:border-box;min-height:38px;">`;
+            return `<tr><td>${inp('sl-p-name', z.name)}</td><td>${inp('sl-p-datum', z.datum, 'type="date"')}</td><td>${inp('sl-p-leistung', z.leistung)}</td>
+                <td style="width:80px;">${inp('sl-p-std', z.stunden === '' ? '' : z.stunden, 'inputmode="decimal" oninput="slRecalc()"')}</td>
+                <td>${inp('sl-p-bes', z.bes, 'oninput="slRecalc()"')}</td>
+                <td style="width:40px;"><button type="button" class="btn-danger btn-small" onclick="this.closest('tr').remove();slRecalc()" title="Zeile entfernen">×</button></td></tr>`;
+        }
+
+        function slMatRow(m) {
+            const inp = (cls, v) => `<input class="${cls}" value="${escapeHtml(v == null ? '' : String(v))}" style="width:100%;box-sizing:border-box;min-height:38px;">`;
+            return `<tr><td style="width:90px;">${inp('sl-m-menge', m.menge)}</td><td>${inp('sl-m-artikel', m.artikel)}</td><td>${inp('sl-m-ls', m.lieferscheinNr)}</td>
+                <td style="width:40px;"><button type="button" class="btn-danger btn-small" onclick="this.closest('tr').remove()" title="Zeile entfernen">×</button></td></tr>`;
+        }
+
+        function slAddPers() { document.getElementById('sl_pers').insertAdjacentHTML('beforeend', slPersRow({ name: '', datum: slToday(), leistung: '', stunden: '', bes: '' })); }
+        function slAddMat() { document.getElementById('sl_mat').insertAdjacentHTML('beforeend', slMatRow({ menge: '', artikel: '', lieferscheinNr: '' })); }
+
+        function slRecalc() {
+            let sum = 0, fz = 0;
+            document.querySelectorAll('#sl_pers tr').forEach(tr => {
+                sum += slNum(tr.querySelector('.sl-p-std').value);
+                fz += slFzFromText(tr.querySelector('.sl-p-bes').value);
+            });
+            const el = document.getElementById('sl_sum');
+            if (el) el.textContent = `Summe: ${slFmtNum(sum)} h` + (fz ? ` (davon Fahrzeit ${slFmtNum(fz)} h)` : '');
+        }
+
+        function slOpenForm(n) {
+            if (!canEditUvv()) return;
+            const a = n ? window._sl.a : window.anlagenDatabase[window._anlagenDetailId];
+            if (!a) return;
+            const acc = msalInstance.getAllAccounts()[0];
+            const user = acc ? (acc.name || acc.username || '') : '';
+            const links = a.verknuepfteProjekte || [];
+            const pn0 = a.ursprungsprojekt || (links[0] && links[0].projektnr) || '';
+            const d = n || {
+                typ: 'Regiearbeit', auftraggeber: a.kunde || '', adresse: '', baustelle: a.standort || '', projektNr: pn0, belegnr: '', datum: slToday(),
+                beschreibung: '', zeilen: [], material: [], aufgestelltVon: user, aufgestelltAm: slToday(), geprueftVon: '', geprueftAm: '', ort: '', sigDodek: '', sigAg: ''
+            };
+            window._sl = { a, n: n || null, d };
+            const v = x => escapeHtml(x == null ? '' : String(x));
+            const fld = (label, id, val, type) => `<div><label style="display:block;font-size:12px;color:#666;margin-bottom:3px;">${label}</label><input id="${id}" type="${type || 'text'}" value="${v(val)}" style="width:100%;box-sizing:border-box;min-height:40px;"></div>`;
+            const box = 'background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);margin-bottom:20px;';
+            const cv = (key, label) => `<div class="pf-sig" style="flex:1 1 45%;min-width:260px;"><label>${label}</label><canvas id="signatureCanvas${key}" width="600" height="150" style="height:150px;aspect-ratio:auto;"></canvas>
+                <button type="button" class="btn-secondary" style="min-height:44px;margin-top:6px;" onclick="slClearSig('${key}')">🗑 Löschen</button></div>`;
+            const zeilen = (d.zeilen && d.zeilen.length ? d.zeilen : [{ name: '', datum: slToday(), leistung: '', stunden: '', bes: '' }]);
+            slPane().innerHTML = `
+                <div style="${box}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+                        <h2 style="margin:0;">🕐 Stundenlohn-Nachweis ${n ? 'bearbeiten' : 'erfassen'} — ${escapeHtml(a.anlagenNr)}</h2>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button type="button" id="sl_saveBtn" onclick="slSave()" class="btn-primary">💾 Speichern</button>
+                            <button type="button" onclick="slCancelForm()" class="btn-secondary">Abbrechen</button>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:12px;"><span style="font-size:12px;color:#666;margin-right:12px;">Nachweistyp</span>
+                        <label style="margin-right:16px;"><input type="radio" name="sl_typ" value="Regiearbeit" ${d.typ !== 'Bautagebuch' ? 'checked' : ''}> Regiearbeit</label>
+                        <label><input type="radio" name="sl_typ" value="Bautagebuch" ${d.typ === 'Bautagebuch' ? 'checked' : ''}> Bautagebuch</label></div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;">
+                        ${fld('Auftraggeber', 'sl_auftraggeber', d.auftraggeber)}${fld('Baustelle', 'sl_baustelle', d.baustelle)}
+                        ${fld('Dodek Kom.Nr.', 'sl_projektnr', d.projektNr)}${fld('Externe Belegnr.', 'sl_belegnr', d.belegnr)}${fld('Datum', 'sl_datum', d.datum, 'date')}
+                    </div>
+                    <div style="margin-top:12px;"><label style="display:block;font-size:12px;color:#666;margin-bottom:3px;">Adresse Auftraggeber (Straße, PLZ Ort)</label>
+                        <textarea id="sl_adresse" rows="2" style="width:100%;box-sizing:border-box;">${v(d.adresse)}</textarea></div>
+                    <div style="margin-top:12px;"><label style="display:block;font-size:12px;color:#666;margin-bottom:3px;">Beschreibung der geleisteten Arbeit</label>
+                        <textarea id="sl_beschr" rows="4" style="width:100%;box-sizing:border-box;">${v(d.beschreibung)}</textarea></div>
+                </div>
+                <div style="${box}">
+                    <h3 style="margin:0 0 10px;color:#366092;">Personaleinsatz</h3>
+                    <div class="contact-table-wrapper" style="overflow-x:auto;"><table class="contact-table" style="min-width:640px;"><thead><tr><th>Name</th><th>Datum</th><th>Leistung</th><th>Std</th><th>Besonderheiten</th><th></th></tr></thead>
+                        <tbody id="sl_pers">${zeilen.map(slPersRow).join('')}</tbody></table></div>
+                    <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                        <button type="button" class="btn-secondary" onclick="slAddPers()">＋ Zeile hinzufügen</button><div id="sl_sum" style="font-weight:600;"></div></div>
+                    <div style="font-size:11px;color:#888;margin-top:4px;">Fahrzeit wird erkannt, wenn die Besonderheiten das Format „davon X h Fz“ haben.</div>
+                    <h3 style="margin:18px 0 10px;color:#366092;">Materialverbrauch</h3>
+                    <div class="contact-table-wrapper" style="overflow-x:auto;"><table class="contact-table" style="min-width:480px;"><thead><tr><th>Menge</th><th>Artikel</th><th>Lieferschein-Nr.</th><th></th></tr></thead>
+                        <tbody id="sl_mat">${(d.material || []).map(slMatRow).join('')}</tbody></table></div>
+                    <div style="margin-top:8px;"><button type="button" class="btn-secondary" onclick="slAddMat()">＋ Zeile hinzufügen</button></div>
+                </div>
+                <div style="${box}">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">
+                        ${fld('Aufgestellt von', 'sl_von', d.aufgestelltVon)}${fld('Aufgestellt am', 'sl_vonAm', d.aufgestelltAm, 'date')}
+                        ${fld('Geprüft von', 'sl_geprVon', d.geprueftVon)}${fld('Geprüft am', 'sl_geprAm', d.geprueftAm, 'date')}${fld('Ort', 'sl_ort', d.ort)}
+                    </div>
+                    <div class="pf-sigs">${cv('Dodek', 'Unterschrift Dodek / Monteur')}${cv('Auftraggeber', 'Unterschrift Auftraggeber')}</div>
+                </div>`;
+            slShowPane();
+            slRecalc();
+            slInitSigs(d);
+        }
+
+        function slCancelForm() {
+            if (window._sl && window._sl.n && window._sl.n.zeilen) { window._sl = { a: window._sl.a, n: window._sl.n }; renderStundenDetail(); }
+            else slBackToAnlage();
+        }
+
+        // ----- Unterschrift-Pads (Pointer-Events: Maus, Finger und Stift) -----
+        function isCanvasBlank(cv) {
+            const px = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+            for (let i = 3; i < px.length; i += 4) if (px[i] !== 0) return false;
+            return true;
+        }
+
+        function slInitSigs(d) {
+            [['Dodek', d.sigDodek], ['Auftraggeber', d.sigAg]].forEach(([key, existing]) => {
+                const cv = document.getElementById(`signatureCanvas${key}`);
+                if (!cv) return;
+                cv.width = cv.clientWidth || 600; cv.height = 150; // Zeichenfläche = Anzeigegröße (keine Verzerrung)
+                const ctx = cv.getContext('2d');
+                ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#000000';
+                if (existing) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, cv.width, cv.height); img.src = existing; }
+                let drawing = false;
+                const pos = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) * cv.width / r.width, (ev.clientY - r.top) * cv.height / r.height]; };
+                cv.addEventListener('pointerdown', ev => {
+                    ev.preventDefault(); drawing = true; cv.setPointerCapture(ev.pointerId);
+                    const [x, y] = pos(ev); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 0.01, y); ctx.stroke();
+                });
+                cv.addEventListener('pointermove', ev => { if (!drawing) return; ev.preventDefault(); const [x, y] = pos(ev); ctx.lineTo(x, y); ctx.stroke(); });
+                const end = () => { drawing = false; };
+                cv.addEventListener('pointerup', end);
+                cv.addEventListener('pointercancel', end);
+            });
+        }
+
+        function slClearSig(key) {
+            const cv = document.getElementById(`signatureCanvas${key}`);
+            if (cv) cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+        }
+
+        function slCollect() {
+            const val = id => (document.getElementById(id) || {}).value || '';
+            const typ = (document.querySelector('input[name="sl_typ"]:checked') || {}).value || 'Regiearbeit';
+            const zeilen = [...document.querySelectorAll('#sl_pers tr')].map(tr => ({
+                name: tr.querySelector('.sl-p-name').value.trim(), datum: tr.querySelector('.sl-p-datum').value, leistung: tr.querySelector('.sl-p-leistung').value.trim(),
+                stunden: slNum(tr.querySelector('.sl-p-std').value), bes: tr.querySelector('.sl-p-bes').value.trim(), stdRaw: tr.querySelector('.sl-p-std').value.trim()
+            })).filter(z => z.name || z.leistung || z.bes || z.stdRaw);
+            const material = [...document.querySelectorAll('#sl_mat tr')].map(tr => ({
+                menge: tr.querySelector('.sl-m-menge').value.trim(), artikel: tr.querySelector('.sl-m-artikel').value.trim(), lieferscheinNr: tr.querySelector('.sl-m-ls').value.trim()
+            })).filter(m => m.menge || m.artikel || m.lieferscheinNr);
+            return {
+                typ, auftraggeber: val('sl_auftraggeber').trim(), adresse: val('sl_adresse').trim(), baustelle: val('sl_baustelle').trim(), projektNr: val('sl_projektnr').trim(),
+                belegnr: val('sl_belegnr').trim(), datum: val('sl_datum'), beschreibung: val('sl_beschr').trim(), zeilen, material,
+                aufgestelltVon: val('sl_von').trim(), aufgestelltAm: val('sl_vonAm'), geprueftVon: val('sl_geprVon').trim(), geprueftAm: val('sl_geprAm'), ort: val('sl_ort').trim()
+            };
+        }
+
+        async function slSave() {
+            const s = window._sl;
+            if (!s || !canEditUvv()) return;
+            const a = s.a, d = slCollect();
+            if (!d.datum) { showMessage('Datum erforderlich', 'error'); return; }
+            const cD = document.getElementById('signatureCanvasDodek'), cA = document.getElementById('signatureCanvasAuftraggeber');
+            const sigDodek = isCanvasBlank(cD) ? '' : cD.toDataURL('image/png');
+            const sigAg = isCanvasBlank(cA) ? '' : cA.toDataURL('image/png');
+            const summe = d.zeilen.reduce((t, z) => t + z.stunden, 0);
+            const summeFz = d.zeilen.reduce((t, z) => t + slFzFromText(z.bes), 0);
+            const status = s.n && s.n.status === 'Abgerechnet' ? 'Abgerechnet' : (sigDodek || sigAg ? 'Unterschrieben' : 'Entwurf');
+            const iso = v => v ? `${v}T00:00:00Z` : null;
+            const proj = (window.allProjects || {})[d.projektNr];
+            const payload = {
+                Title: `SLN-${a.anlagenNr}-${d.datum.replace(/-/g, '')}`, AnlageId: Number(a.id), ProjektNr: d.projektNr, NachweisTyp: d.typ,
+                Auftraggeber: d.auftraggeber, AuftraggeberAdresse: d.adresse, Baustelle: d.baustelle, BelegnrExtern: d.belegnr, Datum: iso(d.datum),
+                ArbeitsBeschreibung: d.beschreibung, SummeStunden: summe, SummeStundenFz: summeFz, Materialverbrauch: JSON.stringify(d.material),
+                AufgestelltVon: d.aufgestelltVon, AufgestelltAm: iso(d.aufgestelltAm), GeprueftVon: d.geprueftVon, GeprueftAm: iso(d.geprueftAm), Ort: d.ort,
+                SignaturDodek: sigDodek, SignaturAuftraggeber: sigAg, Status: status
+            };
+            if (proj && proj._spId) payload.ProjektId = Number(proj._spId);
+            const btn = document.getElementById('sl_saveBtn');
+            btn.disabled = true;
+            let id = s.n && s.n.id;
+            try {
+                if (id) {
+                    await uvvPatch(SP_CONFIG.stundennachweiseListId, id, payload);
+                    const old = await spFetch(`${uvvListUrl(SP_CONFIG.stundenZeilenListId)}?$filter=NachweisId eq ${Number(id)}&$select=Id&$top=200`);
+                    for (const z of (old.value || [])) await spFetch(uvvListUrl(SP_CONFIG.stundenZeilenListId, z.Id), { method: 'DELETE', headers: { 'IF-MATCH': '*' } });
+                } else {
+                    const res = await spFetch(uvvListUrl(SP_CONFIG.stundennachweiseListId), { method: 'POST', body: JSON.stringify(payload) });
+                    id = res && (res.Id || res.id);
+                    if (!id) throw new Error('Keine Id vom Server erhalten');
+                    s.n = { id, status, zeilen: null }; // erneutes Speichern nach Teilfehler aktualisiert statt neu anzulegen
+                }
+                let nr = 0;
+                for (const z of d.zeilen) {
+                    nr++;
+                    await spFetch(uvvListUrl(SP_CONFIG.stundenZeilenListId), { method: 'POST', body: JSON.stringify({
+                        Title: `${id}-${nr}`, NachweisId: Number(id), Name: z.name, Datum: iso(z.datum), Leistung: z.leistung, Stunden: z.stunden, Besonderheiten: z.bes
+                    }) });
+                }
+                trackRecentItem('stunden', id, (a.anlagenNr || '') + ' — ' + slFmt(d.datum));
+                window._sl = { a };
+                await slLoadList(a.id);
+                slBackToAnlage();
+                showMessage('Stundenlohn-Nachweis gespeichert', 'success');
+            } catch (e) {
+                console.error('Stundenlohn-Nachweis speichern fehlgeschlagen:', e);
+                showMessage('Nachweis konnte nicht (vollständig) gespeichert werden: ' + e.message, 'error');
+                btn.disabled = false;
+            }
+        }
+
+        // ----- PDF -----
+        async function slExportPdf(btn) {
+            const s = window._sl;
+            if (!s || !s.n || !s.n.zeilen) return;
+            if (btn) btn.disabled = true;
+            try {
+                await pfLoadPdfLibs();
+                const logo = await pfLoadLogo();
+                const doc = buildStundenPdf(logo, s.a, s.n);
+                const safe = x => String(x || '').replace(/[^A-Za-z0-9._-]+/g, '_');
+                doc.save(`Stundenlohn-Nachweis_${safe(s.a.anlagenNr)}_${s.n.datum}.pdf`);
+            } catch (e) {
+                console.error('PDF-Export fehlgeschlagen:', e);
+                showMessage('PDF konnte nicht erstellt werden: ' + e.message, 'error');
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        // Layout nach Excel-Vorlage (Vorlage lag in dieser Sitzung nicht vor — Aufbau nach Beschreibung der Anforderung)
+        function buildStundenPdf(logo, a, n) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+            const X0 = 14, CW = 182, X1 = X0 + CW, BOTTOM = 272;
+            const RED = [204, 0, 0], DG = [74, 74, 74], MG = [136, 136, 136], LG = [242, 242, 242], TXT = [51, 51, 51], LN = [187, 187, 187], WHITE = [255, 255, 255];
+            const fill = c => doc.setFillColor(c[0], c[1], c[2]);
+            const draw = c => doc.setDrawColor(c[0], c[1], c[2]);
+            const ink = c => doc.setTextColor(c[0], c[1], c[2]);
+            const font = (style, size) => { doc.setFont('helvetica', style); doc.setFontSize(size); };
+            const t = x => String(x == null ? '' : x).replace(/[^\u0000-ÿ–—‘-„•€]/g, '?');
+            const wrap = (x, w) => doc.splitTextToSize(t(x), w);
+            let y = 0;
+            const header = () => {
+                const lh = 18, lw = lh * logo.ratio, ly = 8;
+                const by = ly + lh * 173 / 1328, bh = lh * (513 - 173 + 1) / 1328;
+                fill(RED); doc.rect(0, by, 210, bh, 'F');
+                ink(WHITE); font('bold', 11); doc.text('LUFT- UND SYSTEMTECHNIK', 18, by + bh / 2 + 1.4);
+                doc.addImage(logo.data, 'PNG', 210 - lw - 5, ly, lw, lh, 'dtlogo');
+            };
+            const need = h => { if (y + h > BOTTOM) { doc.addPage(); header(); y = 34; } };
+            const box = (x, yy, size, checked) => {
+                doc.setLineWidth(0.3); draw(DG); doc.rect(x, yy, size, size);
+                if (checked) { doc.setLineWidth(0.5); doc.line(x + 0.8, yy + 0.8, x + size - 0.8, yy + size - 0.8); doc.line(x + size - 0.8, yy + 0.8, x + 0.8, yy + size - 0.8); }
+            };
+            header();
+            y = 38;
+            ink(TXT); font('bold', 16); doc.text('Stundenlohn-Nachweis', X0, y);
+            y += 7;
+            font('normal', 10);
+            doc.text('Regiearbeit', X0, y + 3.2); box(X0 + 24, y, 4, n.typ !== 'Bautagebuch');
+            doc.text('Bautagebuch', X0 + 40, y + 3.2); box(X0 + 66, y, 4, n.typ === 'Bautagebuch');
+            y += 10;
+
+            // Auftraggeber / Auftragnehmer
+            const colW = 88;
+            const agLines = [n.auftraggeber, ...String(n.adresse || '').split(/\r?\n/)].filter(Boolean).flatMap(l => wrap(l, colW - 6));
+            const anLines = [SL_FIRMA.name, SL_FIRMA.strasse, SL_FIRMA.ort,
+                SL_FIRMA.tel ? 'Tel.: ' + SL_FIRMA.tel : '', SL_FIRMA.fax ? 'Fax: ' + SL_FIRMA.fax : '', SL_FIRMA.email ? 'E-Mail: ' + SL_FIRMA.email : ''].filter(Boolean);
+            const bh = Math.max(agLines.length, anLines.length, 3) * 4.6 + 9;
+            [[X0, 'Auftraggeber', agLines], [X1 - colW, 'Auftragnehmer', anLines]].forEach(([x, title, lines]) => {
+                doc.setLineWidth(0.3); draw(LN); doc.rect(x, y, colW, bh);
+                font('bold', 8); ink(MG); doc.text(title.toUpperCase(), x + 3, y + 5);
+                font('normal', 10); ink(TXT);
+                lines.forEach((l, i) => doc.text(l, x + 3, y + 10.5 + i * 4.6));
+            });
+            y += bh + 6;
+
+            // Baustelle / Kom.Nr. / Belegnr. / Datum
+            const kv = (x, w, label, value) => {
+                font('bold', 8); ink(MG); doc.text(label, x, y);
+                font('normal', 10); ink(TXT); doc.text(wrap(value, w - 2)[0] || '', x, y + 5);
+                doc.setLineWidth(0.2); draw(LN); doc.line(x, y + 6.5, x + w - 4, y + 6.5);
+            };
+            kv(X0, 92, 'Baustelle', n.baustelle); kv(X0 + 92, 90, 'Dodek Kom.Nr.', n.projektNr);
+            y += 12;
+            kv(X0, 92, 'Externe Belegnr.', n.belegnr); kv(X0 + 92, 90, 'Datum', slFmt(n.datum));
+            y += 14;
+
+            // Beschreibung
+            font('bold', 10); ink(DG); doc.text('Beschreibung der geleisteten Arbeit', X0, y); y += 5;
+            font('normal', 10); ink(TXT);
+            const desc = wrap(n.beschreibung || '—', CW);
+            desc.forEach(l => { need(5); doc.text(l, X0, y); y += 4.8; });
+            y += 5;
+
+            // Tabelle Personaleinsatz
+            const pc = [[X0, 45, 'Name'], [X0 + 45, 24, 'Datum'], [X0 + 69, 50, 'Leistung'], [X0 + 119, 15, 'Std'], [X0 + 134, 48, 'Besonderheiten']];
+            const tHead = cols => {
+                need(14);
+                fill(LG); draw(LN); doc.setLineWidth(0.2); doc.rect(X0, y, CW, 6.5, 'FD');
+                font('bold', 9); ink(DG); cols.forEach(c => doc.text(c[2], c[0] + 1.5, y + 4.5));
+                y += 6.5;
+            };
+            font('bold', 10); ink(DG); need(20); doc.text('Personaleinsatz', X0, y); y += 3.5;
+            tHead(pc);
+            font('normal', 9); ink(TXT);
+            n.zeilen.forEach(z => {
+                const cells = [wrap(z.name, 42), [slFmt(z.datum)], wrap(z.leistung, 47), [slFmtNum(z.stunden)], wrap(z.bes, 45)];
+                const rh = Math.max(...cells.map(c => c.length)) * 4.2 + 2.6;
+                if (y + rh > BOTTOM) { need(1e3); tHead(pc); font('normal', 9); ink(TXT); }
+                doc.setLineWidth(0.2); draw(LN); doc.rect(X0, y, CW, rh);
+                cells.forEach((c, i) => c.forEach((l, k) => doc.text(l, pc[i][0] + 1.5, y + 4.4 + k * 4.2)));
+                pc.slice(1).forEach(c => doc.line(c[0], y, c[0], y + rh));
+                y += rh;
+            });
+            need(8);
+            fill(LG); draw(LN); doc.rect(X0, y, CW, 6.5, 'FD');
+            font('bold', 9); ink(DG);
+            doc.text('Summe', pc[0][0] + 1.5, y + 4.5); doc.text(slFmtNum(n.summe), pc[3][0] + 1.5, y + 4.5);
+            if (n.summeFz) doc.text(`davon Fahrzeit ${slFmtNum(n.summeFz)} h`, pc[4][0] + 1.5, y + 4.5);
+            y += 15;
+
+            // Tabelle Materialverbrauch
+            const mc = [[X0, 25, 'Menge'], [X0 + 25, 117, 'Artikel'], [X0 + 142, 40, 'Liefers-Nr.']];
+            font('bold', 10); ink(DG); need(20); doc.text('Materialverbrauch', X0, y); y += 3.5;
+            tHead(mc);
+            font('normal', 9); ink(TXT);
+            if (!n.material.length) { doc.setLineWidth(0.2); draw(LN); doc.rect(X0, y, CW, 6.5); doc.text('—', X0 + 1.5, y + 4.5); y += 6.5; }
+            n.material.forEach(m => {
+                const cells = [wrap(m.menge, 22), wrap(m.artikel, 114), wrap(m.lieferscheinNr, 37)];
+                const rh = Math.max(...cells.map(c => c.length)) * 4.2 + 2.6;
+                if (y + rh > BOTTOM) { need(1e3); tHead(mc); font('normal', 9); ink(TXT); }
+                doc.setLineWidth(0.2); draw(LN); doc.rect(X0, y, CW, rh);
+                cells.forEach((c, i) => c.forEach((l, k) => doc.text(l, mc[i][0] + 1.5, y + 4.4 + k * 4.2)));
+                mc.slice(1).forEach(c => doc.line(c[0], y, c[0], y + rh));
+                y += rh;
+            });
+            y += 8;
+
+            // Fußbereich: aufgestellt / geprüft, Unterschriften
+            need(62);
+            font('normal', 10); ink(TXT);
+            doc.text(`Aufgestellt von: ${t(n.aufgestelltVon)}   am: ${slFmt(n.aufgestelltAm)}`, X0, y);
+            doc.text(`Geprüft von: ${t(n.geprueftVon)}   am: ${slFmt(n.geprueftAm)}`, X0 + 92, y);
+            y += 9;
+            const sigBlock = (x, label, src, withOrt) => {
+                if (withOrt) { font('normal', 9); ink(TXT); doc.text(`Ort / Datum: ${t(n.ort)}${n.ort ? ', ' : ''}${slFmt(n.aufgestelltAm)}`, x, y); }
+                const sy = y + 3, sh = 19; let sw = 76;
+                if (src) { try { const pr = doc.getImageProperties(src); sw = Math.min(80, sh * pr.width / pr.height); } catch (e) { /* Standardbreite */ } }
+                if (src) { try { doc.addImage(src, 'PNG', x, sy, sw, sh); } catch (e) { console.error('Unterschrift nicht einbettbar:', e); } }
+                const ly = sy + sh + 1;
+                draw(MG); doc.setLineWidth(0.3);
+                if (src) doc.line(x, ly, x + 80, ly);
+                else { doc.setLineDashPattern([1.5, 1.5], 0); doc.line(x, ly, x + 80, ly); doc.setLineDashPattern([], 0); }
+                font('normal', 8); ink(MG); doc.text(label, x, ly + 4);
+            };
+            sigBlock(X0, 'Unterschrift Dodek / Monteur', n.sigDodek, true);
+            sigBlock(X0 + 98, 'Unterschrift Auftraggeber', n.sigAg, false);
+
+            const total = doc.getNumberOfPages();
+            for (let p = 1; p <= total; p++) {
+                doc.setPage(p);
+                fill(RED); doc.rect(X0, 277, CW, 10, 'F');
+                ink(WHITE); font('bold', 7);
+                doc.text('ABSAUG- UND FILTERANLAGEN — SCHALLSCHUTZ — WÄRMERÜCKGEWINNUNG', 18, 283.2);
+                doc.text(`Seite ${p} / ${total}`, X1 - 4, 283.2, { align: 'right' });
+            }
+            return doc;
+        }
+
+        window.openStundennachweis = openStundennachweis;
+        window.slOpenForm = slOpenForm;
+        window.slBackToAnlage = slBackToAnlage;
+        window.slCancelForm = slCancelForm;
+        window.slAddPers = slAddPers;
+        window.slAddMat = slAddMat;
+        window.slRecalc = slRecalc;
+        window.slClearSig = slClearSig;
+        window.slSave = slSave;
+        window.slExportPdf = slExportPdf;
+
         window.loadAnlagenFromSharePoint = loadAnlagenFromSharePoint;
         window.showAnlagenList        = showAnlagenList;
         window.openAnlageModal        = openAnlageModal;
@@ -6726,7 +7242,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.85';
+        const APP_VERSION = 'v1.6.86';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -8148,7 +8664,7 @@ function applyPermissions() {
                 el.innerHTML = '<div style="color:#888;font-size:14px;">Noch keine Einträge</div>';
                 return;
             }
-            const icons = { uvv: '🔍', projekt: '📋', anlage: '🏭', kalkulation: '🧮' };
+            const icons = { uvv: '🔍', projekt: '📋', anlage: '🏭', kalkulation: '🧮', stunden: '🕐' };
             el.innerHTML = items.slice(0, 5).map(i => `<div class="home-row" data-type="${escapeHtml(i.type)}" data-id="${escapeHtml(i.id)}" onclick="homeOpenRecent(this.dataset.type, this.dataset.id)">
                 <span class="home-row-icon">${icons[i.type] || '•'}</span>
                 <span class="home-row-text" style="font-weight:400;">${escapeHtml(i.label)}</span>
@@ -8198,6 +8714,8 @@ function applyPermissions() {
             } else if (type === 'kalkulation') {
                 if (!window.quoteDatabase?.[id]) { showMessage('Kalkulation nicht gefunden', 'error'); return; }
                 showView('quotes'); openExistingQuote(id);
+            } else if (type === 'stunden') {
+                showView('anlagen'); openStundennachweis(id);
             }
         }
 

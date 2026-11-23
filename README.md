@@ -10,7 +10,7 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.85 |
+| `Projektuebersicht_APP.html` | v1.6.86 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -22,7 +22,7 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 - Kopf: DT-Logo, „DODEK TECHNIK“, Nutzername, Online-Status (`navigator.onLine`)
 - Schnellzugriff: Kacheln UVV-Prüfungen (offen), Projekte, Anlagen mit Zählern aus eigenen SharePoint-Calls (`$select=Id&$top=500`, bei Fehler „—“)
 - Handlungsbedarf (ab v1.6.82): fünf ausklappbare Blöcke (Meine offenen Aufgaben, ohne Nachkalkulation, geliefert aber nicht abgerechnet, ohne AB, Liefertermine 14 Tage) mit den Listen der Statistik-Ansicht; Klick auf Eintrag öffnet das Projekt
-- Zuletzt geöffnet: letzte 5 Einträge (UVV, Projekt, Anlage) aus localStorage
+- Zuletzt geöffnet: letzte 5 Einträge (UVV, Projekt, Anlage, Kalkulation, Stundenlohn-Nachweis) aus localStorage
 
 ### 📊 Dashboard-Kennzahlen (in Statistiken, laufendes Kalenderjahr)
 - KPI-Kacheln: VK Umsatz (abgerechnet / offen), Deckungsbeitrag nachkalkulierter Projekte, aktive Projekte
@@ -65,6 +65,7 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 - Anlagenliste mit Filter nach Inbetriebnahmejahr, Neuanlage (auch aus dem Projekt heraus) und Bearbeiten, Anlagentyp mit Nummernvorschlag (DT-Projekt-Typ-lfd. Nr.), Detailansicht mit verknüpften Projekten und Prüfungen
 - Anlagentypen sind in den Einstellungen pflegbar
 - UVV-Prüfformular: Modulauswahl, Eingabe je Prüfpunkt nach Typ (Freitext, Auswahl, Messwert), Zwischenspeichern, Abschluss, Read-only-Ansicht; UVV-Module in den Einstellungen verwaltbar; Prüfungen löschbar, Vorjahreswerte der letzten abgeschlossenen Prüfung mit Übernahme-Funktion; Unterschriften (Auftraggeber/Prüfer) und PDF-Export (A4 hoch) abgeschlossener Prüfungen
+- Stundenlohn-Nachweise je Anlage: Erfassung (Kopfdaten, Personaleinsatz, Materialverbrauch), Unterschriften auf dem Tablet, Detailansicht, Bearbeiten und PDF-Export; Listen `DodekStundennachweise` und `DodekStundenzeilen`
 
 ### 🗂️ Artikelstamm
 - ID, Bezeichnung, EK/VK-Preis, Marge, Gewerk, Typ
