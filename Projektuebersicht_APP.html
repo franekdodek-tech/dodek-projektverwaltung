@@ -6251,6 +6251,9 @@ function applyPermissions() {
         const slFzFromText = s => { const m = /davon\s*([\d.,]+)\s*h?\s*Fz/i.exec(String(s || '')); return m ? slNum(m[1]) : 0; };
         const slToday = () => new Date().toISOString().slice(0, 10);
         const slPane = () => document.getElementById('anlagenPruefPane');
+        // Unterschriften liegen in SharePoint als reiner Base64-String (ohne data:-Prefix); ältere Einträge können den Prefix noch enthalten
+        const slSigSrc = s => !s ? '' : (String(s).startsWith('data:') ? s : 'data:image/png;base64,' + s);
+        const slSigRaw = s => !s ? '' : (String(s).startsWith('data:') ? String(s).split(',')[1] : s);
 
         function slNachweisFromItem(i) {
             let material = [];
@@ -6346,7 +6349,7 @@ function applyPermissions() {
             const f = (label, v) => `<div><div style="font-size:11px;color:#888;">${label}</div><div style="white-space:pre-wrap;">${v ? escapeHtml(v) : '—'}</div></div>`;
             const zeilen = n.zeilen.map(z => `<tr><td>${escapeHtml(z.name)}</td><td>${slFmt(z.datum)}</td><td>${escapeHtml(z.leistung)}</td><td>${slFmtNum(z.stunden)}</td><td>${escapeHtml(z.bes)}</td></tr>`).join('');
             const mat = n.material.map(m => `<tr><td>${escapeHtml(String(m.menge == null ? '' : m.menge))}</td><td>${escapeHtml(m.artikel || '')}</td><td>${escapeHtml(m.lieferscheinNr || '')}</td></tr>`).join('');
-            const sig = (label, src) => `<div class="pf-sig ro"><label>${label}</label>${src ? `<img src="${escapeHtml(src)}" alt="${label}">` : '<div style="color:#888;font-size:13px;padding:8px 0;">Noch keine Unterschrift</div>'}</div>`;
+            const sig = (label, src) => `<div class="pf-sig ro"><label>${label}</label>${src ? `<img src="${escapeHtml(slSigSrc(src))}" alt="${label}">` : '<div style="color:#888;font-size:13px;padding:8px 0;">Noch keine Unterschrift</div>'}</div>`;
             const box = 'background:white;padding:20px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);margin-bottom:20px;';
             slPane().innerHTML = `
                 <div style="${box}">
@@ -6490,7 +6493,7 @@ function applyPermissions() {
                 cv.width = cv.clientWidth || 600; cv.height = 150; // Zeichenfläche = Anzeigegröße (keine Verzerrung)
                 const ctx = cv.getContext('2d');
                 ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#000000';
-                if (existing) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, cv.width, cv.height); img.src = existing; }
+                if (existing) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, cv.width, cv.height); img.src = slSigSrc(existing); }
                 let drawing = false;
                 const pos = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) * cv.width / r.width, (ev.clientY - r.top) * cv.height / r.height]; };
                 cv.addEventListener('pointerdown', ev => {
@@ -6532,8 +6535,8 @@ function applyPermissions() {
             const a = s.a, d = slCollect();
             if (!d.datum) { showMessage('Datum erforderlich', 'error'); return; }
             const cD = document.getElementById('signatureCanvasDodek'), cA = document.getElementById('signatureCanvasAuftraggeber');
-            const sigDodek = isCanvasBlank(cD) ? '' : cD.toDataURL('image/png');
-            const sigAg = isCanvasBlank(cA) ? '' : cA.toDataURL('image/png');
+            const sigDodek = isCanvasBlank(cD) ? '' : cD.toDataURL('image/png').split(',')[1];
+            const sigAg = isCanvasBlank(cA) ? '' : cA.toDataURL('image/png').split(',')[1];
             const summe = d.zeilen.reduce((t, z) => t + z.stunden, 0);
             const summeFz = d.zeilen.reduce((t, z) => t + slFzFromText(z.bes), 0);
             const status = s.n && s.n.status === 'Abgerechnet' ? 'Abgerechnet' : (sigDodek || sigAg ? 'Unterschrieben' : 'Entwurf');
@@ -6716,6 +6719,7 @@ function applyPermissions() {
             y += 9;
             // Eine Zeile wie in der Excel-Vorlage: Ort | Datum | Unterschrift | Unterschrift - Auftraggeber
             const sigCell = (x, w, label, text, src) => {
+                src = slSigRaw(src);
                 const sy = y, sh = 19;
                 font('normal', 10); ink(TXT);
                 if (text) doc.text(t(text), x, sy + sh - 2);
@@ -7247,7 +7251,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.87';
+        const APP_VERSION = 'v1.6.88';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
