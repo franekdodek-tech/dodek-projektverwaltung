@@ -6684,7 +6684,6 @@ function applyPermissions() {
             document.getElementById('loginOverlay').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
             document.getElementById('userDisplayName').textContent = account.name || account.username;
-            console.log('MSAL-Account:', account); // Diagnose: username, name, localAccountId, tenantId, idTokenClaims
             syncPinBtn(); // Pin-Button Icon nach Login synchronisieren
 
             // Rolle ermitteln
@@ -6727,7 +6726,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.83';
+        const APP_VERSION = 'v1.6.84';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
