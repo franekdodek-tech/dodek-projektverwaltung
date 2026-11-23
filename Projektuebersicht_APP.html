@@ -349,6 +349,40 @@
         }
         .kpi-link:hover { background: #e1e9f2; }
 
+        /* Startseite (dashboardKpiView) */
+        .home-head { text-align: center; margin: 8px 0 24px; }
+        .home-logo { height: 80px; width: auto; }
+        .home-title { color: #CC0000; font-weight: 700; font-size: 28px; letter-spacing: 1px; margin-top: 6px; }
+        .home-user { font-size: 13px; color: #666; margin-top: 4px; }
+        .home-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin: 0 4px 0 2px; vertical-align: baseline; }
+        .home-section-title { font-size: 13px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 24px 0 10px; }
+        .home-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .home-tile {
+            position: relative; background: #fff; border-radius: 12px; border-top: 4px solid #CC0000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12); min-height: 120px; padding: 18px 12px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+            cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; user-select: none;
+        }
+        .home-tile:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.16); }
+        .home-tile:active { transform: scale(0.99); }
+        .home-tile-icon { font-size: 44px; line-height: 1; }
+        .home-tile-label { font-weight: 700; font-size: 16px; color: #333; text-align: center; }
+        .home-badge {
+            position: absolute; top: 8px; right: 8px; min-width: 26px; height: 26px; padding: 0 7px; box-sizing: border-box;
+            border-radius: 13px; background: #CC0000; color: #fff; font-size: 13px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .home-row {
+            display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+            padding: 12px 16px; margin-bottom: 8px; cursor: pointer; transition: background 0.15s;
+        }
+        .home-row:hover { background: #f5f8fb; }
+        .home-row-icon { font-size: 18px; width: 24px; text-align: center; }
+        .home-row-text { flex: 1; font-weight: 600; color: #333; }
+        .home-row-count { min-width: 28px; padding: 2px 9px; box-sizing: border-box; border-radius: 12px; color: #fff; font-size: 13px; font-weight: 700; text-align: center; }
+        .home-row-arrow { color: #999; font-size: 18px; }
+        .home-recent-time { color: #888; font-size: 12px; white-space: nowrap; }
+
         /* Kalkulationsvarianten (Tab-Leiste im quotesView) */
         .qv-bar {
             display: flex;
@@ -1929,10 +1963,36 @@
        
         <!-- DASHBOARD KPI VIEW -->
         <div id="dashboardKpiView" class="view active">
-            <h2 class="kpi-year-title" id="kpiYearTitle">📊 Dashboard</h2>
-            <div class="kpi-grid" id="kpiTiles"></div>
-            <div id="kpiMyTasks"></div>
-            <div id="kpiActions"></div>
+            <div class="home-head">
+                <img src="DT-Logo.png" alt="Dodek Technik" class="home-logo">
+                <div class="home-title">DODEK TECHNIK</div>
+                <div class="home-user"><span id="homeUserName"></span> · <span class="home-dot" id="homeOnlineDot"></span><span id="homeOnlineText"></span></div>
+            </div>
+
+            <div class="home-section-title">Schnellzugriff</div>
+            <div class="home-tiles">
+                <div class="home-tile" onclick="homeGo('uvv')">
+                    <span class="home-badge" id="homeBadgeUvv">…</span>
+                    <span class="home-tile-icon">🔍</span>
+                    <span class="home-tile-label">UVV-Prüfungen</span>
+                </div>
+                <div class="home-tile" onclick="homeGo('projekte')">
+                    <span class="home-badge" id="homeBadgeProjekte">…</span>
+                    <span class="home-tile-icon">📋</span>
+                    <span class="home-tile-label">Projekte</span>
+                </div>
+                <div class="home-tile" onclick="homeGo('anlagen')">
+                    <span class="home-badge" id="homeBadgeAnlagen">…</span>
+                    <span class="home-tile-icon">🏭</span>
+                    <span class="home-tile-label">Anlagen</span>
+                </div>
+            </div>
+
+            <div class="home-section-title">Handlungsbedarf</div>
+            <div id="homeActions"></div>
+
+            <div class="home-section-title">Zuletzt geöffnet</div>
+            <div id="homeRecent"></div>
         </div>
 
         <!-- STATISTICS VIEW -->
@@ -1946,6 +2006,14 @@
                         <option value="all">Alle Jahre</option>
                     </select>
                 </div>
+            </div>
+
+            <!-- Bisheriges Dashboard (bis v1.6.80 Startseite), ab v1.6.81 hier -->
+            <div class="stats-section">
+                <h3 class="kpi-year-title" id="kpiYearTitle" style="color: #366092;">📊 Dashboard</h3>
+                <div class="kpi-grid" id="kpiTiles"></div>
+                <div id="kpiMyTasks"></div>
+                <div id="kpiActions"></div>
             </div>
 
             <div class="stats-section">
@@ -3618,6 +3686,18 @@ function applyPermissions() {
                 ).join('');
         }
 
+        // Startseite "Zuletzt geöffnet": letzte 5 geöffnete Einträge (localStorage, Key dodek_recent_items)
+        function trackRecentItem(type, id, label) {
+            try {
+                const key = 'dodek_recent_items';
+                let items = JSON.parse(localStorage.getItem(key) || '[]');
+                items = items.filter(i => !(i.type === type && i.id === String(id)));
+                items.unshift({ type, id: String(id), label, ts: Date.now() });
+                items = items.slice(0, 5);
+                localStorage.setItem(key, JSON.stringify(items));
+            } catch (e) {}
+        }
+
         // localStorage-Zustand beim Laden sofort anwenden (body-Klasse, kein DOM nötig)
         (function() {
             const pinned = localStorage.getItem('sidebarPinned') !== 'false';
@@ -3731,6 +3811,7 @@ function applyPermissions() {
                 console.log('Geladen:', Object.keys(window.allProjects).length, '| Parse-Fehler:', parseErrors, '| Kein Data:', noData);
                 renderDashboard();
                 renderDashboardKpi();
+                if (document.getElementById('dashboardKpiView').classList.contains('active')) homeRenderActions(document.getElementById('homeBadgeUvv').textContent);
                 updateYearFilter();
                 showMessage(`${Object.keys(window.allProjects).length} Projekt(e) geladen`, 'success');
                 applyPermissions();
@@ -4451,6 +4532,8 @@ function applyPermissions() {
         // ----- Detail -----
         function openAnlageDetail(id) {
             if (!window.anlagenDatabase[id]) return;
+            const _a = window.anlagenDatabase[id];
+            trackRecentItem('anlage', id, (_a.anlagenNr || '') + ' — ' + (_a.bezeichnung || ''));
             window._anlagenDetailId = id;
             window._pf = null;
             document.getElementById('anlagenListPane').style.display = 'none';
@@ -5373,6 +5456,8 @@ function applyPermissions() {
         async function openPruefung(id) {
             const p = window.uvvPruefungen[id];
             if (!p) return;
+            const _pa = (window.anlagenDatabase || {})[p.anlagenId] || {};
+            trackRecentItem('uvv', id, (_pa.anlagenNr || '') + ' — ' + (_pa.kunde || ''));
             let obj = null;
             try { obj = p.ergebnisRaw ? JSON.parse(p.ergebnisRaw) : null; } catch (e) { obj = null; }
             const ergebnisse = {};
@@ -6639,7 +6724,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.80';
+        const APP_VERSION = 'v1.6.81';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -7659,7 +7744,7 @@ function applyPermissions() {
             } else if (viewName === 'dashboardKpi') {
                 document.getElementById('dashboardKpiView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
-                renderDashboardKpi();
+                renderHome();
                 window.scrollTo({ top: 0, behavior: 'instant' });
             } else if (viewName === 'editor') {
                 document.getElementById('editorView').classList.add('active');
@@ -7675,6 +7760,7 @@ function applyPermissions() {
             } else if (viewName === 'statistics') {
                 document.getElementById('statisticsView').classList.add('active');
                 document.getElementById('editorButton').style.display = 'none';
+                renderDashboardKpi();
                 renderStatistics();
             } else if (viewName === 'tasks') {
                 document.getElementById('tasksView').classList.add('active');
@@ -7977,6 +8063,116 @@ function applyPermissions() {
             actionsEl.innerHTML = entries.length > 0
                 ? entries.join('')
                 : '<div class="kpi-action kpi-ok">Alles im grünen Bereich ✅</div>';
+
+            // Zähler für die Startseite (Handlungsbedarf)
+            window._kpiSummary = { openTasks, actionCount: entries.length };
+        }
+
+        // ========== STARTSEITE (dashboardKpiView) ==========
+
+        function homeUpdateOnline() {
+            const on = navigator.onLine;
+            const dot = document.getElementById('homeOnlineDot');
+            const txt = document.getElementById('homeOnlineText');
+            if (!dot || !txt) return;
+            dot.style.background = on ? '#2e7d32' : '#c62828';
+            txt.textContent = on ? 'Verbunden' : 'Offline';
+            txt.style.color = on ? '#2e7d32' : '#c62828';
+        }
+        window.addEventListener('online', homeUpdateOnline);
+        window.addEventListener('offline', homeUpdateOnline);
+
+        function homeRelTime(ts) {
+            const diff = Date.now() - ts;
+            const min = Math.floor(diff / 60000);
+            if (min < 1) return 'gerade eben';
+            if (min < 60) return `vor ${min} Min`;
+            const h = Math.floor(min / 60);
+            if (h < 24) return `vor ${h} h`;
+            const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+            const days = Math.ceil((startOfToday.getTime() - ts) / 86400000);
+            if (days <= 1) return 'gestern';
+            return `vor ${days} Tagen`;
+        }
+
+        function homeRenderActions(uvvCount) {
+            const el = document.getElementById('homeActions');
+            if (!el) return;
+            const s = window._kpiSummary || { openTasks: 0, actionCount: 0 };
+            const row = (icon, color, text, count, onclick) => `<div class="home-row" onclick="${onclick}">
+                <span class="home-row-icon">${icon}</span>
+                <span class="home-row-text">${text}</span>
+                <span class="home-row-count" style="background:${color};">${count}</span>
+                <span class="home-row-arrow">›</span></div>`;
+            el.innerHTML =
+                row('🔴', '#CC0000', 'UVV-Prüfungen offen', uvvCount, "homeGo('uvv')") +
+                row('📋', '#366092', 'Offene Aufgaben', s.openTasks, "homeGo('tasks')") +
+                row('⚡', '#e65100', 'Aktionsliste-Einträge', s.actionCount, "homeGo('actions')");
+        }
+
+        function homeRenderRecent() {
+            const el = document.getElementById('homeRecent');
+            if (!el) return;
+            let items = [];
+            try { items = JSON.parse(localStorage.getItem('dodek_recent_items') || '[]'); } catch (e) { items = []; }
+            if (!Array.isArray(items) || items.length === 0) {
+                el.innerHTML = '<div style="color:#888;font-size:14px;">Noch keine Einträge</div>';
+                return;
+            }
+            const icons = { uvv: '🔍', projekt: '📋', anlage: '🏭' };
+            el.innerHTML = items.slice(0, 5).map(i => `<div class="home-row" data-type="${escapeHtml(i.type)}" data-id="${escapeHtml(i.id)}" onclick="homeOpenRecent(this.dataset.type, this.dataset.id)">
+                <span class="home-row-icon">${icons[i.type] || '•'}</span>
+                <span class="home-row-text" style="font-weight:400;">${escapeHtml(i.label)}</span>
+                <span class="home-recent-time">${homeRelTime(i.ts)}</span>
+                <span class="home-row-arrow">›</span></div>`).join('');
+        }
+
+        // Zähler per SharePoint-Call (parallel); Badge "…" beim Laden, "—" bei Fehler
+        async function renderHome() {
+            const token = window._homeToken = (window._homeToken || 0) + 1;
+            const account = msalInstance?.getAllAccounts?.()?.[0];
+            document.getElementById('homeUserName').textContent = account?.name || account?.username || '';
+            homeUpdateOnline();
+            try { renderDashboardKpi(); } catch (e) { console.error('Dashboard-Kennzahlen:', e); }
+            homeRenderActions('…');
+            homeRenderRecent();
+            ['Uvv', 'Projekte', 'Anlagen'].forEach(k => { document.getElementById('homeBadge' + k).textContent = '…'; });
+
+            const base = guid => `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${guid}')/items`;
+            const count = async url => (await spFetch(url)).value.length;
+            const results = await Promise.allSettled([
+                count(`${base(SP_CONFIG.guidUVVPruefungen)}?$filter=Status eq 'Offen'&$select=Id&$top=500`),
+                count(`${base(SP_CONFIG.guidProjects)}?$select=Id&$top=500`),
+                count(`${base(SP_CONFIG.guidAnlagen)}?$select=Id&$top=500`)
+            ]);
+            if (token !== window._homeToken) return; // neuerer Aufruf läuft
+            const txt = r => r.status === 'fulfilled' ? String(r.value) : '—';
+            document.getElementById('homeBadgeUvv').textContent = txt(results[0]);
+            document.getElementById('homeBadgeProjekte').textContent = txt(results[1]);
+            document.getElementById('homeBadgeAnlagen').textContent = txt(results[2]);
+            homeRenderActions(txt(results[0]));
+        }
+
+        function homeGo(target) {
+            if (target === 'uvv' || target === 'anlagen') navToAnlagenYear('all');
+            else if (target === 'projekte') navToDashboardYear('all');
+            else if (target === 'tasks') showView('tasks');
+            else if (target === 'actions') {
+                showView('statistics');
+                setTimeout(() => document.getElementById('kpiActions')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            }
+        }
+
+        function homeOpenRecent(type, id) {
+            if (type === 'projekt') {
+                if (allProjects[id]) openProject(id); else showMessage('Projekt ' + id + ' nicht gefunden', 'error');
+            } else if (type === 'anlage') {
+                if (!window.anlagenDatabase?.[id]) { showMessage('Anlage nicht gefunden', 'error'); return; }
+                showView('anlagen'); openAnlageDetail(id);
+            } else if (type === 'uvv') {
+                if (!window.uvvPruefungen?.[id]) { showMessage('Prüfung nicht gefunden', 'error'); return; }
+                showView('anlagen'); openPruefung(id);
+            }
         }
 
         function renderProjectRows(projectNumbers) {
@@ -8178,7 +8374,8 @@ function applyPermissions() {
         
         function openProject(projectNumber) {
             window.currentProject = currentProject = allProjects[projectNumber];
-            
+            trackRecentItem('projekt', projectNumber, projectNumber + (currentProject.customer ? ' — ' + currentProject.customer : ''));
+
             if (!currentProject.projectName) currentProject.projectName = '';
             if (!currentProject.orderNumber) currentProject.orderNumber = '';
             if (!currentProject.deliveryDate) currentProject.deliveryDate = '';
@@ -10059,6 +10256,9 @@ function applyPermissions() {
         window.updateFilterSummary = updateFilterSummary;
         window.renderDashboard = renderDashboard;
         window.renderDashboardKpi = renderDashboardKpi;
+        window.renderHome = renderHome;
+        window.homeGo = homeGo;
+        window.homeOpenRecent = homeOpenRecent;
         window.getYearFromProjectNumber = getYearFromProjectNumber;
         window.performSearch = performSearch;
         window.performPositionSearch = performPositionSearch;

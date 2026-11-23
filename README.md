@@ -10,7 +10,7 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.80 |
+| `Projektuebersicht_APP.html` | v1.6.81 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -18,7 +18,13 @@ Operatives Steuerungssystem für Dodek GmbH & Co. KG — Projekte, Einkauf, Kalk
 
 ## Funktionsumfang
 
-### 📊 Dashboard (Startansicht, laufendes Kalenderjahr)
+### 🏠 Startseite (Startansicht, ab v1.6.81)
+- Kopf: DT-Logo, „DODEK TECHNIK“, Nutzername, Online-Status (`navigator.onLine`)
+- Schnellzugriff: Kacheln UVV-Prüfungen (offen), Projekte, Anlagen mit Zählern aus eigenen SharePoint-Calls (`$select=Id&$top=500`, bei Fehler „—“)
+- Handlungsbedarf: offene UVV-Prüfungen, offene Aufgaben, Aktionsliste-Einträge (anklickbar)
+- Zuletzt geöffnet: letzte 5 Einträge (UVV, Projekt, Anlage) aus localStorage
+
+### 📊 Dashboard-Kennzahlen (in Statistiken, laufendes Kalenderjahr)
 - KPI-Kacheln: VK Umsatz (abgerechnet / offen), Deckungsbeitrag nachkalkulierter Projekte, aktive Projekte
 - „Meine offenen Aufgaben“ des eingeloggten Nutzers (allgemeine Aufgaben und Einkaufspositionen mit Status „Offen“)
 - Aktionsliste: ohne Nachkalkulation, geliefert aber nicht abgerechnet, ohne AB, offene Aufgaben je Mitglied, Liefertermine der nächsten 14 Tage
