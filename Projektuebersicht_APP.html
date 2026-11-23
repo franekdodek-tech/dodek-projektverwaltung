@@ -6715,7 +6715,7 @@ function applyPermissions() {
             // Fußbereich: aufgestellt / geprüft, Unterschriften
             need(36);
             font('normal', 10); ink(TXT);
-            doc.text(`Aufgestellt von ${t(n.aufgestelltVon)}   am ${slFmt(n.aufgestelltAm)}   ;Geprüft von ${t(n.geprueftVon)}   am ${slFmt(n.geprueftAm)}`, X0, y);
+            doc.text(`Aufgestellt von ${t(n.aufgestelltVon)}   am ${slFmt(n.aufgestelltAm)}       Geprüft von ${t(n.geprueftVon)}   am ${slFmt(n.geprueftAm)}`, X0, y);
             y += 9;
             // Eine Zeile wie in der Excel-Vorlage: Ort | Datum | Unterschrift | Unterschrift - Auftraggeber
             const sigCell = (x, w, label, text, src) => {
@@ -7251,7 +7251,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.88';
+        const APP_VERSION = 'v1.6.89';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
