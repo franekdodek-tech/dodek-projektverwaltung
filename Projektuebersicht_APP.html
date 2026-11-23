@@ -6726,7 +6726,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.84';
+        const APP_VERSION = 'v1.6.85';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -8148,7 +8148,7 @@ function applyPermissions() {
                 el.innerHTML = '<div style="color:#888;font-size:14px;">Noch keine Einträge</div>';
                 return;
             }
-            const icons = { uvv: '🔍', projekt: '📋', anlage: '🏭' };
+            const icons = { uvv: '🔍', projekt: '📋', anlage: '🏭', kalkulation: '🧮' };
             el.innerHTML = items.slice(0, 5).map(i => `<div class="home-row" data-type="${escapeHtml(i.type)}" data-id="${escapeHtml(i.id)}" onclick="homeOpenRecent(this.dataset.type, this.dataset.id)">
                 <span class="home-row-icon">${icons[i.type] || '•'}</span>
                 <span class="home-row-text" style="font-weight:400;">${escapeHtml(i.label)}</span>
@@ -8195,6 +8195,9 @@ function applyPermissions() {
             } else if (type === 'uvv') {
                 if (!window.uvvPruefungen?.[id]) { showMessage('Prüfung nicht gefunden', 'error'); return; }
                 showView('anlagen'); openPruefung(id);
+            } else if (type === 'kalkulation') {
+                if (!window.quoteDatabase?.[id]) { showMessage('Kalkulation nicht gefunden', 'error'); return; }
+                showView('quotes'); openExistingQuote(id);
             }
         }
 
@@ -11289,6 +11292,7 @@ function applyPermissions() {
             const q = window.quoteDatabase[id];
             if (!q) return;
             window.currentQuote = JSON.parse(JSON.stringify(q)); // deep copy
+            trackRecentItem('kalkulation', id, q.title || String(id));
             openQuoteEditor();
         }
 

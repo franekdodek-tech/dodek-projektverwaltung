@@ -31,7 +31,7 @@ Lies diese Datei vollständig, bevor du irgendeine Änderung machst.
 
 | Datei | Version |
 |---|---|
-| `Projektuebersicht_APP.html` | v1.6.84 |
+| `Projektuebersicht_APP.html` | v1.6.85 |
 | `spedition.html` | v0.6.0 |
 | `bestellung.html` | v0.6.0 |
 
@@ -127,7 +127,7 @@ Claude-Session: https://claude.ai/code/session_0112q721THq4Xa5MtZn82Y5R
 ### Startseite — `dashboardKpiView`, `renderHome()` (ab v1.6.81)
 - Kopf (Logo, Nutzername aus MSAL, Online-Status), drei Kacheln (UVV offen, Projekte, Anlagen), „Handlungsbedarf“ (ab v1.6.82 fünf ausklappbare Blöcke, standardmäßig eingeklappt, Zustand in `window._homeOpen`), „Zuletzt geöffnet“. Die Blöcke rendert `homeRenderActions()` aus `window._kpiSections`, das `renderDashboardKpi()` mit demselben HTML wie die Statistik-Ansicht befüllt (keine eigene Abfrage; „Meine offenen Aufgaben“ = Aufgaben und Einkaufspositionen des angemeldeten Nutzers). `renderHome()` läuft in `showView('dashboardKpi')`.
 - **Zähler per eigenem SharePoint-Call** (`$select=Id&$top=500`, parallel, `Promise.allSettled`): UVV mit `$filter=Status eq 'Offen'`, Projekte und Anlagen ohne Filter. Bei mehr als 500 Einträgen ist der Zähler zu niedrig (`$top`-Grenze). „Projekte“ zählt alle Einträge, nicht nur aktive (Annahme: kein Aktiv-Flag in der Liste; „aktiv“ im Dashboard = `!hasInvoice`).
-- `trackRecentItem(type, id, label)` (global, localStorage `dodek_recent_items`, max. 5): aufgerufen in `openProject()` (id = Projektnummer), `openAnlageDetail()` und `openPruefung()` (Label = Anlagen-Nr. — Kunde der Anlage). Die Kacheln UVV und Anlagen öffnen die Anlagenliste, Projekte die Projektübersicht.
+- `trackRecentItem(type, id, label)` (global, localStorage `dodek_recent_items`, max. 5): aufgerufen in `openProject()` (id = Projektnummer), `openAnlageDetail()`, `openPruefung()` (Label = Anlagen-Nr. — Kunde der Anlage) und `openExistingQuote()` (Typ `kalkulation`, Label = Kalkulationstitel, ab v1.6.85). Die Kacheln UVV und Anlagen öffnen die Anlagenliste, Projekte die Projektübersicht.
 
 ### Dashboard (KPI) — `renderDashboardKpi()`, seit v1.6.81 im `statisticsView`
 - **Seit v1.6.81 liegen `#kpiYearTitle`, `#kpiTiles`, `#kpiMyTasks` und `#kpiActions` im `statisticsView` (zwischen Jahresfilter und „Projekt-Status Übersicht“); die Startseite zeigt sie nicht mehr.** `renderDashboardKpi()` läuft in `showView('statistics')`, in `renderHome()` und in `loadFromSharePoint()` und legt `window._kpiSections` für die Startseite ab. Die folgenden Angaben gelten unverändert für diesen Code.
