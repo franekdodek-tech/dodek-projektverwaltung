@@ -3299,9 +3299,13 @@
                         <input type="number" id="articleMargin" step="0.1" value="0" onchange="calculateMarginFromPrices()">
                     </div>
                     <div class="form-group">
-                        <label for="articleSalesPrice">Verkaufspreis (€) *</label>
+                        <label for="articleSalesPrice">VK Wiederverkäufer (€) *</label>
                         <input type="number" id="articleSalesPrice" step="0.01" value="0" required onchange="calculateMarginFromPrices()">
                         <div id="priceCalcDisplay" class="price-calc"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="articleSalesPriceEnd">VK Endkunde (€)</label>
+                        <input type="number" id="articleSalesPriceEnd" step="0.01" value="0">
                     </div>
                 </div>
                 
@@ -7251,7 +7255,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.89';
+        const APP_VERSION = 'v1.6.90';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -7465,7 +7469,7 @@ function applyPermissions() {
                             <td style="font-weight:600;color:#366092;">${articleId}</td>
                             <td>${a.name}</td>
                             <td style="text-align:right;">${formatCurrency(a.purchasePrice)}${bomCount > 0 ? ' <span style="color:#28a745;font-size:11px;">(BOM)</span>' : ''}</td>
-                            <td style="text-align:right;">${formatCurrency(a.salesPrice)}</td>
+                            <td style="text-align:right;">${formatCurrency(a.salesPriceWV ?? a.salesPrice ?? 0)}${a.salesPriceEnd ? `<div style="font-size:11px;color:#666;">End: ${formatCurrency(a.salesPriceEnd)}</div>` : ''}</td>
                             <td style="text-align:center;color:#666;">${bomCount > 0 ? bomCount + ' Komp.' : '—'}</td>
                             <td style="text-align:right;">
                                 <button onclick="editArticle('${articleId}')" class="btn-secondary btn-small">✏️</button>
@@ -7506,7 +7510,7 @@ function applyPermissions() {
                             <h4>${a.name}</h4>
                             <div class="article-card-info"><strong>ID:</strong> ${articleId}</div>
                             <div class="article-card-info"><strong>EK:</strong> ${formatCurrency(a.purchasePrice)}${bomCount > 0 ? ' <span style="color:#28a745;">(BOM)</span>' : ''}</div>
-                            <div class="article-card-info"><strong>VK:</strong> ${formatCurrency(a.salesPrice)} <span style="color:#28a745;">(+${a.margin}%)</span></div>
+                            <div class="article-card-info"><strong>VK:</strong> ${formatCurrency(a.salesPriceWV ?? a.salesPrice ?? 0)} <span style="color:#28a745;">(+${a.margin}%)</span>${a.salesPriceEnd ? ` · End: ${formatCurrency(a.salesPriceEnd)}` : ''}</div>
                             ${bomCount > 0 ? `<div class="article-card-info" style="color:#28a745;"><strong>BOM:</strong> ${bomCount} Komponenten</div>` : ''}
                             ${uniqueSuppliers.length > 0 ? `<div class="article-card-suppliers"><strong>Lieferanten:</strong> ${uniqueSuppliers.join(', ')}</div>` : ''}
                             <div class="article-card-actions">
@@ -7581,6 +7585,8 @@ function applyPermissions() {
                 document.getElementById('articleId').disabled = false;
                 document.getElementById('articleName').value = article.name;
                 document.getElementById('articleMargin').value = article.margin;
+                document.getElementById('articleSalesPrice').value = article.salesPriceWV ?? article.salesPrice ?? 0;
+                document.getElementById('articleSalesPriceEnd').value = article.salesPriceEnd ?? 0;
                 document.getElementById('articleType').value = article.type || 'material';
                 document.getElementById('articleDescription').value = article.description || '';
                 currentBOM = (article.bom || []).map(item => ({
@@ -7601,6 +7607,8 @@ function applyPermissions() {
                 document.getElementById('articleId').disabled = false;
                 document.getElementById('articleName').value = '';
                 document.getElementById('articleMargin').value = '50';
+                document.getElementById('articleSalesPrice').value = 0;
+                document.getElementById('articleSalesPriceEnd').value = 0;
                 document.getElementById('articleType').value = 'material';
                 document.getElementById('articleDescription').value = '';
             }
@@ -7803,7 +7811,9 @@ function applyPermissions() {
                 name: document.getElementById('articleName').value.trim(),
                 purchasePrice: parseFloat(document.getElementById('articlePurchasePrice').value) || 0,
                 margin: parseFloat(document.getElementById('articleMargin').value) || 0,
-                salesPrice: parseFloat(document.getElementById('articleSalesPrice').value) || 0,
+                salesPrice: parseFloat(document.getElementById('articleSalesPrice').value) || 0, // = salesPriceWV (Fallback für ältere Leselogik)
+                salesPriceWV: parseFloat(document.getElementById('articleSalesPrice').value) || 0,
+                salesPriceEnd: parseFloat(document.getElementById('articleSalesPriceEnd').value) || 0,
                 type: document.getElementById('articleType').value,
                 description: document.getElementById('articleDescription').value.trim(),
                 group: (document.getElementById('articleGroup') || {}).value || '',
@@ -12359,10 +12369,20 @@ function applyPermissions() {
             const artName = prompt('Artikelname:', pos.description);
             if (!artName) return;
 
+            // VK-Preise aus den Faktoren der Kalkulation (getQuoteFactors: Editor-Felder bzw. Einstellungen)
+            const ek = pos.unitPrice || 0;
+            const factors = getQuoteFactors();
+            const priceWV  = Math.round(ek * factors.reseller * 100) / 100;
+            const priceEnd = Math.round(ek * factors.endcustomer * 100) / 100;
             const article = {
                 id:            artId,
+                articleId:     artId,
                 name:          artName,
-                purchasePrice: pos.unitPrice || 0,
+                purchasePrice: ek,
+                margin:        ek > 0 ? Math.round((priceWV - ek) / ek * 1000) / 10 : 0,
+                salesPrice:    priceWV, // = salesPriceWV (Fallback für bestehende Anzeige-Logik)
+                salesPriceWV:  priceWV,
+                salesPriceEnd: priceEnd,
                 bom:           (pos.bom || []).map(comp => ({
                     name:                 comp.description,
                     supplier:             comp.supplier || '',
