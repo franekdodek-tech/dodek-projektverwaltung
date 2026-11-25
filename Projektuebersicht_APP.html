@@ -7255,7 +7255,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.92';
+        const APP_VERSION = 'v1.6.93';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -11577,7 +11577,8 @@ function applyPermissions() {
                 }
 
                 // BOM-Zeilen (klappbar)
-                const bomCollapsed = pos._bomCollapsed || false;
+                // Standard eingeklappt; aufgeklappte Positionen nur im Speicher (nicht in SharePoint, beim Neuladen wieder zu)
+                const bomCollapsed = !(window._quoteBomOpen && window._quoteBomOpen.has(pos.id));
                 // BOM nach Lieferant sortieren (Anzeige-Index bleibt original für onchange)
                 const bomSorted = hasBOM ? [...pos.bom.map((comp, bi) => ({...comp, _origIdx: bi}))].sort((a, b) =>
                     (a.supplier || '').localeCompare(b.supplier || '', 'de')) : [];
@@ -12176,6 +12177,7 @@ function applyPermissions() {
             if (!pos) return;
             if (!pos.bom) pos.bom = [];
             pos.bom.push({ description: '', supplier: '', quantity: 1, unitPrice: 0 });
+            (window._quoteBomOpen = window._quoteBomOpen || new Set()).add(pos.id); // neue Zeile soll sichtbar sein
             recalcQuotePosition(pos);
             renderQuotePositions();
         }
@@ -12567,7 +12569,8 @@ function applyPermissions() {
         function toggleQuoteBOM(index) {
             const pos = window.currentQuote.positions[index];
             if (!pos) return;
-            pos._bomCollapsed = !pos._bomCollapsed;
+            window._quoteBomOpen = window._quoteBomOpen || new Set();
+            if (window._quoteBomOpen.has(pos.id)) window._quoteBomOpen.delete(pos.id); else window._quoteBomOpen.add(pos.id);
             renderQuotePositions();
         }
         window.toggleQuoteBOM = toggleQuoteBOM;
@@ -12610,6 +12613,7 @@ function applyPermissions() {
                 showMessage('„' + (article.name || article.id) + '" als EK-Position hinzugefügt', 'success');
             }
 
+            (window._quoteBomOpen = window._quoteBomOpen || new Set()).add(pos.id); // übernommene Zeilen sollen sichtbar sein
             recalcQuotePosition(pos);
             renderQuotePositions();
         }
