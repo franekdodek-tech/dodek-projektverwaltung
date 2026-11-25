@@ -3895,7 +3895,7 @@ function applyPermissions() {
             try {
                 const url = `${SP_CONFIG.siteUrl}/_api/web/lists(guid'${SP_CONFIG.guidArticles}')/items?$select=Id,ArticleID,ArticleData&$top=500`;
                 const data = await spFetch(url);
-                articleDatabase = {};
+                articleDatabase = {}; window.articleDatabase = articleDatabase;
                 (data.value || []).forEach(item => {
                     try {
                         if (item.ArticleData) {
@@ -7385,7 +7385,7 @@ function applyPermissions() {
                         throw new Error('Ungültiges Backup-Format');
                     }
                     
-                    articleDatabase = backupData.articles;
+                    articleDatabase = backupData.articles; window.articleDatabase = articleDatabase;
                     saveArticleDatabase();
                     renderArticles();
                     updateArticleSelects();
@@ -8204,7 +8204,7 @@ function applyPermissions() {
 
                     // Artikel wiederherstellen falls vorhanden
                     if (backupData.articles) {
-                        articleDatabase = backupData.articles;
+                        articleDatabase = backupData.articles; window.articleDatabase = articleDatabase;
                         for (const article of Object.values(articleDatabase)) {
                             await saveArticleToSharePoint(article);
                         }
@@ -10097,7 +10097,7 @@ function applyPermissions() {
                 await deleteArticleFromSharePoint(article._spId);
             }
         }
-        articleDatabase = {};
+        articleDatabase = {}; window.articleDatabase = articleDatabase;
         renderArticles();
         updateArticleSelects();
         showMessage('Alle Artikel gelöscht.', 'success');
