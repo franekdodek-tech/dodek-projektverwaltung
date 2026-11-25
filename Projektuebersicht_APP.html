@@ -7255,7 +7255,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.90';
+        const APP_VERSION = 'v1.6.91';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -12372,8 +12372,10 @@ function applyPermissions() {
             // VK-Preise aus den Faktoren der Kalkulation (getQuoteFactors: Editor-Felder bzw. Einstellungen)
             const ek = pos.unitPrice || 0;
             const factors = getQuoteFactors();
-            const priceWV  = Math.round(ek * factors.reseller * 100) / 100;
-            const priceEnd = Math.round(ek * factors.endcustomer * 100) / 100;
+            // Wie die Anzeige „WV/St.“ / „End/St.“ in der Kalkulation: inkl. Projektrabatt, gerundet auf 0,25 (roundToQuarter)
+            const discountFactor = 1 - (factors.discount / 100);
+            const priceWV  = roundToQuarter(ek * factors.reseller * discountFactor);
+            const priceEnd = roundToQuarter(ek * factors.endcustomer * discountFactor);
             const article = {
                 id:            artId,
                 articleId:     artId,
