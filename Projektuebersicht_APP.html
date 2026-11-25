@@ -7255,7 +7255,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.91';
+        const APP_VERSION = 'v1.6.92';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -11757,6 +11757,24 @@ function applyPermissions() {
             const dbHand = totalVKHand - totalEK;
             const dbPctHand = totalEK > 0 ? (dbHand / totalVKHand * 100) : 0;
 
+            // Bei Projektrabatt > 0: Listenpreis (ohne Rabatt) mit DB oben, Netto nach Rabatt mit DB darunter
+            const vkTile = (label, color, net, dbNet, dbPctNet, factor) => {
+                if (!(discount > 0)) {
+                    return `<div style="font-size:12px;color:#666;margin-bottom:4px;">${label}</div>
+                    <div style="font-size:20px;font-weight:700;color:${color};">${formatCurrency(net)}</div>
+                    <div style="font-size:12px;color:#666;">DB: ${formatCurrency(dbNet)} (${dbPctNet.toFixed(1)}%)</div>`;
+                }
+                const list = positions.reduce((s, p) => s + roundToQuarter(p.totalEK * factor), 0);
+                const dbList = list - totalEK;
+                const dbPctList = list > 0 ? (dbList / list * 100) : 0;
+                return `<div style="font-size:12px;color:#666;margin-bottom:4px;">${label}</div>
+                    <div style="font-size:20px;font-weight:700;color:${color};">${formatCurrency(list)}</div>
+                    <div style="font-size:12px;color:#666;">DB: ${formatCurrency(dbList)} (${dbPctList.toFixed(1)}%)</div>
+                    <div style="border-top:1px solid #ddd;margin:8px 0 6px;"></div>
+                    <div style="font-size:16px;font-weight:700;color:${color};">${formatCurrency(net)} <span style="font-size:12px;color:#fd7e14;">(−${discount.toFixed(1).replace(/\.0$/, '')} %)</span></div>
+                    <div style="font-size:12px;color:#666;">DB: ${formatCurrency(dbNet)} (${dbPctNet.toFixed(1)}%)</div>`;
+            };
+
             el.innerHTML = `
                 <div class="summary-card" style="background:white;border-radius:8px;padding:15px 20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);min-width:150px;text-align:right;">
                     <div style="font-size:12px;color:#666;margin-bottom:4px;">EK gesamt</div>
@@ -11767,14 +11785,10 @@ function applyPermissions() {
                     <div style="font-size:20px;font-weight:700;color:#fd7e14;">${discount.toFixed(1)} %</div>
                 </div>` : ''}
                 <div class="summary-card" style="background:white;border-radius:8px;padding:15px 20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);min-width:180px;text-align:right;">
-                    <div style="font-size:12px;color:#666;margin-bottom:4px;">VK Wiederverkauf</div>
-                    <div style="font-size:20px;font-weight:700;color:#366092;">${formatCurrency(totalVKReseller)}</div>
-                    <div style="font-size:12px;color:#666;">DB: ${formatCurrency(dbReseller)} (${dbPctReseller.toFixed(1)}%)</div>
+                    ${vkTile('VK Wiederverkauf', '#366092', totalVKReseller, dbReseller, dbPctReseller, reseller)}
                 </div>
                 <div class="summary-card" style="background:white;border-radius:8px;padding:15px 20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);min-width:180px;text-align:right;">
-                    <div style="font-size:12px;color:#666;margin-bottom:4px;">VK End</div>
-                    <div style="font-size:20px;font-weight:700;color:#28a745;">${formatCurrency(totalVKEndcust)}</div>
-                    <div style="font-size:12px;color:#666;">DB: ${formatCurrency(dbEndcust)} (${dbPctEndcust.toFixed(1)}%)</div>
+                    ${vkTile('VK End', '#28a745', totalVKEndcust, dbEndcust, dbPctEndcust, endcustomer)}
                 </div>
                 ${totalVKHand > 0 ? `
                 <div class="summary-card" style="background:white;border-radius:8px;padding:15px 20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);min-width:180px;text-align:right;border:2px solid #fd7e14;">
@@ -12372,10 +12386,9 @@ function applyPermissions() {
             // VK-Preise aus den Faktoren der Kalkulation (getQuoteFactors: Editor-Felder bzw. Einstellungen)
             const ek = pos.unitPrice || 0;
             const factors = getQuoteFactors();
-            // Wie die Anzeige „WV/St.“ / „End/St.“ in der Kalkulation: inkl. Projektrabatt, gerundet auf 0,25 (roundToQuarter)
-            const discountFactor = 1 - (factors.discount / 100);
-            const priceWV  = roundToQuarter(ek * factors.reseller * discountFactor);
-            const priceEnd = roundToQuarter(ek * factors.endcustomer * discountFactor);
+            // Listenpreise ohne Projektrabatt, gerundet auf 0,25 (roundToQuarter)
+            const priceWV  = roundToQuarter(ek * factors.reseller);
+            const priceEnd = roundToQuarter(ek * factors.endcustomer);
             const article = {
                 id:            artId,
                 articleId:     artId,
