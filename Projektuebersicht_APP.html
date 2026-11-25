@@ -7255,7 +7255,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.93';
+        const APP_VERSION = 'v1.6.94';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -11427,7 +11427,7 @@ function applyPermissions() {
                         description: item.name || '',
                         supplier: item.supplier || '',
                         quantity: item.quantity || 1,
-                        unitPrice: item.price || 0
+                        ...articleBomEK(item)
                     }));
                 }
             }
@@ -11631,7 +11631,7 @@ function applyPermissions() {
                         <input type="number" step="0.01" value="${comp.unitPrice}"
                                onchange="updateQuoteBOMItem(${index}, ${bi}, 'unitPrice', this.value)"
                                title="EK Einzelpreis netto — wird aus Listenpreis − Rabatt berechnet, sofern angegeben."
-                               style="width:85px;font-size:12px;text-align:right;${(comp.listPrice != null && comp.listPrice !== '') ? 'background:#f0fdf4;color:#166534;font-weight:600;' : ''}">
+                               style="width:85px;font-size:12px;text-align:right;${((comp.listPrice != null && comp.listPrice !== '') || parseFloat(comp.unitPrice) > 0) ? 'background:#f0fdf4;color:#166534;font-weight:600;' : ''}">
                     </td>
                     <td class="number-cell" style="font-size:12px;">${formatCurrency(comp.quantity * comp.unitPrice)}</td>
                     <td colspan="4" class="action-cell" style="text-align:right;vertical-align:middle;">
@@ -12190,6 +12190,16 @@ function applyPermissions() {
             renderQuotePositions();
         }
 
+        // EK-Felder einer Stamm-BOM-Komponente für die Kalkulation: Netto (unitPrice/price, sonst Liste − Rabatt), Listenpreis und Rabatt falls vorhanden
+        function articleBomEK(item) {
+            const lp = parseFloat(item.listPrice), rb = parseFloat(item.discount) || 0;
+            let net = parseFloat(item.unitPrice) > 0 ? parseFloat(item.unitPrice) : (parseFloat(item.price) || 0);
+            if (!(net > 0) && lp > 0) net = Math.round(lp * (1 - rb / 100) * 10000) / 10000;
+            const r = { unitPrice: net };
+            if (lp > 0) { r.listPrice = lp; r.discount = rb; }
+            return r;
+        }
+
         function updateQuoteBOMItem(posIndex, bomIndex, field, value) {
             const pos = window.currentQuote.positions[posIndex];
             if (!pos || !pos.bom) return;
@@ -12331,7 +12341,7 @@ function applyPermissions() {
                     description: item.name || '',
                     supplier: item.supplier || '',
                     quantity: item.quantity || 1,
-                    unitPrice: item.price || 0
+                    ...articleBomEK(item)
                 }));
                 pos.bom = [...(pos.bom || []), ...newItems];
                 recalcQuotePosition(pos);
@@ -12351,7 +12361,7 @@ function applyPermissions() {
                     description: item.name || '',
                     supplier: item.supplier || '',
                     quantity: item.quantity || 1,
-                    unitPrice: item.price || 0
+                    ...articleBomEK(item)
                 }));
                 recalcQuotePosition(pos);
                 renderQuotePositions();
@@ -12598,7 +12608,7 @@ function applyPermissions() {
                     description: item.name || item.description || '',
                     supplier: item.supplier || '',
                     quantity: item.quantity || 1,
-                    unitPrice: item.price != null ? item.price : (item.unitPrice || 0)
+                    ...articleBomEK(item)
                 }));
                 pos.bom = pos.bom.concat(newItems);
                 showMessage('BOM von „' + (article.name || article.id) + '" übernommen (' + newItems.length + ' Positionen)', 'success');
