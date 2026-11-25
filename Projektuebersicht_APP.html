@@ -2265,9 +2265,13 @@
                         <div style="display:flex; gap:8px; align-items:flex-end; margin-bottom:10px;">
                             <div style="flex:1; max-width:400px;">
                                 <label>Aus Artikelstamm</label>
-                                <select id="quoteArticleSelect" onchange="fillQuoteFromArticle()">
+                                <select id="quoteArticleSelect" onchange="fillQuoteFromArticle()" style="display:none;">
                                     <option value="">-- optional --</option>
                                 </select>
+                                <div style="display:flex; gap:8px; align-items:center;">
+                                    <button type="button" onclick="openStammPicker('position')" class="btn-secondary">🔍 Artikel suchen…</button>
+                                    <span id="quoteArticleChosen" style="font-size:13px;color:#366092;"></span>
+                                </div>
                             </div>
                         </div>
                         <!-- Zeile 2: Manuelle Felder -->
@@ -3320,8 +3324,23 @@
                             <option value="other">Sonstiges</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label for="articleStatus">Status</label>
+                        <select id="articleStatus">
+                            <option value="aktiv">Aktiv</option>
+                            <option value="inaktiv">Inaktiv</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="articleKind">Artikel-Typ</label>
+                        <select id="articleKind">
+                            <option value="einkauf">Nur Einkauf</option>
+                            <option value="verkauf">Nur Verkauf</option>
+                            <option value="einkauf+verkauf">Einkauf + Verkauf</option>
+                        </select>
+                    </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="articleDescription">Beschreibung</label>
                     <textarea id="articleDescription" rows="3" placeholder="Zusätzliche Informationen zum Artikel"></textarea>
@@ -7255,7 +7274,7 @@ function applyPermissions() {
         window.logoutMicrosoft = logoutMicrosoft;
 
         // ========== KONSTANTEN ==========
-        const APP_VERSION = 'v1.6.94';
+        const APP_VERSION = 'v1.6.95';
         const BACKUP_FILENAME = 'Dodek_Hub_Backup.json';
         const ARTICLE_BACKUP_FILENAME = 'Dodek_Hub_Backup.json'; // unified
 
@@ -7588,6 +7607,8 @@ function applyPermissions() {
                 document.getElementById('articleSalesPrice').value = article.salesPriceWV ?? article.salesPrice ?? 0;
                 document.getElementById('articleSalesPriceEnd').value = article.salesPriceEnd ?? 0;
                 document.getElementById('articleType').value = article.type || 'material';
+                document.getElementById('articleStatus').value = article.status || 'aktiv';
+                document.getElementById('articleKind').value = article.articleType || 'einkauf+verkauf';
                 document.getElementById('articleDescription').value = article.description || '';
                 currentBOM = (article.bom || []).map(item => ({
                     description: item.description || item.name || '',
@@ -7610,6 +7631,8 @@ function applyPermissions() {
                 document.getElementById('articleSalesPrice').value = 0;
                 document.getElementById('articleSalesPriceEnd').value = 0;
                 document.getElementById('articleType').value = 'material';
+                document.getElementById('articleStatus').value = 'aktiv';
+                document.getElementById('articleKind').value = 'einkauf+verkauf';
                 document.getElementById('articleDescription').value = '';
             }
 
@@ -7815,6 +7838,8 @@ function applyPermissions() {
                 salesPriceWV: parseFloat(document.getElementById('articleSalesPrice').value) || 0,
                 salesPriceEnd: parseFloat(document.getElementById('articleSalesPriceEnd').value) || 0,
                 type: document.getElementById('articleType').value,
+                status: document.getElementById('articleStatus').value || 'aktiv',
+                articleType: document.getElementById('articleKind').value || 'einkauf+verkauf',
                 description: document.getElementById('articleDescription').value.trim(),
                 group: (document.getElementById('articleGroup') || {}).value || '',
                 bom: currentBOM.filter(item => (item.description || item.name || '').trim() !== '').map(item => ({
@@ -10981,7 +11006,7 @@ function applyPermissions() {
             const select = document.getElementById('quoteArticleSelect');
             if (!select) return;
             select.innerHTML = '<option value="">-- Artikel wählen (optional) --</option>';
-            Object.values(articleDatabase).sort((a, b) => a.name.localeCompare(b.name)).forEach(article => {
+            Object.values(articleDatabase).filter(isArticleActive).sort((a, b) => a.name.localeCompare(b.name)).forEach(article => {
                 const opt = document.createElement('option');
                 opt.value = article.id;
                 opt.textContent = `${article.id} — ${article.name}`;
@@ -10990,8 +11015,8 @@ function applyPermissions() {
 
         }
 
-        function fillQuoteFromArticle() {
-            const articleId = document.getElementById('quoteArticleSelect').value;
+        function fillQuoteFromArticle(idOverride) {
+            const articleId = (typeof idOverride === 'string' && idOverride) ? idOverride : document.getElementById('quoteArticleSelect').value;
             if (!articleId || !articleDatabase[articleId]) return;
             const article = articleDatabase[articleId];
             document.getElementById('newQuoteDescription').value = article.name;
@@ -11002,7 +11027,68 @@ function applyPermissions() {
             }
             // Merken für BOM-Import beim Hinzufügen
             document.getElementById('quoteArticleSelect').dataset.selectedId = articleId;
+            const chosenEl = document.getElementById('quoteArticleChosen'); if (chosenEl) chosenEl.textContent = `${article.id} — ${article.name}`;
         }
+
+        // ----- Artikelstamm-Auswahl mit Suche und Typ-Filter (Kalkulation) -----
+        // Fehlende Felder gelten als status "aktiv" und articleType "einkauf+verkauf" (Rückwärtskompatibilität)
+        function isArticleActive(a) { return (a.status || 'aktiv') === 'aktiv'; }
+        function articleKindOf(a) { return a.articleType || 'einkauf+verkauf'; }
+
+        // mode 'position': ganzer Artikel als Position (Filter „Alle“); mode 'bom': Komponente für Position posIndex (Filter „Ohne Nur Verkauf“)
+        function openStammPicker(mode, posIndex) {
+            const _db = window.articleDatabase || articleDatabase || {};
+            const articles = Object.values(_db).filter(isArticleActive).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+            if (articles.length === 0) { showMessage('Keine aktiven Artikel im Stamm', 'error'); return; }
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `
+              <div style="background:#fff;border-radius:10px;padding:20px;width:620px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.3);">
+                <h3 style="margin:0 0 10px;font-size:16px;color:#1a1a2e;">${mode === 'bom' ? '📦 Komponente aus Stamm hinzufügen' : '🔍 Artikel aus Stamm wählen'}</h3>
+                <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                  <input type="text" id="stammPickSearch" placeholder="Suchen nach Artikelnummer oder Bezeichnung…" style="flex:1;min-width:220px;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;">
+                  <select id="stammPickKind" style="padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
+                    ${mode === 'bom' ? '<option value="ohneverkauf">Ohne „Nur Verkauf“</option>' : ''}
+                    <option value="alle">Alle</option>
+                    <option value="einkauf">Nur Einkauf</option>
+                    <option value="verkauf">Nur Verkauf</option>
+                    <option value="einkauf+verkauf">Einkauf + Verkauf</option>
+                  </select>
+                </div>
+                <div id="stammPickList" style="overflow-y:auto;flex:1;border:1px solid #e5e7eb;border-radius:6px;min-height:200px;max-height:380px;"></div>
+                <div style="display:flex;justify-content:flex-end;margin-top:12px;"><button type="button" id="stammPickCancel" class="btn-secondary">Abbrechen</button></div>
+              </div>`;
+            document.body.appendChild(overlay);
+            const kindLabel = { 'einkauf': 'Einkauf', 'verkauf': 'Verkauf', 'einkauf+verkauf': 'Einkauf + Verkauf' };
+            const render = () => {
+                const f = document.getElementById('stammPickSearch').value.trim().toLowerCase();
+                const k = document.getElementById('stammPickKind').value;
+                const rows = articles.filter(a => {
+                    const kind = articleKindOf(a);
+                    if (k === 'ohneverkauf' && kind === 'verkauf') return false;
+                    if ((k === 'einkauf' || k === 'verkauf' || k === 'einkauf+verkauf') && kind !== k) return false;
+                    return !f || String(a.id || '').toLowerCase().includes(f) || (a.name || '').toLowerCase().includes(f);
+                });
+                const list = document.getElementById('stammPickList');
+                list.innerHTML = rows.length ? rows.map(a => `<div class="stamm-pick-item" data-id="${escapeHtml(String(a.id))}" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;gap:10px;">
+                    <div style="min-width:0;"><div style="font-size:14px;font-weight:500;">${escapeHtml(a.name || a.id)}</div><div style="font-size:11px;color:#999;">${escapeHtml(String(a.id))} · ${kindLabel[articleKindOf(a)] || ''}${(a.bom && a.bom.length) ? ' · BOM ' + a.bom.length : ''}</div></div>
+                    <div style="font-size:12px;color:#666;white-space:nowrap;">EK ${formatCurrency(a.purchasePrice || 0)}</div></div>`).join('')
+                    : '<div style="padding:20px;text-align:center;color:#999;font-size:13px;">Keine Artikel gefunden</div>';
+                list.querySelectorAll('.stamm-pick-item').forEach(el => el.addEventListener('click', () => {
+                    const id = el.dataset.id;
+                    overlay.remove();
+                    if (mode === 'bom') addBOMFromSelect(posIndex, { value: id });
+                    else fillQuoteFromArticle(id);
+                }));
+            };
+            document.getElementById('stammPickSearch').addEventListener('input', render);
+            document.getElementById('stammPickKind').addEventListener('change', render);
+            document.getElementById('stammPickCancel').addEventListener('click', () => overlay.remove());
+            overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+            render();
+            setTimeout(() => document.getElementById('stammPickSearch').focus(), 50);
+        }
+        window.openStammPicker = openStammPicker;
 
         function createNewQuote() {
             const factors = window.settingsCache?.quote_factors?.value;
@@ -11452,6 +11538,7 @@ function applyPermissions() {
             document.getElementById('newQuoteUnitPrice').value = '0';
             document.getElementById('quoteArticleSelect').value = '';
             document.getElementById('quoteArticleSelect').dataset.selectedId = '';
+            const chosenEl = document.getElementById('quoteArticleChosen'); if (chosenEl) chosenEl.textContent = '';
             renderQuotePositions();
         }
 
@@ -11657,15 +11744,8 @@ function applyPermissions() {
                         <div style="font-size:10px;color:#999;margin-bottom:2px;">Stückliste</div>
                         ${(function(){
                             const _db = articleDatabase || window.articleDatabase || {};
-                            const arts = Object.values(_db).sort((a,b) => (a.name||'').localeCompare(b.name||'','de'));
-                            if (arts.length === 0) return '';
-                            const opts = arts.map(a => {
-                                const bomInfo = (a.bom && a.bom.length) ? ` [BOM: ${a.bom.length}]` : '';
-                                return `<option value="${a.id}">${a.name || a.id}${bomInfo}</option>`;
-                            }).join('');
-                            return `<select onchange="addBOMFromSelect(${index}, this)" style="font-size:11px;max-width:160px;border:1px solid #ccc;border-radius:4px;padding:2px 4px;cursor:pointer;" title="Artikel aus Stamm als EK-Position hinzufügen">
-                                      <option value="">+ Aus Stamm…</option>${opts}
-                                    </select>`;
+                            if (Object.keys(_db).length === 0) return '';
+                            return `<button onclick="openStammPicker('bom', ${index})" class="btn-secondary btn-small" style="font-size:11px;" title="Artikel aus Stamm als EK-Position hinzufügen (mit Suche und Filter)">🔍 Aus Stamm…</button>`;
                         })()}
                         <button onclick="addQuoteBOMItem(${index})" class="btn-secondary btn-small" title="Komponente manuell hinzufügen" style="font-size:11px;">+</button>
                         <button onclick="copyQuotePosition(${index})" class="btn-secondary btn-small" title="Position kopieren" style="font-size:11px;">⧉</button>
@@ -12410,6 +12490,8 @@ function applyPermissions() {
                 salesPrice:    priceWV, // = salesPriceWV (Fallback für bestehende Anzeige-Logik)
                 salesPriceWV:  priceWV,
                 salesPriceEnd: priceEnd,
+                status:        'aktiv',
+                articleType:   'einkauf+verkauf',
                 bom:           (pos.bom || []).map(comp => ({
                     name:                 comp.description,
                     supplier:             comp.supplier || '',
@@ -12458,6 +12540,8 @@ function applyPermissions() {
                 margin: 0,
                 type: pos.type || 'material',
                 description: pos.description || '',
+                status: 'aktiv',
+                articleType: 'einkauf+verkauf',
                 group: gk,
                 bom: []
             };
